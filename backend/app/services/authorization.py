@@ -1,0 +1,300 @@
+import hashlib
+import ipaddress
+import secrets
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Callable
+from urllib.parse import urlsplit, urlunsplit
+
+import dns.asyncresolver
+import httpx
+
+from app.config import get_settings
+from app.database import (
+    create_authorized_target,
+    find_authorized_target,
+    get_authorized_target,
+    update_authorized_target,
+)
+
+
+class TargetValidationError(ValueError):
+    pass
+
+
+class TargetNotVerifiedError(PermissionError):
+    pass
+
+
+@dataclass(frozen=True)
+class CanonicalTarget:
+    url: str
+    origin: str
+    domain: str
+
+
+@dataclass(frozen=True)
+class VerifiedTarget:
+    id: int
+    user_id: str
+    target: CanonicalTarget
+    verification_method: str
+    verified_at: datetime
+    expires_at: datetime
+    status: str = "VERIFIED"
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def parse_database_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def to_database_datetime(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def canonicalize_target(target_url: str) -> CanonicalTarget:
+    candidate = target_url.strip()
+    if "://" not in candidate:
+        candidate = f"https://{candidate}"
+    parsed = urlsplit(candidate)
+    if parsed.scheme.lower() not in {"http", "https"}:
+        raise TargetValidationError("Target must use HTTP or HTTPS")
+    if parsed.username or parsed.password:
+        raise TargetValidationError("Target URLs cannot contain credentials")
+    if not parsed.hostname:
+        raise TargetValidationError("Target must include a hostname")
+    if parsed.fragment:
+        raise TargetValidationError("Target URLs cannot include fragments")
+
+    try:
+        domain = parsed.hostname.encode("idna").decode("ascii").lower().rstrip(".")
+    except UnicodeError as exc:
+        raise TargetValidationError("Target hostname is invalid") from exc
+
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise TargetValidationError("Target port is invalid") from exc
+
+    default_port = 443 if parsed.scheme.lower() == "https" else 80
+    if ":" in domain:
+        display_host = f"[{domain}]"
+    else:
+        display_host = domain
+    netloc = display_host if port is None or port == default_port else f"{display_host}:{port}"
+    scheme = parsed.scheme.lower()
+    origin = f"{scheme}://{netloc}"
+    path = parsed.path or "/"
+    normalized_url = urlunsplit((scheme, netloc, path, parsed.query, ""))
+    return CanonicalTarget(url=normalized_url, origin=origin, domain=domain)
+
+
+class TargetAuthorizationService:
+    def __init__(self, now: Callable[[], datetime] = utc_now) -> None:
+        self.settings = get_settings()
+        self.now = now
+
+    async def create_challenge(self, target_url: str, user_id: str, method: str) -> dict[str, object]:
+        target = canonicalize_target(target_url)
+        token = secrets.token_urlsafe(32)
+        challenge_expires_at = self.now() + timedelta(minutes=self.settings.verification_challenge_minutes)
+        authorization_id = await create_authorized_target(
+            user_id=user_id,
+            domain=target.domain,
+            target_origin=target.origin,
+            verification_method=method,
+            token_hash=hash_token(token),
+            challenge_expires_at=to_database_datetime(challenge_expires_at),
+        )
+        return {
+            "id": authorization_id,
+            "domain": target.domain,
+            "target_origin": target.origin,
+            "verification_method": method,
+            "token": token,
+            "dns_record": f"phantomscan-verification={token}",
+            "http_url": f"{target.origin}/.well-known/phantomscan-verification.txt",
+            "challenge_expires_at": challenge_expires_at,
+            "status": "PENDING",
+        }
+
+    async def verify_challenge(self, authorization_id: int, user_id: str) -> dict[str, object]:
+        record = await self._get_owned_record(authorization_id, user_id)
+        status = await self._refresh_expiration(record)
+        if status == "VERIFIED":
+            return await self.status_from_record(record, "TARGET VERIFIED\nPentest capabilities unlocked.")
+        if status != "PENDING":
+            raise TargetNotVerifiedError(f"Verification cannot run while target status is {status}")
+
+        method = str(record["verification_method"])
+        if method == "dns":
+            verified = await self._verify_dns(str(record["domain"]), str(record["verification_token_hash"]))
+        else:
+            verified = await self._verify_http(str(record["target_origin"]), str(record["verification_token_hash"]))
+        if not verified:
+            raise TargetNotVerifiedError("Verification token was not found at the configured location")
+
+        verified_at = self.now()
+        expires_at = verified_at + timedelta(days=self.settings.verification_ttl_days)
+        await update_authorized_target(
+            authorization_id,
+            "VERIFIED",
+            to_database_datetime(verified_at),
+            to_database_datetime(expires_at),
+        )
+        updated = await get_authorized_target(authorization_id)
+        if updated is None:
+            raise TargetNotVerifiedError("Verification record disappeared")
+        return await self.status_from_record(updated, "TARGET VERIFIED\nPentest capabilities unlocked.")
+
+    async def get_status(self, target_url: str, user_id: str) -> dict[str, object]:
+        target = canonicalize_target(target_url)
+        record = await find_authorized_target(user_id, target.origin)
+        if record is None:
+            return {
+                "id": None,
+                "domain": target.domain,
+                "target_origin": target.origin,
+                "verification_method": None,
+                "verified_at": None,
+                "expires_at": None,
+                "status": "PENDING",
+                "message": "TARGET NOT VERIFIED",
+            }
+        status = await self._refresh_expiration(record)
+        refreshed = await get_authorized_target(int(record["id"])) if status != record["status"] else record
+        return await self.status_from_record(refreshed or record)
+
+    async def revoke(self, authorization_id: int, user_id: str) -> dict[str, object]:
+        record = await self._get_owned_record(authorization_id, user_id)
+        await update_authorized_target(authorization_id, "REVOKED", record.get("verified_at"), record.get("expires_at"))
+        updated = await get_authorized_target(authorization_id)
+        return await self.status_from_record(updated or record, "Target authorization revoked.")
+
+    async def require_verified(
+        self,
+        target_url: str,
+        user_id: str,
+        authorization_id: int | None = None,
+    ) -> VerifiedTarget:
+        target = canonicalize_target(target_url)
+        record = await get_authorized_target(authorization_id) if authorization_id else await find_authorized_target(user_id, target.origin)
+        if record is None or record["user_id"] != user_id or record["target_origin"] != target.origin:
+            raise TargetNotVerifiedError(self.blocked_message())
+        status = await self._refresh_expiration(record)
+        if status != "VERIFIED":
+            raise TargetNotVerifiedError(self.blocked_message())
+        verified_at = parse_database_datetime(record.get("verified_at"))
+        expires_at = parse_database_datetime(record.get("expires_at"))
+        if verified_at is None or expires_at is None:
+            raise TargetNotVerifiedError(self.blocked_message())
+        return VerifiedTarget(
+            id=int(record["id"]),
+            user_id=user_id,
+            target=target,
+            verification_method=str(record["verification_method"]),
+            verified_at=verified_at,
+            expires_at=expires_at,
+        )
+
+    async def _get_owned_record(self, authorization_id: int, user_id: str) -> dict[str, object]:
+        record = await get_authorized_target(authorization_id)
+        if record is None or record["user_id"] != user_id:
+            raise TargetNotVerifiedError("Verification record not found")
+        return record
+
+    async def _refresh_expiration(self, record: dict[str, object]) -> str:
+        status = str(record["status"])
+        now = self.now()
+        if status == "PENDING":
+            challenge_expiry = parse_database_datetime(str(record["challenge_expires_at"]))
+            if challenge_expiry is not None and challenge_expiry <= now:
+                await update_authorized_target(int(record["id"]), "EXPIRED")
+                return "EXPIRED"
+        if status == "VERIFIED":
+            verified_expiry = parse_database_datetime(str(record.get("expires_at") or ""))
+            if verified_expiry is None or verified_expiry <= now:
+                await update_authorized_target(
+                    int(record["id"]),
+                    "EXPIRED",
+                    str(record.get("verified_at") or "") or None,
+                    str(record.get("expires_at") or "") or None,
+                )
+                return "EXPIRED"
+        return status
+
+    async def _verify_dns(self, domain: str, expected_hash: str) -> bool:
+        resolver = dns.asyncresolver.Resolver()
+        resolver.timeout = 3.0
+        resolver.lifetime = 5.0
+        try:
+            answers = await resolver.resolve(domain, "TXT")
+        except Exception:
+            return False
+        prefix = "phantomscan-verification="
+        for answer in answers:
+            value = b"".join(getattr(answer, "strings", [])).decode("utf-8", errors="replace")
+            if not value:
+                value = str(answer).strip('"')
+            if value.startswith(prefix) and secrets.compare_digest(hash_token(value[len(prefix) :].strip()), expected_hash):
+                return True
+        return False
+
+    async def _verify_http(self, target_origin: str, expected_hash: str) -> bool:
+        url = f"{target_origin}/.well-known/phantomscan-verification.txt"
+        try:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=False, trust_env=False) as client:
+                response = await client.get(url, headers={"User-Agent": "PhantomScan-Ownership-Verification/1.0"})
+                if response.status_code != 200 or len(response.content) > 4096:
+                    return False
+        except httpx.HTTPError:
+            return False
+        value = response.text.strip()
+        prefix = "phantomscan-verification="
+        token = value[len(prefix) :].strip() if value.startswith(prefix) else value
+        return secrets.compare_digest(hash_token(token), expected_hash)
+
+    async def status_from_record(self, record: dict[str, object], message: str | None = None) -> dict[str, object]:
+        status = str(record["status"])
+        return {
+            "id": int(record["id"]),
+            "domain": str(record["domain"]),
+            "target_origin": str(record["target_origin"]),
+            "verification_method": str(record["verification_method"]),
+            "verified_at": parse_database_datetime(str(record.get("verified_at") or "")),
+            "expires_at": parse_database_datetime(str(record.get("expires_at") or "")),
+            "status": status,
+            "message": message or ("TARGET VERIFIED" if status == "VERIFIED" else f"Target status: {status}"),
+        }
+
+    @staticmethod
+    def blocked_message() -> str:
+        return (
+            "TARGET NOT VERIFIED\n"
+            "Active testing blocked.\n\n"
+            "Run Defend Scan instead\n"
+            "or\n"
+            "Verify ownership to unlock Pentest Mode."
+        )
+
+
+def is_ip_address(domain: str) -> bool:
+    try:
+        ipaddress.ip_address(domain)
+        return True
+    except ValueError:
+        return False

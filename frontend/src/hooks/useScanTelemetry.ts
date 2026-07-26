@@ -1,0 +1,185 @@
+import { useEffect, useState } from 'react';
+
+import { getAgentStatuses, getLogs, getScan, getWebSocketUrl } from '../services/api';
+import type { AgentStatus, AuditLog, ConnectionState, Finding, ScanStatus, TimelineEvent } from '../types';
+
+interface ScanTelemetry {
+  connectionState: ConnectionState;
+  scanStatus: ScanStatus | null;
+  progress: number;
+  requestCount: number;
+  findings: Finding[];
+  logs: AuditLog[];
+  agents: AgentStatus[];
+  events: TimelineEvent[];
+  error: string | null;
+}
+
+const terminalStatuses: ScanStatus[] = ['cancelled', 'complete', 'error'];
+
+function timestamp(value?: string): string {
+  const date = value ? new Date(value) : new Date();
+  return Number.isNaN(date.getTime())
+    ? new Date().toLocaleTimeString('en-GB', { hour12: false })
+    : date.toLocaleTimeString('en-GB', { hour12: false });
+}
+
+function toneFor(action: string): TimelineEvent['tone'] {
+  if (/error|failed|cancel/i.test(action)) return 'red';
+  if (/complete|delivered|destroyed/i.test(action)) return 'green';
+  if (/cve|intelligence/i.test(action)) return 'blue';
+  if (/warning|alert/i.test(action)) return 'amber';
+  return 'purple';
+}
+
+function logsToEvents(logs: AuditLog[]): TimelineEvent[] {
+  return logs.map((log) => ({
+    id: `log-${log.id}`,
+    timestamp: timestamp(log.timestamp),
+    title: log.action.replace(/_/g, ' '),
+    detail: log.details,
+    agent: log.agent_name,
+    tone: toneFor(log.action)
+  }));
+}
+
+export function useScanTelemetry(scanId: number | null): ScanTelemetry {
+  const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
+  const [scanStatus, setScanStatus] = useState<ScanStatus | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [requestCount, setRequestCount] = useState(0);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConnectionState(scanId ? 'connecting' : 'idle');
+    setScanStatus(null);
+    setProgress(0);
+    setRequestCount(0);
+    setFindings([]);
+    setLogs([]);
+    setEvents([]);
+    setError(null);
+
+    if (!scanId) return undefined;
+
+    let socket: WebSocket | null = null;
+    let active = true;
+    let reconnectTimer: number | undefined;
+    let reconnectAttempts = 0;
+    let sequence = 0;
+    let latestStatus: ScanStatus | null = null;
+    const seenEvents = new Set<string>();
+
+    const appendEvent = (event: Omit<TimelineEvent, 'id'> & { id?: string }) => {
+      const id = event.id ?? `event-${scanId}-${Date.now()}-${sequence++}`;
+      if (seenEvents.has(id)) return;
+      seenEvents.add(id);
+      setEvents((current) => [...current, { ...event, id }].slice(-240));
+    };
+
+    const applyLogs = (nextLogs: AuditLog[]) => {
+      setLogs(nextLogs);
+      for (const event of logsToEvents(nextLogs)) appendEvent(event);
+    };
+
+    const refreshFallback = async () => {
+      try {
+        const [scan, nextLogs, nextAgents] = await Promise.all([getScan(scanId), getLogs(scanId), getAgentStatuses(scanId)]);
+        latestStatus = scan.status;
+        setScanStatus(scan.status);
+        setProgress(scan.progress);
+        setRequestCount(scan.request_count);
+        setFindings(scan.findings);
+        applyLogs(nextLogs);
+        setAgents(nextAgents);
+      } catch (fallbackError) {
+        setError(fallbackError instanceof Error ? fallbackError.message : 'Unable to refresh scan telemetry.');
+      }
+    };
+
+    const handleFrame = (raw: string) => {
+      let frame: Record<string, unknown>;
+      try {
+        frame = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        setError('Malformed realtime frame received.');
+        return;
+      }
+
+      const payload = typeof frame.payload === 'object' && frame.payload !== null ? (frame.payload as Record<string, unknown>) : frame;
+      const eventName = String(frame.event ?? frame.type ?? 'telemetry');
+      if (typeof payload.error === 'string') {
+        setError(payload.error);
+        appendEvent({ timestamp: timestamp(), title: 'Realtime error', detail: payload.error, tone: 'red', agent: 'System' });
+      }
+      if (typeof payload.status === 'string') {
+        latestStatus = payload.status as ScanStatus;
+        setScanStatus(payload.status as ScanStatus);
+      }
+      if (typeof payload.progress === 'number') setProgress(Math.max(0, Math.min(100, payload.progress)));
+      if (typeof payload.request_count === 'number') setRequestCount(payload.request_count);
+      if (Array.isArray(payload.findings)) setFindings(payload.findings as Finding[]);
+      if (Array.isArray(payload.logs)) applyLogs(payload.logs as AuditLog[]);
+
+      if (eventName !== 'snapshot' && eventName !== 'heartbeat') {
+        const title = eventName.replace(/_/g, ' ');
+        appendEvent({
+          timestamp: timestamp(),
+          title,
+          detail: typeof payload.phase === 'string'
+            ? payload.phase.replace(/_/g, ' ')
+            : typeof payload.details === 'string'
+              ? payload.details
+              : typeof payload.result === 'string'
+                ? payload.result
+                : undefined,
+          agent: typeof payload.agent_name === 'string' ? payload.agent_name : typeof payload.agent === 'string' ? payload.agent : 'System',
+          tone: toneFor(`${eventName} ${String(payload.status ?? '')}`)
+        });
+      }
+
+      if (eventName === 'snapshot' || eventName === 'scan_complete' || eventName === 'scan_failed' || eventName === 'scan_cancelled') {
+        void getAgentStatuses(scanId).then(setAgents).catch(() => undefined);
+        if (eventName !== 'snapshot') void refreshFallback();
+      }
+    };
+
+    const connect = () => {
+      if (!active) return;
+      setConnectionState('connecting');
+      socket = new WebSocket(getWebSocketUrl(`/ws/scan/${scanId}`));
+      socket.onopen = () => {
+        reconnectAttempts = 0;
+        setConnectionState('open');
+        appendEvent({ timestamp: timestamp(), title: 'Realtime connected', detail: `Scan ${scanId}`, tone: 'green', agent: 'System' });
+      };
+      socket.onmessage = (event: MessageEvent<string>) => handleFrame(event.data);
+      socket.onerror = () => setConnectionState('error');
+      socket.onclose = () => {
+        if (!active) return;
+        setConnectionState('closed');
+        if (latestStatus && terminalStatuses.includes(latestStatus)) return;
+        void refreshFallback();
+        if (reconnectAttempts < 4) {
+          reconnectAttempts += 1;
+          reconnectTimer = window.setTimeout(connect, Math.min(1000 * 2 ** reconnectAttempts, 8000));
+        }
+      };
+    };
+
+    void refreshFallback();
+    connect();
+
+    return () => {
+      active = false;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      socket?.close();
+    };
+  }, [scanId]);
+
+  return { connectionState, scanStatus, progress, requestCount, findings, logs, agents, events, error };
+}

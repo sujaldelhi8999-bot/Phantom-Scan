@@ -1,0 +1,22 @@
+import { useMemo, useState } from 'react';
+import type { Finding } from '../../types';
+import { Drawer, EmptyState, SectionHeader, SeverityBadge, StatusBadge, Surface } from '../../components/ui/Primitives';
+import { usePhantomData } from '../../hooks/usePhantomData';
+import { deriveTechnologies, targetName } from '../../utils/derived';
+
+export default function CvePage() {
+  const { findings, artifactsByScanId } = usePhantomData();
+  const [selected, setSelected] = useState<Finding | null>(null);
+  const technologies = useMemo(() => deriveTechnologies(artifactsByScanId), [artifactsByScanId]);
+  const cves = findings.filter((finding) => finding.cve_id);
+  return (
+    <div className="space-y-6">
+      <Surface className="p-6"><SectionHeader title="Detected Technologies" description="Technology evidence persisted by Scanner Agent artifacts." />{technologies.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{technologies.map((tech) => <div key={tech.name} className="rounded-2xl bg-white/[0.035] p-4"><div className="font-mono text-sm text-slate-100">{tech.name}</div><div className="mt-2 text-xs text-slate-500">Seen in {tech.scans.length} scan{tech.scans.length === 1 ? '' : 's'}</div></div>)}</div> : <EmptyState title="No technologies detected" description="Run a scan to persist scanner artifacts for CVE correlation." />}</Surface>
+      <Surface className="overflow-hidden"><div className="p-6"><SectionHeader title="Relevant CVEs" description="CVE findings returned by the backend intelligence agent." /></div>{cves.length ? <div className="hidden md:block"><div className="grid grid-cols-[120px_170px_1fr_150px_120px] gap-4 border-y border-white/[0.06] px-5 py-3 text-xs uppercase tracking-[0.18em] text-slate-600"><span>Severity</span><span>CVE</span><span>Technology</span><span>Detected Version</span><span>Status</span></div>{cves.map((finding) => <button key={finding.id} onClick={() => setSelected(finding)} className="grid w-full grid-cols-[120px_170px_1fr_150px_120px] gap-4 border-b border-white/[0.04] px-5 py-4 text-left last:border-b-0 hover:bg-white/[0.04]"><SeverityBadge severity={finding.severity} /><span className="font-mono text-sm text-slate-100">{finding.cve_id}</span><span className="truncate text-sm text-slate-300">{finding.title.replace(/^Known vulnerability in /, '')}</span><span className="text-sm text-slate-500">From scanner data</span><StatusBadge status="Open" /></button>)}</div> : <EmptyState title="No CVE findings" description="No persisted CVE matches are available for the current scan history." />}</Surface>
+      <Surface className="p-6"><SectionHeader title="Recent Intelligence" description="Recent CVE evidence from findings." />{cves.slice(-4).reverse().map((finding) => <button key={finding.id} onClick={() => setSelected(finding)} className="mb-3 w-full rounded-2xl bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><div className="flex flex-wrap items-center gap-3"><SeverityBadge severity={finding.severity} /><span className="font-mono text-sm text-slate-100">{finding.cve_id}</span><span className="text-sm text-slate-500">{targetName(finding.target)}</span></div><div className="mt-2 text-sm text-slate-300">{finding.title}</div></button>)}</Surface>
+      <Drawer title={selected?.cve_id ?? 'CVE Details'} open={Boolean(selected)} onClose={() => setSelected(null)}>
+        {selected ? <div className="space-y-5"><div className="flex flex-wrap gap-2"><SeverityBadge severity={selected.severity} /><StatusBadge status={selected.confidence} /></div>{[['CVE ID', selected.cve_id], ['CVSS', selected.cvss_score?.toString() ?? 'Not provided'], ['Affected Technology', selected.title], ['Detected Version', 'Derived from scanner technology string'], ['Source', selected.agent], ['Asset', targetName(selected.target)]].map(([label, value]) => <div key={label} className="rounded-2xl bg-white/[0.035] p-4"><div className="text-xs uppercase tracking-[0.18em] text-slate-600">{label}</div><div className="mt-2 text-sm text-slate-200">{value}</div></div>)}<section><h3 className="mb-2 font-semibold text-slate-100">Description</h3><p className="text-sm leading-6 text-slate-400">{selected.description || selected.evidence}</p></section><section><h3 className="mb-2 font-semibold text-slate-100">Recommendation</h3><p className="text-sm leading-6 text-slate-400">{selected.recommendation || selected.fix}</p></section></div> : null}
+      </Drawer>
+    </div>
+  );
+}
