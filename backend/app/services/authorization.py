@@ -1,5 +1,6 @@
 import hashlib
 import ipaddress
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,8 @@ from app.database import (
     get_authorized_target,
     update_authorized_target,
 )
+
+logger = logging.getLogger("phantomscan.authorization")
 
 
 class TargetValidationError(ValueError):
@@ -239,34 +242,68 @@ class TargetAuthorizationService:
 
     async def _verify_dns(self, domain: str, expected_hash: str) -> bool:
         resolver = dns.asyncresolver.Resolver()
-        resolver.timeout = 3.0
-        resolver.lifetime = 5.0
+        resolver.timeout = 5.0
+        resolver.lifetime = 10.0
         try:
             answers = await resolver.resolve(domain, "TXT")
-        except Exception:
+        except dns.exception.DNSException as exc:
+            logger.warning("DNS verification failed for %s: %s", domain, exc)
+            return False
+        except Exception as exc:
+            logger.warning("DNS verification failed for %s: unexpected error: %s", domain, exc)
             return False
         prefix = "phantomscan-verification="
         for answer in answers:
             value = b"".join(getattr(answer, "strings", [])).decode("utf-8", errors="replace")
             if not value:
                 value = str(answer).strip('"')
-            if value.startswith(prefix) and secrets.compare_digest(hash_token(value[len(prefix) :].strip()), expected_hash):
+            token = value[len(prefix) :].strip() if value.startswith(prefix) else value
+            if secrets.compare_digest(hash_token(token), expected_hash):
                 return True
+        logger.warning("DNS verification failed for %s: token not found in TXT records", domain)
         return False
 
     async def _verify_http(self, target_origin: str, expected_hash: str) -> bool:
         url = f"{target_origin}/.well-known/phantomscan-verification.txt"
         try:
-            async with httpx.AsyncClient(timeout=8.0, follow_redirects=False, trust_env=False) as client:
-                response = await client.get(url, headers={"User-Agent": "PhantomScan-Ownership-Verification/1.0"})
-                if response.status_code != 200 or len(response.content) > 4096:
+            async with httpx.AsyncClient(
+                timeout=15.0,
+                follow_redirects=True,
+                max_redirects=5,
+                trust_env=False,
+            ) as client:
+                response = await client.get(
+                    url,
+                    headers={"User-Agent": "PhantomScan-Ownership-Verification/1.0"},
+                )
+                if response.status_code != 200:
+                    logger.warning(
+                        "HTTP verification failed for %s: status=%d, location=%s",
+                        target_origin,
+                        response.status_code,
+                        response.headers.get("location", "N/A"),
+                    )
                     return False
-        except httpx.HTTPError:
+                if len(response.content) > 4096:
+                    logger.warning("HTTP verification failed for %s: content too large (%d bytes)", target_origin, len(response.content))
+                    return False
+        except httpx.TimeoutException:
+            logger.warning("HTTP verification timed out for %s (15s timeout)", target_origin)
             return False
-        value = response.text.strip()
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP verification failed for %s: %s", target_origin, exc)
+            return False
+
+        content = response.content.decode("utf-8", errors="replace").strip()
         prefix = "phantomscan-verification="
-        token = value[len(prefix) :].strip() if value.startswith(prefix) else value
-        return secrets.compare_digest(hash_token(token), expected_hash)
+        if not content.startswith(prefix):
+            logger.warning("HTTP verification failed for %s: unexpected content format", target_origin)
+            return False
+        token = content[len(prefix) :].strip()
+        match = secrets.compare_digest(hash_token(token), expected_hash)
+        if not match:
+            logger.warning("HTTP verification failed for %s: token hash mismatch", target_origin)
+        return match
 
     async def status_from_record(self, record: dict[str, object], message: str | None = None) -> dict[str, object]:
         status = str(record["status"])
