@@ -29,7 +29,7 @@ import type {
   StopScanResponse
 } from '../types';
 
-const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://phantom-scan-backend.onrender.com';
 const baseUrl = configuredBaseUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
 export const API_BASE_URL = baseUrl;
 
