@@ -87,7 +87,9 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
       const artifactResults = await Promise.allSettled(artifactScans.map((scan) => getScanArtifacts(scan.id)));
       const nextArtifacts: Record<number, ScanArtifactsResponse> = {};
       for (const result of artifactResults) {
-        if (result.status === 'fulfilled') nextArtifacts[result.value.scan_id] = result.value;
+        if (result.status === 'fulfilled') {
+          nextArtifacts[result.value.scan_id] = result.value;
+        }
       }
       setArtifactsByScanId((current) => ({ ...current, ...nextArtifacts }));
     } finally {

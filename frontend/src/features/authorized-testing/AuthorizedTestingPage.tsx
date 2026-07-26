@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { CheckCircle2, Loader2, LockKeyhole, ShieldCheck, Square } from 'lucide-react';
+import { CheckCircle2, ClipboardCopy, Loader2, LockKeyhole, ShieldCheck, Square } from 'lucide-react';
 
 import {
   ActivityTimeline,
@@ -191,12 +191,22 @@ export default function AuthorizedTestingPage() {
       setAuthorization(next);
       toast.success('Target verified');
     } catch (err) {
-      setError(apiErrorMessage(err, 'Verification token was not found.'));
-      toast.error('Verification required');
+      const msg = apiErrorMessage(err, 'Verification token was not found.');
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoadingAction(null);
     }
   };
+
+  const copyToken = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Token copied to clipboard');
+    } catch {
+      toast.error('Unable to copy token');
+    }
+  }, []);
 
   const revoke = async () => {
     if (!authorization?.id) return;
@@ -373,8 +383,26 @@ export default function AuthorizedTestingPage() {
                 <Button variant="secondary" onClick={revoke} disabled={!authorization?.id || loadingAction === 'revoke'}>Revoke</Button>
               </div>
               {challenge ? (
-                <div className="mt-4 rounded-2xl bg-slate-950/70 p-3 font-mono text-xs text-amber-100">
-                  {method === 'dns' ? challenge.dns_record : challenge.http_url}
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-2xl bg-slate-950/70 p-3">
+                    <div className="mb-2 text-xs text-slate-500">Token</div>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 break-all font-mono text-sm text-amber-100">{challenge.token}</code>
+                      <button
+                        onClick={() => void copyToken(challenge.token)}
+                        className="shrink-0 rounded-xl bg-white/[0.06] p-2 text-slate-400 hover:text-amber-100"
+                        title="Copy token"
+                      >
+                        <ClipboardCopy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-950/70 p-3 font-mono text-xs text-slate-400">
+                    <div className="mb-1 text-[11px] text-slate-600">Place this file at:</div>
+                    <div className="break-all text-amber-100/80">
+                      {method === 'dns' ? challenge.dns_record : challenge.http_url}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </div>

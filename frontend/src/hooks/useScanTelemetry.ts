@@ -97,7 +97,14 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
         applyLogs(nextLogs);
         setAgents(nextAgents);
       } catch (fallbackError) {
-        setError(fallbackError instanceof Error ? fallbackError.message : 'Unable to refresh scan telemetry.');
+        const is404 = typeof fallbackError === 'object' && fallbackError !== null && 'response' in fallbackError &&
+          (fallbackError as { response?: { status?: number } }).response?.status === 404;
+        if (is404) {
+          setScanStatus('error' as ScanStatus);
+          setError('Scan no longer exists');
+        } else {
+          setError(fallbackError instanceof Error ? fallbackError.message : 'Unable to refresh scan telemetry.');
+        }
       }
     };
 
