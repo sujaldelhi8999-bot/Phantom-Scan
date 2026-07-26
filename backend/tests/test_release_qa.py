@@ -163,11 +163,11 @@ class DatabaseFindingAiAndAuthorizationTests(TestCase):
 
             original_http = authorization_router.authorization_service._verify_http
 
-            async def http_missing(_origin: str, _expected_hash: str) -> bool:
-                return False
+            async def http_missing(_origin: str, _expected_hash: str, _auth_id: int | None = None) -> tuple[bool, str | None]:
+                return False, "Simulated failure"
 
-            async def http_present(_origin: str, _expected_hash: str) -> bool:
-                return True
+            async def http_present(_origin: str, _expected_hash: str, _auth_id: int | None = None) -> tuple[bool, str | None]:
+                return True, None
 
             try:
                 authorization_router.authorization_service._verify_http = http_missing

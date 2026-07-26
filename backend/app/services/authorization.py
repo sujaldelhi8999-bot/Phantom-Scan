@@ -113,6 +113,7 @@ class TargetAuthorizationService:
 
     async def create_challenge(self, target_url: str, user_id: str, method: str) -> dict[str, object]:
         target = canonicalize_target(target_url)
+        await self._revoke_other_pending(target.origin, user_id)
         token = secrets.token_urlsafe(32)
         challenge_expires_at = self.now() + timedelta(minutes=self.settings.verification_challenge_minutes)
         authorization_id = await create_authorized_target(
@@ -122,6 +123,10 @@ class TargetAuthorizationService:
             verification_method=method,
             token_hash=hash_token(token),
             challenge_expires_at=to_database_datetime(challenge_expires_at),
+        )
+        logger.info(
+            "Challenge created id=%d for origin=%s method=%s",
+            authorization_id, target.origin, method,
         )
         return {
             "id": authorization_id,
@@ -135,21 +140,33 @@ class TargetAuthorizationService:
             "status": "PENDING",
         }
 
+    async def _revoke_other_pending(self, target_origin: str, user_id: str) -> None:
+        record = await find_authorized_target(user_id, target_origin)
+        if record is None:
+            return
+        current_id = int(record["id"])
+        if str(record.get("status")) == "PENDING":
+            await update_authorized_target(current_id, "REVOKED")
+            logger.info("Revoked stale pending challenge id=%d for origin=%s", current_id, target_origin)
+
     async def verify_challenge(self, authorization_id: int, user_id: str) -> dict[str, object]:
         record = await self._get_owned_record(authorization_id, user_id)
         status = await self._refresh_expiration(record)
         if status == "VERIFIED":
             return await self.status_from_record(record, "TARGET VERIFIED\nPentest capabilities unlocked.")
+        if status == "EXPIRED":
+            raise TargetNotVerifiedError("Challenge has expired. Create a new challenge and update the verification file.")
         if status != "PENDING":
             raise TargetNotVerifiedError(f"Verification cannot run while target status is {status}")
 
         method = str(record["verification_method"])
+        error_detail: str | None = None
         if method == "dns":
-            verified = await self._verify_dns(str(record["domain"]), str(record["verification_token_hash"]))
+            verified, error_detail = await self._verify_dns(str(record["domain"]), str(record["verification_token_hash"]))
         else:
-            verified = await self._verify_http(str(record["target_origin"]), str(record["verification_token_hash"]))
+            verified, error_detail = await self._verify_http(str(record["target_origin"]), str(record["verification_token_hash"]), authorization_id)
         if not verified:
-            raise TargetNotVerifiedError("Verification token was not found at the configured location")
+            raise TargetNotVerifiedError(error_detail or "Verification token was not found at the configured location")
 
         verified_at = self.now()
         expires_at = verified_at + timedelta(days=self.settings.verification_ttl_days)
@@ -162,6 +179,7 @@ class TargetAuthorizationService:
         updated = await get_authorized_target(authorization_id)
         if updated is None:
             raise TargetNotVerifiedError("Verification record disappeared")
+        logger.info("Challenge id=%d verified successfully for origin=%s", authorization_id, record.get("target_origin"))
         return await self.status_from_record(updated, "TARGET VERIFIED\nPentest capabilities unlocked.")
 
     async def get_status(self, target_url: str, user_id: str) -> dict[str, object]:
@@ -240,7 +258,7 @@ class TargetAuthorizationService:
                 return "EXPIRED"
         return status
 
-    async def _verify_dns(self, domain: str, expected_hash: str) -> bool:
+    async def _verify_dns(self, domain: str, expected_hash: str) -> tuple[bool, str | None]:
         resolver = dns.asyncresolver.Resolver()
         resolver.timeout = 5.0
         resolver.lifetime = 10.0
@@ -248,10 +266,10 @@ class TargetAuthorizationService:
             answers = await resolver.resolve(domain, "TXT")
         except dns.exception.DNSException as exc:
             logger.warning("DNS verification failed for %s: %s", domain, exc)
-            return False
+            return False, f"DNS lookup failed: {exc}"
         except Exception as exc:
             logger.warning("DNS verification failed for %s: unexpected error: %s", domain, exc)
-            return False
+            return False, f"DNS lookup error: {exc}"
         prefix = "phantomscan-verification="
         for answer in answers:
             value = b"".join(getattr(answer, "strings", [])).decode("utf-8", errors="replace")
@@ -259,12 +277,16 @@ class TargetAuthorizationService:
                 value = str(answer).strip('"')
             token = value[len(prefix) :].strip() if value.startswith(prefix) else value
             if secrets.compare_digest(hash_token(token), expected_hash):
-                return True
+                return True, None
         logger.warning("DNS verification failed for %s: token not found in TXT records", domain)
-        return False
+        return False, "DNS TXT record does not contain the expected verification token"
 
-    async def _verify_http(self, target_origin: str, expected_hash: str) -> bool:
+    async def _verify_http(self, target_origin: str, expected_hash: str, authorization_id: int | None = None) -> tuple[bool, str | None]:
         url = f"{target_origin}/.well-known/phantomscan-verification.txt"
+        logger.info(
+            "Verifying challenge id=%s url=%s",
+            authorization_id, url,
+        )
         try:
             async with httpx.AsyncClient(
                 timeout=15.0,
@@ -278,32 +300,47 @@ class TargetAuthorizationService:
                 )
                 if response.status_code != 200:
                     logger.warning(
-                        "HTTP verification failed for %s: status=%d, location=%s",
-                        target_origin,
-                        response.status_code,
+                        "HTTP verification failed url=%s status=%d location=%s",
+                        url, response.status_code,
                         response.headers.get("location", "N/A"),
                     )
-                    return False
+                    return False, f"Verification URL returned HTTP {response.status_code} (expected 200)"
                 if len(response.content) > 4096:
-                    logger.warning("HTTP verification failed for %s: content too large (%d bytes)", target_origin, len(response.content))
-                    return False
+                    logger.warning("HTTP verification failed url=%s content_too_large size=%d", url, len(response.content))
+                    return False, "Verification file is too large (max 4096 bytes)"
         except httpx.TimeoutException:
-            logger.warning("HTTP verification timed out for %s (15s timeout)", target_origin)
-            return False
+            logger.warning("HTTP verification timed out url=%s", url)
+            return False, "Connection timed out fetching verification file"
         except httpx.HTTPError as exc:
-            logger.warning("HTTP verification failed for %s: %s", target_origin, exc)
-            return False
+            logger.warning("HTTP verification failed url=%s error=%s", url, exc)
+            return False, f"HTTP fetch failed: {exc}"
 
         content = response.content.decode("utf-8", errors="replace").strip()
         prefix = "phantomscan-verification="
         if not content.startswith(prefix):
-            logger.warning("HTTP verification failed for %s: unexpected content format", target_origin)
-            return False
+            logger.warning(
+                "HTTP verification failed url=%s unexpected_format content_prefix=%s",
+                url, content[:60],
+            )
+            return False, (
+                f"Verification file does not contain the expected token format. "
+                f"The file should start with '{prefix}' but got: {content[:80]}..."
+            )
         token = content[len(prefix) :].strip()
-        match = secrets.compare_digest(hash_token(token), expected_hash)
+        received_hash = hash_token(token)
+        match = secrets.compare_digest(received_hash, expected_hash)
         if not match:
-            logger.warning("HTTP verification failed for %s: token hash mismatch", target_origin)
-        return match
+            logger.warning(
+                "HTTP verification failed url=%s token_hash_mismatch "
+                "expected_hash=%s received_token_hash=%s",
+                url, expected_hash, received_hash,
+            )
+            return False, (
+                "Verification token in the file does not match the challenge token. "
+                "Make sure the file contains the latest token from the Challenge step."
+            )
+        logger.info("HTTP verification succeeded url=%s", url)
+        return True, None
 
     async def status_from_record(self, record: dict[str, object], message: str | None = None) -> dict[str, object]:
         status = str(record["status"])
