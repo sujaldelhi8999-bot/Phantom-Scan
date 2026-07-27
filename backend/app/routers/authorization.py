@@ -38,6 +38,14 @@ async def verify_challenge(authorization_id: int) -> AuthorizationStatusResponse
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
+@router.get("/status", response_model=AuthorizationStatusResponse)
+async def authorization_status(target_url: str = Query(min_length=4, max_length=2048)) -> AuthorizationStatusResponse:
+    try:
+        result = await authorization_service.get_status(target_url, settings.local_user_id)
+        return AuthorizationStatusResponse(**result)
+    except TargetValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
 @router.get("/{authorization_id}")
 async def get_authorization_record(authorization_id: int) -> dict[str, Any]:
     record = await get_authorized_target(authorization_id)
@@ -53,15 +61,6 @@ async def get_authorization_record(authorization_id: int) -> dict[str, Any]:
         "expires_at": record.get("expires_at"),
         "verification_token_hash": record.get("verification_token_hash"),
     }
-
-
-@router.get("/status", response_model=AuthorizationStatusResponse)
-async def authorization_status(target_url: str = Query(min_length=4, max_length=2048)) -> AuthorizationStatusResponse:
-    try:
-        result = await authorization_service.get_status(target_url, settings.local_user_id)
-        return AuthorizationStatusResponse(**result)
-    except TargetValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.post("/{authorization_id}/revoke", response_model=AuthorizationStatusResponse)
