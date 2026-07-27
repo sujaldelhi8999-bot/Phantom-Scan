@@ -1,11 +1,27 @@
 import asyncio
+import re
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import whois
 
 from app.agents import Agent
+
+
+SENSITIVE_PATHS = [
+    "/.git/HEAD", "/.env", "/config.php", "/wp-config.php",
+    "/database.yml", "/.DS_Store", "/robots.txt", "/sitemap.xml",
+]
+
+DORK_QUERIES = [
+    "site:{domain} ext:env OR ext:sql OR ext:log OR ext:bak",
+    "site:{domain} inurl:admin OR inurl:login OR inurl:dashboard",
+    'site:{domain} "index of /" OR "parent directory"',
+    '"{domain}" filetype:pdf OR filetype:xlsx OR filetype:docx',
+    'site:{domain} intitle:"phpinfo" OR intitle:"phpmyadmin"',
+    'site:{domain} inurl:api OR inurl:rest OR inurl:graphql',
+]
 
 
 class ShadowReconAgent(Agent):
@@ -15,48 +31,148 @@ class ShadowReconAgent(Agent):
     async def run(self, target_url: str, scan_id: int) -> dict[str, Any]:
         self.scan_id = scan_id
         self.status = "active"
-        await self.log_action("started", f"Running passive recon for {target_url}")
-        domain = await self.extract_domain(target_url)
-        whois_data, robots_txt, sitemap_xml = await asyncio.gather(
-            self.lookup_whois(domain),
-            self.fetch_path(target_url, "/robots.txt"),
-            self.fetch_path(target_url, "/sitemap.xml"),
-        )
-        google_dorks = await self.build_google_dorks(domain)
-        self.status = "complete"
-        await self.log_action("completed", "Completed passive WHOIS, dork, robots.txt, and sitemap.xml recon")
-        return {"whois": whois_data, "google_dorks": google_dorks, "robots_txt": robots_txt, "sitemap_xml": sitemap_xml}
+        await self.log_action("started", f"Shadow recon for {target_url}")
 
-    async def extract_domain(self, target_url: str) -> str:
+        domain = self._extract_domain(target_url)
+        base = target_url if "://" in target_url else f"https://{target_url}"
+
+        whois_data = await self._lookup_whois(domain)
+        dork_urls = self._build_dorks(domain)
+        robots = await self._fetch_path(base, "/robots.txt")
+        sitemap = await self._fetch_path(base, "/sitemap.xml")
+
+        disallowed = self._parse_robots(robots.get("body", ""))
+        sitemap_urls = self._parse_sitemap(sitemap.get("body", ""))
+
+        homepage = await self._fetch_path(base, "/")
+        leaked_emails = self._extract_emails(homepage.get("body", ""))
+        js_sourcemaps = self._extract_sourcemaps(homepage.get("body", ""), base)
+        internal_ips = self._extract_internal_ips(homepage.get("body", ""))
+        comments = self._extract_html_comments(homepage.get("body", ""))
+
+        exposed_files = await self._check_sensitive_paths(base)
+
+        self.status = "complete"
+        await self.log_action(
+            "completed",
+            f"WHOIS: {'yes' if whois_data else 'no'}, "
+            f"Dorks: {len(dork_urls)}, "
+            f"Disallowed: {len(disallowed)}, "
+            f"Sitemap: {len(sitemap_urls)}, "
+            f"Emails: {len(leaked_emails)}, "
+            f"Sourcemaps: {len(js_sourcemaps)}, "
+            f"Exposed: {len(exposed_files)}"
+        )
+        return {
+            "whois": whois_data,
+            "dork_urls": dork_urls,
+            "disallowed_paths": disallowed,
+            "sitemap_urls": sitemap_urls,
+            "exposed_files": exposed_files,
+            "leaked_emails": leaked_emails,
+            "js_sourcemaps": js_sourcemaps,
+            "robots_txt": robots.get("body", "")[:2000],
+            "sitemap_xml": sitemap.get("body", "")[:2000],
+            "internal_ips": internal_ips,
+            "html_comments": comments,
+        }
+
+    def _extract_domain(self, target_url: str) -> str:
         parsed = urlparse(target_url if "://" in target_url else f"https://{target_url}")
         return parsed.hostname or target_url
 
-    async def lookup_whois(self, domain: str) -> dict[str, Any]:
+    async def _lookup_whois(self, domain: str) -> dict[str, Any]:
         try:
             result = await asyncio.to_thread(whois.whois, domain)
-            return {key: str(value) for key, value in dict(result).items() if value is not None}
+            data = {}
+            for k, v in dict(result).items():
+                if v is not None:
+                    data[k] = str(v)
+            return {
+                "registrar": data.get("registrar", ""),
+                "creation_date": str(data.get("creation_date", "")),
+                "expiration_date": str(data.get("expiration_date", "")),
+                "name_servers": data.get("name_servers", ""),
+                "registrant_org": data.get("org", "") or data.get("name", ""),
+                "raw": {k: v for k, v in data.items() if k in ("dnssec", "status", "emails", "country")},
+            }
         except Exception as exc:
-            await self.log_action("whois_error", f"WHOIS lookup failed for {domain}: {exc}")
+            await self.log_action("whois_error", str(exc))
             return {}
 
-    async def build_google_dorks(self, domain: str) -> list[str]:
-        return [
-            f"site:{domain} filetype:pdf",
-            f"site:{domain} intitle:index.of",
-            f"site:{domain} inurl:admin",
-            f"site:{domain} inurl:login",
-            f"site:{domain} ext:env OR ext:bak OR ext:old",
-            f"site:{domain} \"password\" OR \"secret\" OR \"api_key\"",
-        ]
+    def _build_dorks(self, domain: str) -> list[str]:
+        return [q.format(domain=domain) for q in DORK_QUERIES]
 
-    async def fetch_path(self, target_url: str, path: str) -> dict[str, Any]:
-        base_url = target_url if "://" in target_url else f"https://{target_url}"
-        parsed = urlparse(base_url)
-        url = f"{parsed.scheme}://{parsed.netloc}{path}"
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+    async def _fetch_path(self, base: str, path: str) -> dict[str, Any]:
+        url = urljoin(base.rstrip("/") + "/", path.lstrip("/"))
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, verify=False) as c:
             try:
-                response = await client.get(url)
-                return {"url": url, "status_code": response.status_code, "body": response.text[:10000]}
-            except httpx.HTTPError as exc:
-                await self.log_action("fetch_error", f"Could not fetch {url}: {exc}")
+                r = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
+                return {"url": url, "status_code": r.status_code, "body": r.text[:50000]}
+            except Exception as exc:
                 return {"url": url, "status_code": None, "body": ""}
+
+    def _parse_robots(self, body: str) -> list[str]:
+        paths: list[str] = []
+        for line in body.split("\n"):
+            line = line.strip()
+            if line.lower().startswith("disallow:"):
+                path = line.split(":", 1)[1].strip()
+                if path and path != "/":
+                    paths.append(path)
+        return paths
+
+    def _parse_sitemap(self, body: str) -> list[dict[str, Any]]:
+        urls: list[dict[str, Any]] = []
+        for match in re.finditer(r"<loc>(.*?)</loc>", body, re.IGNORECASE):
+            loc = match.group(1).strip()
+            is_https = loc.startswith("https://")
+            urls.append({"url": loc, "https": is_https})
+        return urls
+
+    def _extract_emails(self, body: str) -> list[str]:
+        emails = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", body)
+        return list(set(emails))
+
+    def _extract_sourcemaps(self, body: str, base: str) -> list[str]:
+        maps: list[str] = []
+        for m in re.finditer(r'sourceMappingURL=([^\s"\'<>]+)', body, re.IGNORECASE):
+            url = m.group(1).strip()
+            if not url.startswith("http"):
+                url = urljoin(base + "/", url)
+            maps.append(url)
+        for m in re.finditer(r'//# sourceMappingURL=([^\s"\']+)', body):
+            url = m.group(1).strip()
+            if not url.startswith("http"):
+                url = urljoin(base + "/", url)
+            maps.append(url)
+        return list(set(maps))
+
+    def _extract_internal_ips(self, body: str) -> list[str]:
+        ips = re.findall(r"\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3})\b", body)
+        return list(set(ips))
+
+    def _extract_html_comments(self, body: str) -> list[str]:
+        return re.findall(r"<!--(.*?)-->", body, re.DOTALL)
+
+    async def _check_sensitive_paths(self, base: str) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+
+        async def check(path: str) -> None:
+            url = urljoin(base.rstrip("/") + "/", path.lstrip("/"))
+            async with httpx.AsyncClient(timeout=5.0, follow_redirects=False, verify=False) as c:
+                try:
+                    r = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
+                    if r.status_code == 200:
+                        body = r.text[:200]
+                        results.append({
+                            "path": path,
+                            "url": url,
+                            "status_code": r.status_code,
+                            "snippet": body[:200],
+                        })
+                except Exception:
+                    pass
+
+        await asyncio.gather(*[check(p) for p in SENSITIVE_PATHS])
+        return results

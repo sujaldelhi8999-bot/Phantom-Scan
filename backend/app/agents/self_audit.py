@@ -1,4 +1,8 @@
 import asyncio
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from app.agents import Agent
@@ -6,82 +10,137 @@ from app.agents.notifier import NotifierAgent
 from app.agents.orchestrator import OrchestratorAgent
 from app.config import get_settings
 from app.database import (
-    add_audit_log,
-    create_scan,
-    get_findings,
-    set_scan_artifacts,
+    add_audit_log, create_scan, get_findings, set_scan_artifacts,
     update_scan_status,
 )
 from app.models import ScanRequest
 from app.services.authorization import canonicalize_target
 
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+REPORTS_DIR = BASE_DIR / "reports"
+SELF_AUDIT_LOG = BASE_DIR / "reports" / "self_audit_log.json"
+
+
 class SelfAuditAgent(Agent):
     def __init__(self) -> None:
         super().__init__("Self Audit Agent")
         self.settings = get_settings()
+        REPORTS_DIR.mkdir(exist_ok=True)
 
-    async def run(self, target_url: str = "http://localhost:8000", scan_id: int | None = None) -> dict[str, Any]:
+    async def run(
+        self, target_url: str = "http://localhost:8000",
+        scan_id: int | None = None
+    ) -> dict[str, Any]:
         target = canonicalize_target(target_url)
+
         if scan_id is None:
             scan_id = await create_scan(
-                target_url=target.url,
-                mode="defend",
-                intensity="low",
-                selected_tests="[]",
-                user_id=self.settings.local_user_id,
+                target_url=target.url, mode="defend", intensity="low",
+                selected_tests="[]", user_id=self.settings.local_user_id,
             )
+
         self.scan_id = scan_id
         self.status = "active"
-        await self.log_action("started", "Running PhantomScan self-audit through the defend pipeline")
+        await self.log_action("started", "Running PhantomScan self-audit")
 
         request = ScanRequest(target_url=target.url, mode="defend", intensity="low")
         try:
-            result = await OrchestratorAgent().run(
-                request,
-                scan_id,
-                user_id=self.settings.local_user_id,
-            )
+            result = await OrchestratorAgent().run(request, scan_id, user_id=self.settings.local_user_id)
+
             if result.get("status") == "error":
                 self.status = "error"
-                await self.log_action("error", str(result.get("error", "Self-audit pipeline failed"))[:2000])
+                await self.log_action("error", str(result.get("error", ""))[:2000])
                 return result
 
             findings = await get_findings(scan_id)
-            critical_findings = [finding for finding in findings if finding.get("severity") == "CRITICAL"]
+            critical_high = [
+                f for f in findings
+                if str(f.get("severity", "")).upper() in ("CRITICAL", "HIGH")
+            ]
+
+            previous = self._load_previous()
+            new_critical = self._diff_findings(critical_high, previous)
+
             notification_result: dict[str, Any] | None = None
-            if critical_findings:
+            if new_critical:
                 await add_audit_log(
-                    scan_id,
-                    self.name,
-                    "ALERT",
-                    f"Self-audit produced {len(critical_findings)} critical findings",
+                    scan_id, self.name, "ALERT",
+                    f"New Critical/High findings: {len(new_critical)}",
                 )
-                notification_result = await NotifierAgent().run(
-                    {"scan_id": scan_id, "critical_findings": critical_findings},
-                    scan_id,
-                    webhook_url=self.settings.self_audit_webhook,
+                notifier = NotifierAgent()
+                notification_result = await notifier.run(
+                    {"findings": critical_high, "target_url": target.url},
+                    scan_id, webhook_url=self.settings.self_audit_webhook,
                 )
-                await set_scan_artifacts(scan_id, notification_result=notification_result)
+
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            report = {
+                "scan_id": scan_id,
+                "date": today,
+                "target": target.url,
+                "total_findings": len(findings),
+                "critical_high": len(critical_high),
+                "new_since_last_audit": len(new_critical),
+                "findings": [
+                    {"title": f.get("title"), "severity": f.get("severity"),
+                     "category": f.get("category")}
+                    for f in findings
+                ],
+                "notification_delivered": notification_result.get("delivered", False)
+                if notification_result else False,
+            }
+
+            report_path = REPORTS_DIR / f"self_audit_{today}.json"
+            with open(report_path, "w") as f:
+                json.dump(report, f, indent=2, default=str)
+
+            self._save_previous(critical_high)
 
             self.status = "complete"
             await self.log_action(
                 "completed",
-                f"Self-audit completed with {len(findings)} findings and {len(critical_findings)} critical findings",
+                f"Self-audit: {len(findings)} findings, "
+                f"{len(critical_high)} critical/high, "
+                f"{len(new_critical)} new"
             )
             return {
-                "scan_id": scan_id,
-                "status": "complete",
+                "scan_id": scan_id, "status": "complete",
                 "findings": findings,
-                "critical_findings": critical_findings,
+                "critical_high": critical_high,
+                "new_critical": new_critical,
                 "notification": notification_result,
+                "report_path": str(report_path),
             }
+
         except asyncio.CancelledError:
             await update_scan_status(scan_id, "cancelled")
-            await self.log_action("cancelled", "Self-audit task cancelled")
             raise
         except Exception as exc:
             self.status = "error"
             await update_scan_status(scan_id, "error", str(exc)[:1000])
             await self.log_action("error", str(exc)[:2000])
             raise
+
+    def _load_previous(self) -> list[dict[str, Any]]:
+        try:
+            if SELF_AUDIT_LOG.exists():
+                with open(SELF_AUDIT_LOG) as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return []
+
+    def _save_previous(self, findings: list[dict[str, Any]]) -> None:
+        try:
+            with open(SELF_AUDIT_LOG, "w") as f:
+                json.dump(findings, f, indent=2, default=str)
+        except Exception:
+            pass
+
+    def _diff_findings(
+        self, current: list[dict[str, Any]],
+        previous: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        prev_titles = {f.get("title", "") for f in previous}
+        return [f for f in current if f.get("title", "") not in prev_titles]

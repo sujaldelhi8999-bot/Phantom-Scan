@@ -1,7 +1,9 @@
 import asyncio
 import json
+import os
 from collections.abc import Awaitable
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from app.agents import Agent
@@ -318,6 +320,7 @@ class OrchestratorAgent(Agent):
                 "browser_security": browser_result,
                 "ai_analyst_output": ai_analyst_output,
             }
+            await self._write_report_files(summary, scan_id, target.url, markdown_report, hindi_findings, scanner_output, shadow_output, active_result)
             notifier = NotifierAgent()
             notifier_event = await self.run_agent(
                 "notifier",
@@ -689,6 +692,121 @@ class OrchestratorAgent(Agent):
             scan_id,
             {"event": event, "type": event, "payload": payload},
         )
+
+    async def _write_report_files(
+        self, summary: dict[str, Any], scan_id: int, target_url: str,
+        markdown_report: str, hindi_findings: list[dict[str, Any]],
+        scanner_output: dict[str, Any], shadow_output: dict[str, Any],
+        active_result: dict[str, Any] | None
+    ) -> None:
+        reports_dir = Path(__file__).resolve().parent.parent.parent / "reports"
+        reports_dir.mkdir(exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        safe_target = target_url.replace("://", "_").replace("/", "_").replace(".", "_")[:60]
+
+        json_path = reports_dir / f"{safe_target}_{timestamp}.json"
+        with open(json_path, "w") as f:
+            json.dump(summary, f, indent=2, default=str, ensure_ascii=False)
+
+        md_path = reports_dir / f"{safe_target}_{timestamp}.md"
+        findings = summary.get("findings", [])
+        lines = [f"# PhantomScan Report: {target_url}", f"**Scan ID:** {scan_id}", f"**Time:** {timestamp}", ""]
+        sev_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
+        for f in findings:
+            s = str(f.get("severity", "INFO")).upper()
+            sev_counts[s] = sev_counts.get(s, 0) + 1
+        lines.append("## Summary")
+        lines.append(f"- Total findings: {len(findings)}")
+        for sev, cnt in sev_counts.items():
+            if cnt:
+                lines.append(f"- {sev}: {cnt}")
+        lines.append(f"- Subdomains: {len(scanner_output.get('subdomains', []))}")
+        lines.append(f"- Open ports: {len(scanner_output.get('open_ports', []))}")
+        lines.append(f"- WAF: {scanner_output.get('waf_detected', 'none')}")
+        lines.append("")
+        lines.append("## Findings")
+        for f in findings:
+            lines.append(f"### [{f.get('severity')}] {f.get('title')}")
+            lines.append(f"- Category: {f.get('category', 'General')}")
+            lines.append(f"- Endpoint: {f.get('endpoint', target_url)}")
+            lines.append(f"- Evidence: {f.get('evidence', 'N/A')}")
+            lines.append(f"- Impact: {f.get('impact', 'N/A')}")
+            lines.append(f"- Fix: {f.get('fix', 'N/A')}")
+            lines.append("")
+        if markdown_report:
+            lines.append("## Remediation Checklist")
+            lines.append(markdown_report if markdown_report.startswith("#") else f"```\n{markdown_report}\n```")
+            lines.append("")
+        with open(md_path, "w") as f:
+            f.write("\n".join(lines))
+
+        rem_path = reports_dir / f"{safe_target}_remediation_{timestamp}.md"
+        with open(rem_path, "w") as f:
+            f.write(markdown_report or "# PhantomScan Remediation Checklist\nNo findings.")
+
+        hindi_path = reports_dir / f"{safe_target}_hindi_{timestamp}.md"
+        hindi_lines = ["# PhantomScan Hindi Report", f"## Target: {target_url}", ""]
+        for hf in hindi_findings:
+            if "hindi_report" in hf:
+                hindi_lines.append(f"### {hf.get('title', 'Finding')}")
+                hindi_lines.append(hf["hindi_report"])
+                hindi_lines.append("")
+        with open(hindi_path, "w") as f:
+            f.write("\n".join(hindi_lines) or "# No Hindi explanations generated.")
+
+        recon_path = reports_dir / f"{safe_target}_recon_{timestamp}.md"
+        recon_lines = ["# PhantomScan Shadow Recon", f"## Target: {target_url}", ""]
+        recon_lines.append("### WHOIS")
+        whois_data = shadow_output.get("whois", {})
+        if whois_data:
+            for k, v in whois_data.items():
+                recon_lines.append(f"- {k}: {v}")
+        else:
+            recon_lines.append("- WHOIS unavailable")
+        recon_lines.append("")
+        recon_lines.append("### Google Dorks")
+        for dork in shadow_output.get("dork_urls", []):
+            recon_lines.append(f"- `{dork}`")
+        recon_lines.append("")
+        recon_lines.append("### Disallowed Paths (robots.txt)")
+        for p in shadow_output.get("disallowed_paths", []):
+            recon_lines.append(f"- {p}")
+        recon_lines.append("")
+        recon_lines.append("### Sitemap URLs")
+        for u in shadow_output.get("sitemap_urls", []):
+            https = "HTTPS" if u.get("https") else "HTTP"
+            recon_lines.append(f"- [{https}] {u.get('url')}")
+        recon_lines.append("")
+        recon_lines.append("### Exposed Files")
+        for ef in shadow_output.get("exposed_files", []):
+            recon_lines.append(f"- {ef.get('path')} ({ef.get('status_code')})")
+        recon_lines.append("")
+        recon_lines.append("### Leaked Emails")
+        for e in shadow_output.get("leaked_emails", []):
+            recon_lines.append(f"- {e}")
+        recon_lines.append("")
+        recon_lines.append("### JS Source Maps")
+        for sm in shadow_output.get("js_sourcemaps", []):
+            recon_lines.append(f"- {sm}")
+        recon_lines.append("")
+        recon_lines.append("### Internal IPs Found")
+        for ip in shadow_output.get("internal_ips", []):
+            recon_lines.append(f"- {ip}")
+        with open(recon_path, "w") as f:
+            f.write("\n".join(recon_lines))
+
+        pentest_log_path = reports_dir / f"{safe_target}_pentest_log_{timestamp}.json"
+        pentest_data = {}
+        if active_result:
+            pentest_data = {
+                "probe_log": active_result.get("probe_log", []),
+                "findings": active_result.get("findings", []),
+                "request_count": active_result.get("request_count", 0),
+            }
+        with open(pentest_log_path, "w") as f:
+            json.dump(pentest_data, f, indent=2, default=str)
+
+        await self.log_action("reports_written", f"Reports saved to {reports_dir}")
 
     @staticmethod
     def browser_report(browser_result: dict[str, Any]) -> str:

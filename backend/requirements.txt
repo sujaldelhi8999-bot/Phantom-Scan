@@ -12,3 +12,4 @@ playwright==1.49.1
 websockets==16.1.1
 PyJWT==2.10.1
 pydantic==2.13.4
+packaging==24.2
