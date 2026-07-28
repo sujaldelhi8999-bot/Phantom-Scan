@@ -246,45 +246,62 @@ export default function AuthorizedTestingPage() {
     }
   };
 
-  const execute = async () => {
-    if (!mapResult) return;
-    setLoadingAction('execute');
-    setError(null);
-    try {
-      const verifiedExternal = mapResult.gate.authorization_status === 'VERIFIED';
-      const scan = await startScan({
-        target_url: target,
-        mode: 'pentest',
-        intensity: profile,
-        selected_tests: selectedTests,
-        authorization_id: verifiedExternal ? mapResult.gate.authorization_id ?? authorization?.id ?? null : null,
-        authorization_confirmed: verifiedExternal ? confirmation : false
-      });
-      setActiveScan(scan);
-      toast.success('Authorized test started');
-      await refresh();
-    } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to start authorized test.'));
-      toast.error('Unable to start test');
-    } finally {
-      setLoadingAction(null);
-    }
-  };
+const stopTest = async () => {
+  if (!activeScan) return;
 
-  const stopTest = async () => {
-    if (!activeScan) return;
-    setLoadingAction('stop');
-    try {
-      await stopScan(activeScan.scan_id);
-      setActiveScan({ ...activeScan, status: 'cancelling' });
-      toast.success('Stop requested');
-      await refresh();
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Unable to stop test.'));
-    } finally {
-      setLoadingAction(null);
-    }
-  };
+  setLoadingAction('stop');
+
+  try {
+    await stopScan(activeScan.scan_id);
+    toast.success('Scan stopped');
+    setActiveScan(null);
+    refresh();
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Unable to stop scan.'));
+  } finally {
+    setLoadingAction(null);
+  }
+};
+
+const execute = async () => {
+  if (!mapResult) return;
+  setLoadingAction('execute');
+  setError(null);
+
+  try {
+    const verifiedExternal = mapResult.gate.authorization_status === 'VERIFIED';
+
+    console.log({
+      target,
+      mode: 'pentest',
+      profile,
+      selectedTests,
+      verifiedExternal,
+      confirmation,
+    });
+
+    const scan = await startScan({
+      target_url: target,
+      mode: 'pentest',
+      intensity: profile,
+      selected_tests: selectedTests,
+      authorization_id: verifiedExternal
+        ? mapResult.gate.authorization_id ?? authorization?.id ?? null
+        : null,
+      authorization_confirmed: verifiedExternal ? confirmation : false,
+    });
+
+    setActiveScan(scan);
+    refresh();
+    toast.success('Authorized scan started');
+  } catch (err) {
+    const msg = apiErrorMessage(err, 'Unable to start authorized scan.');
+    setError(msg);
+    toast.error(msg);
+  } finally {
+    setLoadingAction(null);
+  }
+};
 
   const switchScenario = async (state: 'VULNERABLE' | 'PATCHED', scenario?: string) => {
     setLoadingAction(`${scenario ?? 'all'}-${state}`);
