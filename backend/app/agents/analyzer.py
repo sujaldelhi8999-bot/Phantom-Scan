@@ -1,4 +1,7 @@
+import asyncio
 import re
+import ssl
+import traceback
 from datetime import datetime, timezone
 from typing import Any
 
@@ -31,14 +34,43 @@ class AnalyzerAgent(Agent):
         self.status = "active"
         await self.log_action("started", f"Analyzing {target_url}")
 
-        headers = await self._get_headers(target_url, scanner_output)
+        try:
+            headers = await self._get_headers(target_url, scanner_output)
+        except Exception:
+            traceback.print_exc()
+            raise
+
         findings: list[dict[str, Any]] = []
 
-        findings.extend(self._check_headers(headers, target_url))
-        findings.extend(await self._check_cors(target_url))
-        findings.extend(self._check_cookies(headers))
-        findings.extend(await self._check_tls(target_url))
-        findings.extend(self._check_info_leakage(headers))
+        try:
+            findings.extend(self._check_headers(headers, target_url))
+        except Exception:
+            traceback.print_exc()
+            raise
+
+        try:
+            findings.extend(await self._check_cors(target_url))
+        except Exception:
+            traceback.print_exc()
+            raise
+
+        try:
+            findings.extend(self._check_cookies(headers))
+        except Exception:
+            traceback.print_exc()
+            raise
+
+        try:
+            findings.extend(await self._check_tls(target_url))
+        except Exception:
+            traceback.print_exc()
+            raise
+
+        try:
+            findings.extend(self._check_info_leakage(headers))
+        except Exception:
+            traceback.print_exc()
+            raise
 
         self.status = "complete"
         await self.log_action("completed", f"Generated {len(findings)} findings")

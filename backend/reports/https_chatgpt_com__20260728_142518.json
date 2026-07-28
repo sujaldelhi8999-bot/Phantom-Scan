@@ -1,0 +1,2450 @@
+{
+  "scan_id": 34,
+  "target_url": "https://chatgpt.com/",
+  "mode": "defend",
+  "intensity": "medium",
+  "scanner": {
+    "subdomains": [
+      "api.chatgpt.com",
+      "chatgpt.com",
+      "internal.chatgpt.com",
+      "status.chatgpt.com",
+      "www.chatgpt.com"
+    ],
+    "open_ports": [
+      53,
+      8080,
+      8443
+    ],
+    "tech_stack": {
+      "technologies": [
+        "cloudflare"
+      ],
+      "headers": {
+        "date": "Tue, 28 Jul 2026 14:24:51 GMT",
+        "content-type": "text/html; charset=UTF-8",
+        "transfer-encoding": "chunked",
+        "connection": "close",
+        "accept-ch": "Sec-CH-UA-Bitness, Sec-CH-UA-Arch, Sec-CH-UA-Full-Version, Sec-CH-UA-Mobile, Sec-CH-UA-Model, Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Platform, Sec-CH-UA, UA-Bitness, UA-Arch, UA-Full-Version, UA-Mobile, UA-Model, UA-Platform-Version, UA-Platform, UA",
+        "cf-mitigated": "challenge",
+        "x-frame-options": "SAMEORIGIN",
+        "server": "cloudflare",
+        "critical-ch": "Sec-CH-UA-Bitness, Sec-CH-UA-Arch, Sec-CH-UA-Full-Version, Sec-CH-UA-Mobile, Sec-CH-UA-Model, Sec-CH-UA-Platform-Version, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Platform, Sec-CH-UA, UA-Bitness, UA-Arch, UA-Full-Version, UA-Mobile, UA-Model, UA-Platform-Version, UA-Platform, UA",
+        "cross-origin-embedder-policy": "require-corp",
+        "cross-origin-opener-policy": "same-origin",
+        "cross-origin-resource-policy": "same-origin",
+        "origin-agent-cluster": "?1",
+        "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+        "referrer-policy": "same-origin",
+        "server-timing": "chlray;desc=\"a2248cc45e38551c\"",
+        "x-content-type-options": "nosniff",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "set-cookie": "__cf_bm=5JK8UifsTDTRtDu29K1r7y_yl86RyEVUwbSximULQ9o-1785248691.8937726-1.0.1.1-sZXN4e1HNFV6lrgxpqF1G0GGkf2E5l1QJu3Jt_SVS6eqzJaQxfsI6HZH4v_BJdXshHfNNZiku75IPFrem1BNEoTTbp.ZoA3bHoL8wxcf92T_yKN15_ooiCHJfLQU5Jf7; HttpOnly; SameSite=None; Secure; Path=/; Domain=chatgpt.com; Expires=Tue, 28 Jul 2026 14:54:51 GMT",
+        "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Fuk9qbPDmvsztXMsIAhcV4jdluRivszhGHFZ7BUd3yIj6%2FSXIMCICbTPrZoutE8Zv3KphcEj2Qbbm8JKUOP8rcFMFqpJvs2q5fQxE5o3bQT9koKZ7MwphujrkruA\"}]}",
+        "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.01,\"max_age\":604800}",
+        "content-encoding": "gzip",
+        "cf-ray": "a2248cc45e38551c-DEL"
+      },
+      "server": "cloudflare",
+      "x_powered_by": "",
+      "framework": "unknown"
+    },
+    "dns_records": {
+      "A": [
+        "172.64.155.209",
+        "104.18.32.47"
+      ],
+      "AAAA": [
+        "2a06:98c1:3101::6812:202f",
+        "2606:4700:4408::ac40:9bd1"
+      ],
+      "MX": [],
+      "TXT": [
+        "\"v=spf1 -all\"",
+        "\"google-site-verification=qz8yKZH1f2h4Dl7S-nRAo0immoInmiosRhyjUxXuUOs\"",
+        "\"google-site-verification=u3JFUrrlvyiaVlGsdIRMgmuvDluR6gC-TIPBEQLbl8c\"",
+        "\"google-site-verification=vHr-4wFDXLd3wze6i0YimpiGHC1u0Hy3x1dGAiyeHWs\"",
+        "\"cerner-client-id=ff69e1b6-5936-420e-92dd-f14f67869424\"",
+        "\"google-site-verification=3p_zWfTXlQ4Mbxvq51ylW59LjgneYCB_vXpS-DLIEwM\"",
+        "\"google-site-verification=rZodbEw8Hlw3gg7Z7mxkmQUNPnO_1khlohRX5D6qeUo\"",
+        "\"google-site-verification=HJikIAHI_Z6zkRXg-TWAceem39v2AhOSwPwUWaTNt9E\""
+      ],
+      "CNAME": [],
+      "NS": [
+        "hassan.ns.cloudflare.com.",
+        "savanna.ns.cloudflare.com."
+      ],
+      "SOA": [
+        "hassan.ns.cloudflare.com. dns.cloudflare.com. 2410570213 10000 2400 604800 1800"
+      ]
+    },
+    "dangling_cnames": [],
+    "waf_detected": "cloudflare"
+  },
+  "shadow_recon": {
+    "whois": {
+      "registrar": "MarkMonitor, Inc.",
+      "creation_date": "[datetime.datetime(2022, 11, 30, 23, 59, 19), datetime.datetime(2022, 11, 30, 23, 59, 19, tzinfo=datetime.timezone.utc)]",
+      "expiration_date": "[datetime.datetime(2026, 11, 30, 23, 59, 19), datetime.datetime(2026, 11, 30, 23, 59, 19, tzinfo=datetime.timezone.utc)]",
+      "name_servers": "['HASSAN.NS.CLOUDFLARE.COM', 'SAVANNA.NS.CLOUDFLARE.COM']",
+      "registrant_org": "OpenAI",
+      "raw": {
+        "status": "['clientDeleteProhibited https://icann.org/epp#clientDeleteProhibited', 'clientTransferProhibited https://icann.org/epp#clientTransferProhibited', 'clientUpdateProhibited https://icann.org/epp#clientUpdateProhibited', 'serverDeleteProhibited https://icann.org/epp#serverDeleteProhibited', 'serverTransferProhibited https://icann.org/epp#serverTransferProhibited', 'serverUpdateProhibited https://icann.org/epp#serverUpdateProhibited', 'clientUpdateProhibited (https://www.icann.org/epp#clientUpdateProhibited)', 'clientTransferProhibited (https://www.icann.org/epp#clientTransferProhibited)', 'clientDeleteProhibited (https://www.icann.org/epp#clientDeleteProhibited)', 'serverUpdateProhibited (https://www.icann.org/epp#serverUpdateProhibited)', 'serverTransferProhibited (https://www.icann.org/epp#serverTransferProhibited)', 'serverDeleteProhibited (https://www.icann.org/epp#serverDeleteProhibited)']",
+        "emails": "['abusecomplaints@markmonitor.com', 'whoisrequest@markmonitor.com']",
+        "dnssec": "unsigned",
+        "country": "US"
+      }
+    },
+    "dork_urls": [
+      "site:chatgpt.com ext:env OR ext:sql OR ext:log OR ext:bak",
+      "site:chatgpt.com inurl:admin OR inurl:login OR inurl:dashboard",
+      "site:chatgpt.com \"index of /\" OR \"parent directory\"",
+      "\"chatgpt.com\" filetype:pdf OR filetype:xlsx OR filetype:docx",
+      "site:chatgpt.com intitle:\"phpinfo\" OR intitle:\"phpmyadmin\"",
+      "site:chatgpt.com inurl:api OR inurl:rest OR inurl:graphql"
+    ],
+    "disallowed_paths": [
+      "/s/cb_",
+      "/g/",
+      "/auth/logout",
+      "/auth/login?*",
+      "/backend-anon/sentinel/*",
+      "/backend-anon/conversation$",
+      "/account-link/*"
+    ],
+    "sitemap_urls": [],
+    "exposed_files": [
+      {
+        "path": "/robots.txt",
+        "url": "https://chatgpt.com/robots.txt",
+        "status_code": 200,
+        "snippet": "# https://www.robotstxt.org/robotstxt.html\n\nUser-agent: CCBot\nDisallow: /\n\nUser-agent: img2dataset\nDisallow: /\n\nUser-agent: Google-Extended\nDisallow: /\n\n# Prevent shared code blocks and GPTs from bein"
+      }
+    ],
+    "leaked_emails": [],
+    "js_sourcemaps": [],
+    "robots_txt": "# https://www.robotstxt.org/robotstxt.html\n\nUser-agent: CCBot\nDisallow: /\n\nUser-agent: img2dataset\nDisallow: /\n\nUser-agent: Google-Extended\nDisallow: /\n\n# Prevent shared code blocks and GPTs from being used as Google Ads destinations\nUser-agent: AdsBot-Google\nUser-agent: AdsBot-Google-Mobile\nDisallow: /s/cb_\nDisallow: /g/\n\nUser-agent: anthropic-ai\nDisallow: /\n\nUser-agent: Claude-Web\nDisallow: /\n\nUser-agent: Omgilibot\nDisallow: /\n\nUser-agent: Omgili\nDisallow: /\n\nUser-agent: FacebookBot\nDisallow: /\n\nUser-agent: Bytespider\nDisallow: /\n\nUser-agent: magpie-crawler\nDisallow: /\n\nUser-agent: PerplexityBot\nDisallow: /\n\nUser-agent: Perplexity‑User\nDisallow: /\n\n# General rules for all other bots\nUser-agent: *\n\n# Place allows first to avoid bots skipping after Disallow: /\n# Allow exactly the homepage\nAllow: /$\n# Allow the homepage with any query parameters\nAllow: /?*\nAllow: /api/share/og/\nAllow: /g/\nAllow: /s/\nAllow: /gg/v/\nAllow: /share/\nAllow: /canvas/shared/\nAllow: /*/images\nAllow: /images\nAllow: /*/library\nAllow: /library\nAllow: /favicon.ico\nAllow: /assets/favicon\nAllow: /cdn/assets/favicon\nAllow: /cdn/assets/\nAllow: /auth/\nAllow: /gpts$\nAllow: /codex\nAllow: /*/codex\nAllow: /search$\nAllow: /backend-anon/\nAllow: /public-api/\nAllow: /sitemap.xml\nAllow: /marketing-sitemap.xml\nAllow: /images-sitemap.xml\nAllow: /writing-tools-sitemap.xml\nAllow: /football-sitemap.xml\nAllow: /100chats\nAllow: /api/public_content/\nAllow: /backend-api/public_content/\nAllow: /?ref=dotcom\n# Static Landing Pages\nAllow: /overview\nAllow: /*/overview\nAllow: /features\nAllow: /*/features\nAllow: /apps\nAllow: /*/apps\nAllow: /finances\nAllow: /*/finances\nAllow: /shopping\nAllow: /*/shopping\nAllow: /use-cases\nAllow: /*/use-cases\nAllow: /learn\nAllow: /*/learn\nAllow: /business\nAllow: /*/business\nAllow: /pricing\nAllow: /*/pricing\nAllow: /download\nAllow: /*/download\nAllow: /students\nAllow: /*/college-students\nAllow: /college-students\nAllow: /contact-sales\nAllow: /*/contact-sales\nAllow: /100chats-project\nAllow: /*/100c",
+    "sitemap_xml": "<html>\n  <head>\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <style global>body{font-family:Arial,Helvetica,sans-serif}.container{align-items:center;display:flex;flex-direction:column;gap:2rem;height:100%;justify-content:center;width:100%}@keyframes enlarge-appear{0%{opacity:0;transform:scale(75%) rotate(-90deg)}to{opacity:1;transform:scale(100%) rotate(0deg)}}.logo{color:#8e8ea0}.scale-appear{animation:enlarge-appear .4s ease-out}@media (min-width:768px){.scale-appear{height:48px;width:48px}}.data:empty{display:none}.data{border-radius:5px;color:#8e8ea0;text-align:center}@media (prefers-color-scheme:dark){body{background-color:#343541}.logo{color:#acacbe}}</style>\n  <meta http-equiv=\"refresh\" content=\"360\"></head>\n  <body>\n    <div class=\"container\">\n      <div class=\"logo\">\n        <svg\n          width=\"41\"\n          height=\"41\"\n          viewBox=\"0 0 41 41\"\n          fill=\"none\"\n          xmlns=\"http://www.w3.org/2000/svg\"\n          strokeWidth=\"2\"\n          class=\"scale-appear\"\n        >\n          <path\n            d=\"M37.5324 16.8707C37.9808 15.5241 38.1363 14.0974 37.9886 12.6859C37.8409 11.2744 37.3934 9.91076 36.676 8.68622C35.6126 6.83404 33.9882 5.3676 32.0373 4.4985C30.0864 3.62941 27.9098 3.40259 25.8215 3.85078C24.8796 2.7893 23.7219 1.94125 22.4257 1.36341C21.1295 0.785575 19.7249 0.491269 18.3058 0.500197C16.1708 0.495044 14.0893 1.16803 12.3614 2.42214C10.6335 3.67624 9.34853 5.44666 8.6917 7.47815C7.30085 7.76286 5.98686 8.3414 4.8377 9.17505C3.68854 10.0087 2.73073 11.0782 2.02839 12.312C0.956464 14.1591 0.498905 16.2988 0.721698 18.4228C0.944492 20.5467 1.83612 22.5449 3.268 24.1293C2.81966 25.4759 2.66413 26.9026 2.81182 28.3141C2.95951 29.7256 3.40701 31.0892 4.12437 32.3138C5.18791 34.1659 6.8123 35.6322 8.76321 36.5013C10.7141 37.3704 12.8907 37.5973 14.9789 37.1492C15.9208 38.2107 17.0786 39.0587 18.3747 39.6366C19.6709 40.2144 21.0755 40.5087 22.4946 40.4998C24.6307 40.5054 26.7133 39.8321 28.4418 38.5772C30",
+    "internal_ips": [],
+    "html_comments": []
+  },
+  "findings": [
+    {
+      "id": 252,
+      "scan_id": 34,
+      "title": "Missing Content Security Policy",
+      "category": "Security Headers",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "No CSP header found",
+      "impact": "XSS and data injection attacks are easier without CSP",
+      "recommendation": "Add: Content-Security-Policy: default-src 'self'",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:24:58.161840Z",
+      "description": "No CSP header found",
+      "how_exploited": "XSS and data injection attacks are easier without CSP",
+      "fix": "Add: Content-Security-Policy: default-src 'self'",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Content-Security-Policy: default-src 'self'",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 253,
+      "scan_id": 34,
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "Failed to connect to chatgpt.com:443",
+      "impact": "TLS may not be available",
+      "recommendation": "Ensure HTTPS is properly configured",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:24:58.172838Z",
+      "description": "Failed to connect to chatgpt.com:443",
+      "how_exploited": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Ensure HTTPS is properly configured",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 254,
+      "scan_id": 34,
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "Header 'server: cloudflare'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "recommendation": "Remove or obfuscate the 'server' header in server config",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:24:58.183838Z",
+      "description": "Header 'server: cloudflare'",
+      "how_exploited": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove or obfuscate the 'server' header in server config",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 255,
+      "scan_id": 34,
+      "title": "Missing Content Security Policy",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "No Content-Security-Policy header was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-28T14:24:52.478101Z",
+      "description": "No Content-Security-Policy header was captured.",
+      "how_exploited": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "fix": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 256,
+      "scan_id": 34,
+      "title": "Non-production or administrative hostnames discovered",
+      "category": "Threat Intelligence",
+      "severity": "LOW",
+      "confidence": "POTENTIAL",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): internal.chatgpt.com.",
+      "impact": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "recommendation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+      "agent": "Threat Intelligence Agent",
+      "timestamp": "2026-07-28T14:24:52.648836Z",
+      "description": "Supplied reconnaissance includes sensitive-looking hostname(s): internal.chatgpt.com.",
+      "how_exploited": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "fix": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "hindi_findings": [
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Content Security Policy",
+      "category": "Security Headers",
+      "severity": "medium",
+      "evidence": "No CSP header found",
+      "impact": "XSS and data injection attacks are easier without CSP",
+      "fix": "Add: Content-Security-Policy: default-src 'self'",
+      "endpoint": "https://chatgpt.com/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "medium",
+      "evidence": "Failed to connect to chatgpt.com:443",
+      "impact": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "endpoint": "https://chatgpt.com/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "low",
+      "evidence": "Header 'server: cloudflare'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "endpoint": "",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Browser Security Agent",
+      "title": "Security-relevant browser console output observed",
+      "category": "Browser Console",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "Console warning: WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat. Source: browser Related observations: {\"external_script_origins\": [\"challenges.cloudflare.com\"], \"inline_script_blocks\": 1, \"user_controlled_inputs\": 1, \"api_calls\": 1, \"console_errors\": 36, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+      "impact": "Console output can expose implementation details or authentication failure behavior to users and attackers.",
+      "recommendation": "Remove development logging and ensure client-side errors are handled without sensitive diagnostic output.",
+      "verification": "Reload the page in PhantomScan Browser observation and confirm the console event is absent.",
+      "timestamp": "2026-07-28T14:24:58.0_*4272+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": "browser_console",
+      "recommended_fix": "Remove debug console output and sanitize client-side error handling.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Browser Security Agent",
+      "title": "CSP missing or weak with browser-observed script surfaces",
+      "category": "CSP",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [\"challenges.cloudflare.com\"], \"inline_script_blocks\": 1, \"user_controlled_inputs\": 1, \"api_calls\": 1, \"console_errors\": 36, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+      "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+      "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+      "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+      "timestamp": "2026-07-28T14:24:58.0_*4272+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": "csp_analysis",
+      "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Missing Content Security Policy",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "No Content-Security-Policy header was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "timestamp": "2026-07-28T14:24:52.478101+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Threat Intelligence Agent",
+      "title": "Non-production or administrative hostnames discovered",
+      "category": "Threat Intelligence",
+      "severity": "LOW",
+      "confidence": "POTENTIAL",
+      "target": "https://chatgpt.com/",
+      "endpoint": "https://chatgpt.com/",
+      "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): internal.chatgpt.com.",
+      "impact": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "recommendation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+      "timestamp": "2026-07-28T14:24:52.648836+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "markdown_report": "# PhantomScan Remediation Checklist\n\n## MEDIUM\n\n- [ ] **[MEDIUM]** Missing Content Security Policy\n  - Affected: https://chatgpt.com/\n  - Fix: `Add: Content-Security-Policy: default-src 'self'`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Could not establish TLS connection\n  - Affected: https://chatgpt.com/\n  - Fix: `Ensure HTTPS is properly configured`\n  - Owner: devops\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Missing Content Security Policy\n  - Affected: https://chatgpt.com/\n  - Fix: `Deploy a restrictive, application-specific Content-Security-Policy.`\n  - Owner: backend\n  - ETA: 1d\n\n## LOW\n\n- [ ] **[LOW]** Server version disclosure\n  - Affected: https://chatgpt.com/\n  - Fix: `Remove or obfuscate the 'server' header in server config`\n  - Owner: devops\n  - ETA: 1w\n\n- [ ] **[LOW]** Non-production or administrative hostnames discovered\n  - Affected: https://chatgpt.com/\n  - Fix: `Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.`\n  - Owner: backend\n  - ETA: 1w\n\n\n# Browser Observation Report\nEngine: playwright_chromium\nPages visited: 1\nNetwork events: 18\nAPIs discovered: 1\nConsole events: 61\nWebSockets: 0\nSafety pause: none\n- [LOW/MEDIUM] Security-relevant browser console output observed\n- [LOW/HIGH] CSP missing or weak with browser-observed script surfaces",
+  "active_security": null,
+  "browser_security": {
+    "status": "complete",
+    "target_url": "https://chatgpt.com/",
+    "browser_engine": "playwright_chromium",
+    "session": "[REDACTED]",
+    "pages": [
+      {
+        "url": "https://chatgpt.com/",
+        "title": "Just a moment..."
+      }
+    ],
+    "routes": [
+      {
+        "route": "https://chatgpt.com/",
+        "source": "browser_navigation"
+      }
+    ],
+    "dom": [
+      {
+        "page": "https://chatgpt.com/",
+        "forms": [],
+        "inputs": [
+          {
+            "page": "https://chatgpt.com/",
+            "name": "cf-turnstile-response",
+            "type": "hidden",
+            "autocomplete": "",
+            "hidden": true
+          }
+        ],
+        "hidden_inputs": [
+          {
+            "page": "https://chatgpt.com/",
+            "name": "cf-turnstile-response",
+            "type": "hidden",
+            "autocomplete": "",
+            "hidden": true
+          }
+        ],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://chatgpt.com/",
+            "src": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a2248cd9ae48596f",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://chatgpt.com/",
+            "src": "https://challenges.cloudflare.com/turnstile/v0/g/b0da9f4911ba/api.js?onload=DglVu6&render=explicit",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": "anonymous"
+          },
+          {
+            "page": "https://chatgpt.com/",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [],
+        "event_handlers": [],
+        "inline_script_count": 1,
+        "inline_scripts": [
+          "(function(){window._cf_chl_opt = {cFPWv: 'g',cH: 'j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV',cITimeS: '1785_**8695',cRay: 'a2248cd9ae48596f',cTplB: '0',cTplC:1,cTplO:0,cTplV:5,cType: 'managed',cUPMDTk:\"/?__cf_chl_tk=uWk7yGTUsT1RKrWbkUKLLH02kSU2uF7ccU8iWb9Iw8U-1785_**********.1.1-4DDbhhOKA0qZxdO1hw8duFMg3.DfoOzpVfwQ2G9jLf4\",cvId: '3',cZone: 'chatgpt.com',fa:\"/?__cf_chl_f_tk=uWk7yGTUsT1RKrWbkUKLLH02kSU2uF7ccU8iWb9Iw8U-1785_**********.1.1-4DDbhhOKA0qZxdO1hw8duFMg3.DfoOzpVfwQ2G9jLf4\",md: '_tHFcnN6lmkFWwZgxDcpnyyZqfnn2V0MlgG6.ae1lr4-1785_**********.1.1-Yt09qcn3o1CmrwbohGo._1BfJx4RRnirgN8ZeoNqySADaIFUHe0yg4bVZhShEimesls2uBrTmZkn__cX4BszsFp8RPERcARJ3_jo4HS8Ua3QOXt1UYFLWgkQgVqpiZfkiFT4vhc3FD3W_RiIZdpbzRo750VJf3J4D8a0ByY6_eOC_TpQF3V66D9brd84BUU0VzoSvm8MS44ZRLqsRsGW__CJByap7O7Bz_KYJkVptwmSClrqtpHHVRxZ3eEAhmlB_mkzC6IjoSScxPcY7ku5ubTGQZSkaLi7FaH06xK5pSKT5x6zYX0al3pTHBAbIGmT.BbZPvi7070jrqgcm2i4QgyMpGz_zd0scoHdo7TUibTuVJ1Meyo7aZgfsgqDY6O_LR0Q0Ov96z_ZC5QX0VCZSJfbLkdfi7DYqZ_u8tZMBhqM9UiXJcyWkWJxSmoPWeAKjoRpgthUnjI4i4QaLqEAyMBbQ00B.P0zNd_xSexhB6gZ3.EjcRckP0jWdsk40h2GM68hlN47Oj8qpj3T6FhRYTE8DHCbDfhBRf5rkp6c3R8hVooLtYoCBUZyI2rMl4FAeGAE5YLBVWDHT0YbgFqKoib2MQGJ3ovANMOMO7m7kY6gdHwogvd4wU8sIRmEFZ6GjYaVE3_u.GtjFQ9kQ.ZZdUVy2bzSfQ_Je3E7MvwByAhbgSX7JAS8UH7QJYQJnJZuZFf8wBb9HQK40nlUgIqKsjvgZ.QKG5ZjQ0LmW_nS8BKEO1pttwUIT4KBTDpXZWk_t9MusPlw5dXpq7GqjWHG2Mr5jcwUNZs3Kqvw_Z7wcd_bRtOcNG_TNYSpAs3zAfMxHyNPKei4tLExfSTg823_HnpWJfdp02J0"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      }
+    ],
+    "network_events": [
+      {
+        "url": "https://chatgpt.com/",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 307,
+        "content_type": "",
+        "duration_ms": 79.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "location": "https://chatgpt.com/"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://chatgpt.com/",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 403,
+        "content_type": "text/html; charset=UTF-8",
+        "duration_ms": 15.0,
+        "initiator": "browser",
+        "redirect_chain": [
+          "https://chatgpt.com/"
+        ],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/html; charset=UTF-8",
+          "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+          "referrer-policy": "same-origin",
+          "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript; charset=UTF-8",
+        "duration_ms": 391.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
+          "content-type": "application/javascript; charset=UTF-8"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://chatgpt.com/59e6409b-affe-4e89-8774-9ef32ebc6015",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 16.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://challenges.cloudflare.com/turnstile/v0/g/b0da9f4911ba/api.js?onload=%2A%2A%2A%2A%2A%2A%2A%2A&render=%2A%2A%2A%2A%2A%2A%2A%2A",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "THIRD_PARTY",
+        "status": 200,
+        "content_type": "application/javascript; charset=UTF-8",
+        "duration_ms": 109.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "cache-control": "max-age=31536000, stale-if-error=10800, stale-while-revalidate=31536000, public",
+          "x-content-type-options": "nosniff",
+          "access-control-allow-origin": "*",
+          "content-type": "application/javascript; charset=UTF-8"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/fo/1540_**1727:1785_**7320:KwflyLJhKyMSdjDuY9ORJ3_7mkNlEyMEVTxh4hdQiDA/a2248cd9ae48596f/j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV",
+        "method": "POST",
+        "resource_type": "xhr",
+        "classification": "API",
+        "status": 200,
+        "content_type": "text/plain; charset=UTF-8",
+        "duration_ms": 375.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/plain; charset=UTF-8"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://chatgpt.com/1582b674-1d5c-4294-82ac-13b6e3ac65d2",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 0.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/av0/rch/u93s2/0x4AAAAAAADnPIDROrmt1Wwj/light/fbE/new/normal?lang=%2A%2A%2A%2A%2A%2A%2A%2A",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "THIRD_PARTY",
+        "status": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "duration_ms": 47.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
+          "content-security-policy": "default-src 'none'; script-src 'nonce-duLuQQCkvE6zrMkIfQvci8' 'unsafe-eval'; script-src-attr 'none'; worker-src blob:; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://hagen.challenges.cloudflare.com https://brunhild.challenges.cloudflare.com; frame-src 'self' blob:; child-src 'self' blob:; form-action 'none'; base-uri 'self'; trusted-types FcJq9 default; require-trusted-types-for 'script'; sandbox allow-same-origin allow-scripts allow-popups allow-forms",
+          "content-type": "text/html; charset=UTF-8",
+          "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+          "referrer-policy": "same-origin"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://challenges.cloudflare.com/cc40c688-064a-4e34-b72a-10a89017ed01",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 0.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/fo/4799_*6927:1785_**7322:tZ7HHpI-Mb8i_hogo_RXaI_HQMh_EGNOudvif55oaX0/a2248ce0583d1b7d/Lb2XJCYaSUPz4Z82k4PjYc1jRPlWpan.DlBX_zTRuYw-1785_**********.1.1-IYFREaPEEyuLJHt_IHY961Hv.h4PBD8EhNoVJuMwSniYBWuq6FSKyk8NEnWttCYL",
+        "method": "POST",
+        "resource_type": "xhr",
+        "classification": "THIRD_PARTY",
+        "status": 200,
+        "content_type": "text/plain; charset=UTF-8",
+        "duration_ms": 313.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/plain; charset=UTF-8"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://challenges.cloudflare.com/f5369452-62bc-4002-a0a5-8933de9e79ad",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 0.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/pat/a2248ce0583d1b7d/1785_*****6727/b8374c2a50040b8ddf90faeaf9f0f728a5bc66030e1ecd57f534b2247c9b4501/gSJ_J21PmS9llm_I3VT43cMtVc8qqbdZ9njJvU_e3B4-1785_**********.1.1-vEn..bJuYmttPAnehhzRCLXedTYYYY6EGT_1y2Amsrbqe3JY5KvBGXzRuaCzEVKxIcI.Zg8C_vA6oynXkAuxJMb5S4nTlNsv9gkFmyKukR8ne0OhPOKszKJ_ASlREJ9fanAAIG5VPkWY51lmSfE55EIuHJHfvjNUq2AxB2685A1oN38CB80VlnFhHlY_r0asjIwvikQVZEZwOB27m4YVjSK_iUVcXmb1GB.jGXRBPzFTounPKBzm5vCRnnv1xzQmCdaC0oHan7KszFWBm5Qnde_TS0bNMrclJ.lsK2NA4e74e_3IlN6UdJQdCMrBKo32YcdKvSHh5LEBKl1iyTxRF4ek0dHpiBHHJ4S1rpvOzNjOztp1k5Or41P6c4YByDRTZNUziG2zpo3n4QVYK.XwcDpnYQNKRZh.lHAKr_SDy5D_HhMb_LicBNLR9T3Ur6F.zLwmtYbJKO2V7CwxHeFXp5veZgjTLgIvoxEEOgtZMS32x_iNr0KJIEp_vmB23gRDP8znOnpq3D3QCFNrf_9MjWdmCATgkKLvQ.z8OstZI9gATxjbVBmnnn09NJnPCBMdJusQ9IjEOLRdNQPGk2h5qnZBbJ8sUeE1HBYw7K.kMLEqB4m19mPnfw9sSWKoP7lW8rLdZKUM.m4ArNoWG0TSqCDLK8Z7DIdGrMKXC43cX3u_d5TECZKygqjtc07xDplAF8AfVNYZ84_SiByiUSLeBTNZ09nhWAMPCptkTxewZjMs1PDX0gCGLog3xd3B.Dax83Q4X1sX2AHGTemO7xg3X.tfqIqzXtOtKqG1gJdkC1qbcgMOKTT98zQNqLJHSOAo",
+        "method": "GET",
+        "resource_type": "fetch",
+        "classification": "THIRD_PARTY",
+        "status": 401,
+        "content_type": "text/plain; charset=utf-8",
+        "duration_ms": 63.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/ci/a2248ce0583d1b7d/1785_*****6728/V1ww8bd96Q5niE7zMAdt3eBDb9Pc70j4gWymR2tyFkc-1785_**********.1.1-4OJCH2KTh1VuHBc_UrlRmScePFXhQouAx59iAWDpbRwWItoksHOI52LQvqt3LynZqSX8AbCtd6QHFwTU8_Jz_1tpUWJKVPDD0KAwUAM8zZKF1X1D.cFEkc6j.nOTSt1EjtB1jVkv9xfpK0XW6qSEuVOHQ6dwdls9yo29olWJ1L3dWU936tY9ArDVtoAh9z5FbCShNfTTPcbboAVewkVIeWZXaJu_JyJA0zJnLHpReub778jsEYfLgwwtA_vv0nwKEqDSypSFl5ns.D3rV4CQt_6z5tuji_PFYJrVGtIk_dbRDWTfv8LHaR4aNrcP.uJ_N1Ep8rfpvgobShp6h7rNjQqs3k468tOs3t0s4jDSB3O_gQmot3TGFyvWAOPN8HcyqNSZ_JCtqDnkO88070_r0YZGZKap0u1vOxcCJUP4wecNdaYkdqI.hTO4BNVWkaB1vxBr9SAqp6z3DIfikLtB75v2ylm_.6bH5AtSYVjOohSQpSq_OfzVG92uFBGwj44kA_j6QFx.WKJA6oEO.mBBkXTymoqEOTMHH.B7xTsJwp23PCuvUygamdCizzK63ISq0Ett_KtlSXf73fuJApUsBNyKusx1Cd4wTkBHz94xCidvBATIvEPbwQdGvh4hO7eGwr1LG9IOozCzsg8g8hiU3s7QAmdcnHwCaHWBkPjs3SmYxjta57lIsBSgRQnbB6bL_KQJ0xcqNg6.UFV4RA6MzrFdmZxk_Xz0rkTwrOHwpmI",
+        "method": "GET",
+        "resource_type": "image",
+        "classification": "THIRD_PARTY",
+        "status": 200,
+        "content_type": "image/png",
+        "duration_ms": 31.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "image/png"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://challenges.cloudflare.com/f5369452-62bc-4002-a0a5-8933de9e79ad",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 62.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://challenges.cloudflare.com/f5369452-62bc-4002-a0a5-8933de9e79ad",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 0.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/fo/4799_*6927:1785_**7322:tZ7HHpI-Mb8i_hogo_RXaI_HQMh_EGNOudvif55oaX0/a2248ce0583d1b7d/Lb2XJCYaSUPz4Z82k4PjYc1jRPlWpan.DlBX_zTRuYw-1785_**********.1.1-IYFREaPEEyuLJHt_IHY961Hv.h4PBD8EhNoVJuMwSniYBWuq6FSKyk8NEnWttCYL",
+        "method": "POST",
+        "resource_type": "xhr",
+        "classification": "THIRD_PARTY",
+        "status": 200,
+        "content_type": "text/plain; charset=UTF-8",
+        "duration_ms": 47.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/plain; charset=UTF-8"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "blob:https://challenges.cloudflare.com/0bd4dfe2-7c26-4f52-bb9a-1f2e5a517ec6",
+        "method": "GET",
+        "resource_type": "other",
+        "classification": "UNKNOWN",
+        "status": 200,
+        "content_type": "text/javascript",
+        "duration_ms": 0.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/javascript"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      },
+      {
+        "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript; charset=UTF-8",
+        "duration_ms": 63.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript; charset=UTF-8",
+          "cache-control": "private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0",
+          "set-cookie": "[REDACTED]"
+        },
+        "authentication_state": "session_cookie_observed",
+        "response_schema": null,
+        "request_count": 1
+      }
+    ],
+    "console_events": [
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248694.1433523,
+        "type": "error",
+        "message": "Failed to load resource: the server responded with a status of 403 ()",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248694.6099641,
+        "type": "warning",
+        "message": "No available adapters.",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248695.3512425,
+        "type": "warning",
+        "message": "No available adapters.",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3295205,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3305209,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3325195,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3325195,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3325195,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3335216,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3345292,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3345292,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3345292,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3355231,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.336522,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.337525,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_[half_]float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.338521,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.338521,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.338521,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.338521,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_[half_]float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.338521,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3395212,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_[half_]float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.3395212,
+        "type": "warning",
+        "message": "WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat when EXT_color_buffer_float is not enabled",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.6591167,
+        "type": "warning",
+        "message": "Failed to parse audio contentType: audio/mp4; codecs=mp4a.40.2",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.6591167,
+        "type": "warning",
+        "message": "Failed to parse video contentType: video/mp4; codecs=avc1.42E01E",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.6601105,
+        "type": "warning",
+        "message": "Failed to parse video contentType: video/mp4; codecs=avc1.4D401E",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.6601105,
+        "type": "warning",
+        "message": "Failed to parse video contentType: video/mp4; codecs=avc1.64001E",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.6601105,
+        "type": "warning",
+        "message": "Failed to parse video contentType: video/mp4; codecs=hev1.1.6.L93.B0",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.663111,
+        "type": "warning",
+        "message": "[GroupMarkerNotSet(crbug.com/242999)!:A0803A0004160000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.663111,
+        "type": "warning",
+        "message": "[GroupMarkerNotSet(crbug.com/242999)!:A0B03A0004160000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.663111,
+        "type": "warning",
+        "message": "[.WebGL-0x660c00f09b00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.6641123,
+        "type": "warning",
+        "message": "[.WebGL-0x660c00f09b00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8036213,
+        "type": "startGroupCollapsed",
+        "message": "",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8036213,
+        "type": "debug",
+        "message": "Error",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.81262,
+        "type": "log",
+        "message": "/.*.*=.*/",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.81262,
+        "type": "log",
+        "message": "/.*.*=.*/",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.813621,
+        "type": "log",
+        "message": "function () { [native code] }",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.813621,
+        "type": "log",
+        "message": "function () { [native code] }",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.818145,
+        "type": "log",
+        "message": "JSHandle@node",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.822147,
+        "type": "log",
+        "message": "JSHandle@node",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.823144,
+        "type": "count",
+        "message": "\u0000: 1",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8241487,
+        "type": "count",
+        "message": "\u0000: 1",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8241487,
+        "type": "debug",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.825145,
+        "type": "debug",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.825145,
+        "type": "dir",
+        "message": " izHa3: FZszM4",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.825145,
+        "type": "dir",
+        "message": " izHa3: FZszM4",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8261473,
+        "type": "dirxml",
+        "message": "%c%d font-size:0;color:transparent izHa3: FZszM4",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8261473,
+        "type": "dirxml",
+        "message": "%c%d font-size:0;color:transparent izHa3: FZszM4",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.827147,
+        "type": "error",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.827147,
+        "type": "error",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.827147,
+        "type": "info",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.827147,
+        "type": "info",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8281448,
+        "type": "log",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8281448,
+        "type": "log",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8291507,
+        "type": "table",
+        "message": "%c%d font-size:0;color:transparent izHa3: FZszM4",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.830147,
+        "type": "table",
+        "message": "%c%d font-size:0;color:transparent izHa3: FZszM4",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.831146,
+        "type": "trace",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8321455,
+        "type": "trace",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8321455,
+        "type": "warning",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8321455,
+        "type": "warning",
+        "message": "%c%d font-size:0;color:transparent NaN",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248696.8321455,
+        "type": "endGroup",
+        "message": "console.groupEnd",
+        "source": "browser"
+      },
+      {
+        "page": "https://chatgpt.com/",
+        "timestamp": 1785248697.5742023,
+        "type": "warning",
+        "message": "OTS parsing error: Size of decompressed WOFF 2.0 is less than compressed size",
+        "source": "browser"
+      }
+    ],
+    "api_inventory": [
+      {
+        "endpoint": "/cdn-cgi/challenge-platform/h/g/fo/1540_**1727:1785_**7320:KwflyLJhKyMSdjDuY9ORJ3_7mkNlEyMEVTxh4hdQiDA/a2248cd9ae48596f/j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV",
+        "method": "POST",
+        "content_type": "text/plain; charset=UTF-8",
+        "authentication": "unknown",
+        "observed_parameters": [],
+        "response_fields": [],
+        "status_codes": [
+          200
+        ],
+        "initiating_page": "browser",
+        "classification": "API"
+      }
+    ],
+    "storage": {
+      "localStorage": {},
+      "sessionStorage": {},
+      "indexedDB": {
+        "metadata_observed": false
+      },
+      "sensitive_client_storage": []
+    },
+    "cookies": [
+      {
+        "name": "__cf_bm",
+        "secure": true,
+        "httponly": true,
+        "samesite": "None",
+        "domain": ".chatgpt.com",
+        "path": "/",
+        "expires": 1785250495.039795
+      },
+      {
+        "name": "__cf_bm",
+        "secure": true,
+        "httponly": true,
+        "samesite": "None",
+        "domain": "chatgpt.com",
+        "path": "/",
+        "expires": "Tue"
+      }
+    ],
+    "csp": [
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      }
+    ],
+    "csp_violations": [],
+    "javascript": [
+      {
+        "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "!SlmXG!OOYuX!Ijnb2!jLdlw!XGknp!colno!HIfOO!hUXQ2!HORgO!&render=explicit!XAKSj!qrQpP!iAKvN!Llmva!Array.prototype.!pRlJ9!OWoAQ!bqzwR8!AhkdY!gbgFB1!CISdM!5|1|2|3|4|0!SBbRE8!AtHUe!Set!length!iFfnq!EcJx3!aOwGp1!hJHth!PetZi!stringify!CbKVg!kOQr6!SPjV4!vCcov!bASXY!KGPfh4!17|1|11|15|9|5|10|4|3|8|14|16|2|7|12|0|6|13!GLuac!responseText!ZDWir!loading!LReMY!xtpzA9!WiHAS!HzMzo!VopTu!zkem2!jtIXT!oAYXV!shift!ucnFi!fbMuo!dDdtF!UiVss!OkAsx!fqcch!Rfnpd!1|4|2|0|3!zwEVk!yUrmt!2|14|15|1|16|17|10|7|18|0|12|6|19|9|13|8|11|4|3|5!bwBvD!NQuLk1!KmIBV!bruvJ!eyhnw!KNLif!twgHB!vxhfy!UBhlB7!AENYO!yUsHr!VkLaT!JekCF!xtOzR!KusC4!PpzeA!EruRN!vpcWc!.main-wrapper!qdjhD!juxgV!visibility!IMQBL!BVSIZ!kJYDs!IYvZR!3096vrBflg!href!",
+          "www.cloudflare.com?utm_source=challenge&utm_campaign=`+lG+Os(nE.O2))));continue}break}}function",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [],
+        "debug_references": [
+          "debug"
+        ],
+        "source_map_references": [],
+        "sink_classifications": []
+      }
+    ],
+    "source_maps": [],
+    "auth_flow": {
+      "steps": [
+        {
+          "type": "session",
+          "label": "Session cookie observed",
+          "cookie_count": 2
+        }
+      ],
+      "session_created": true,
+      "logout_observed": false,
+      "session_lifecycle": {
+        "creation": "cookie_or_token_observed",
+        "refresh": "not_observed",
+        "logout_invalidation": "not_observed"
+      }
+    },
+    "websockets": [],
+    "service_workers": [],
+    "cache": [
+      {
+        "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/fo/1540_**1727:1785_**7320:KwflyLJhKyMSdjDuY9ORJ3_7mkNlEyMEVTxh4hdQiDA/a2248cd9ae48596f/j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV",
+        "classification": "API",
+        "cache_control": "not_present",
+        "sensitive_response_cacheable": false
+      }
+    ],
+    "third_party": [
+      {
+        "domain": "challenges.cloudflare.com",
+        "resource": "https://challenges.cloudflare.com/turnstile/v0/g/b0da9f4911ba/api.js?onload=%2A%2A%2A%2A%2A%2A%2A%2A&render=%2A%2A%2A%2A%2A%2A%2A%2A",
+        "page": "https://chatgpt.com/",
+        "purpose": "cdn",
+        "integrity": false,
+        "crossorigin": "anonymous"
+      },
+      {
+        "domain": "!SlmXG!OOYuX!Ijnb2!jLdlw!XGknp!colno!HIfOO!hUXQ2!HORgO!&render=explicit!XAKSj!qrQpP!iAKvN!Llmva!Array.prototype.!pRlJ9!OWoAQ!bqzwR8!AhkdY!gbgFB1!CISdM!5|1|2|3|4|0!SBbRE8!AtHUe!Set!length!iFfnq!EcJx3!aOwGp1!hJHth!PetZi!stringify!CbKVg!kOQr6!SPjV4!vCcov!bASXY!KGPfh4!17|1|11|15|9|5|10|4|3|8|14|16|2|7|12|0|6|13!GLuac!responseText!ZDWir!loading!LReMY!xtpzA9!WiHAS!HzMzo!VopTu!zkem2!jtIXT!oAYXV!shift!ucnFi!fbMuo!dDdtF!UiVss!OkAsx!fqcch!Rfnpd!1|4|2|0|3!zwEVk!yUrmt!2|14|15|1|16|17|10|7|18|0|12|6|19|9|13|8|11|4|3|5!bwBvD!NQuLk1!KmIBV!bruvJ!eyhnw!KNLif!twgHB!vxhfy!UBhlB7!AENYO!yUsHr!VkLaT!JekCF!xtOzR!KusC4!PpzeA!EruRN!vpcWc!.main-wrapper!qdjhD!juxgV!visibility!IMQBL!BVSIZ!kJYDs!IYvZR!3096vrBflg!href!",
+        "resource": "javascript_reference",
+        "page": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+        "purpose": "unknown"
+      },
+      {
+        "domain": "www.cloudflare.com?utm_source=challenge&utm_campaign=`+lG+Os(nE.O2))));continue}break}}function",
+        "resource": "javascript_reference",
+        "page": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+        "purpose": "cdn"
+      },
+      {
+        "domain": "www.w3.org",
+        "resource": "javascript_reference",
+        "page": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+        "purpose": "unknown"
+      }
+    ],
+    "dataflow": {
+      "input_to_api": [],
+      "api_to_dom": [],
+      "sink_classifications": []
+    },
+    "screenshots": [
+      {
+        "page": "https://chatgpt.com/",
+        "bytes": 11771,
+        "stored": false
+      }
+    ],
+    "safety": {
+      "target_origin": "https://chatgpt.com",
+      "max_pages": 8,
+      "page_count": 1,
+      "safety_paused": false,
+      "pause_reason": null,
+      "repeated_server_errors": 0,
+      "latency_spikes": 0,
+      "events": [
+        {
+          "event": "response_observed",
+          "url": "https://chatgpt.com/",
+          "status": 307,
+          "duration_ms": 79.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://chatgpt.com/",
+          "status": 403,
+          "duration_ms": 15.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+          "status": 200,
+          "duration_ms": 391.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://chatgpt.com/59e6409b-affe-4e89-8774-9ef32ebc6015",
+          "status": 200,
+          "duration_ms": 16.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://challenges.cloudflare.com/turnstile/v0/g/b0da9f4911ba/api.js?onload=%2A%2A%2A%2A%2A%2A%2A%2A&render=%2A%2A%2A%2A%2A%2A%2A%2A",
+          "status": 200,
+          "duration_ms": 109.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/fo/1540_**1727:1785_**7320:KwflyLJhKyMSdjDuY9ORJ3_7mkNlEyMEVTxh4hdQiDA/a2248cd9ae48596f/j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV",
+          "status": 200,
+          "duration_ms": 375.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://chatgpt.com/1582b674-1d5c-4294-82ac-13b6e3ac65d2",
+          "status": 200,
+          "duration_ms": 0.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/av0/rch/u93s2/0x4AAAAAAADnPIDROrmt1Wwj/light/fbE/new/normal?lang=%2A%2A%2A%2A%2A%2A%2A%2A",
+          "status": 200,
+          "duration_ms": 47.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://challenges.cloudflare.com/cc40c688-064a-4e34-b72a-10a89017ed01",
+          "status": 200,
+          "duration_ms": 0.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/fo/4799_*6927:1785_**7322:tZ7HHpI-Mb8i_hogo_RXaI_HQMh_EGNOudvif55oaX0/a2248ce0583d1b7d/Lb2XJCYaSUPz4Z82k4PjYc1jRPlWpan.DlBX_zTRuYw-1785_**********.1.1-IYFREaPEEyuLJHt_IHY961Hv.h4PBD8EhNoVJuMwSniYBWuq6FSKyk8NEnWttCYL",
+          "status": 200,
+          "duration_ms": 313.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://challenges.cloudflare.com/f5369452-62bc-4002-a0a5-8933de9e79ad",
+          "status": 200,
+          "duration_ms": 0.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/pat/a2248ce0583d1b7d/1785_*****6727/b8374c2a50040b8ddf90faeaf9f0f728a5bc66030e1ecd57f534b2247c9b4501/gSJ_J21PmS9llm_I3VT43cMtVc8qqbdZ9njJvU_e3B4-1785_**********.1.1-vEn..bJuYmttPAnehhzRCLXedTYYYY6EGT_1y2Amsrbqe3JY5KvBGXzRuaCzEVKxIcI.Zg8C_vA6oynXkAuxJMb5S4nTlNsv9gkFmyKukR8ne0OhPOKszKJ_ASlREJ9fanAAIG5VPkWY51lmSfE55EIuHJHfvjNUq2AxB2685A1oN38CB80VlnFhHlY_r0asjIwvikQVZEZwOB27m4YVjSK_iUVcXmb1GB.jGXRBPzFTounPKBzm5vCRnnv1xzQmCdaC0oHan7KszFWBm5Qnde_TS0bNMrclJ.lsK2NA4e74e_3IlN6UdJQdCMrBKo32YcdKvSHh5LEBKl1iyTxRF4ek0dHpiBHHJ4S1rpvOzNjOztp1k5Or41P6c4YByDRTZNUziG2zpo3n4QVYK.XwcDpnYQNKRZh.lHAKr_SDy5D_HhMb_LicBNLR9T3Ur6F.zLwmtYbJKO2V7CwxHeFXp5veZgjTLgIvoxEEOgtZMS32x_iNr0KJIEp_vmB23gRDP8znOnpq3D3QCFNrf_9MjWdmCATgkKLvQ.z8OstZI9gATxjbVBmnnn09NJnPCBMdJusQ9IjEOLRdNQPGk2h5qnZBbJ8sUeE1HBYw7K.kMLEqB4m19mPnfw9sSWKoP7lW8rLdZKUM.m4ArNoWG0TSqCDLK8Z7DIdGrMKXC43cX3u_d5TECZKygqjtc07xDplAF8AfVNYZ84_SiByiUSLeBTNZ09nhWAMPCptkTxewZjMs1PDX0gCGLog3xd3B.Dax83Q4X1sX2AHGTemO7xg3X.tfqIqzXtOtKqG1gJdkC1qbcgMOKTT98zQNqLJHSOAo",
+          "status": 401,
+          "duration_ms": 63.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/ci/a2248ce0583d1b7d/1785_*****6728/V1ww8bd96Q5niE7zMAdt3eBDb9Pc70j4gWymR2tyFkc-1785_**********.1.1-4OJCH2KTh1VuHBc_UrlRmScePFXhQouAx59iAWDpbRwWItoksHOI52LQvqt3LynZqSX8AbCtd6QHFwTU8_Jz_1tpUWJKVPDD0KAwUAM8zZKF1X1D.cFEkc6j.nOTSt1EjtB1jVkv9xfpK0XW6qSEuVOHQ6dwdls9yo29olWJ1L3dWU936tY9ArDVtoAh9z5FbCShNfTTPcbboAVewkVIeWZXaJu_JyJA0zJnLHpReub778jsEYfLgwwtA_vv0nwKEqDSypSFl5ns.D3rV4CQt_6z5tuji_PFYJrVGtIk_dbRDWTfv8LHaR4aNrcP.uJ_N1Ep8rfpvgobShp6h7rNjQqs3k468tOs3t0s4jDSB3O_gQmot3TGFyvWAOPN8HcyqNSZ_JCtqDnkO88070_r0YZGZKap0u1vOxcCJUP4wecNdaYkdqI.hTO4BNVWkaB1vxBr9SAqp6z3DIfikLtB75v2ylm_.6bH5AtSYVjOohSQpSq_OfzVG92uFBGwj44kA_j6QFx.WKJA6oEO.mBBkXTymoqEOTMHH.B7xTsJwp23PCuvUygamdCizzK63ISq0Ett_KtlSXf73fuJApUsBNyKusx1Cd4wTkBHz94xCidvBATIvEPbwQdGvh4hO7eGwr1LG9IOozCzsg8g8hiU3s7QAmdcnHwCaHWBkPjs3SmYxjta57lIsBSgRQnbB6bL_KQJ0xcqNg6.UFV4RA6MzrFdmZxk_Xz0rkTwrOHwpmI",
+          "status": 200,
+          "duration_ms": 31.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://challenges.cloudflare.com/f5369452-62bc-4002-a0a5-8933de9e79ad",
+          "status": 200,
+          "duration_ms": 62.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://challenges.cloudflare.com/f5369452-62bc-4002-a0a5-8933de9e79ad",
+          "status": 200,
+          "duration_ms": 0.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/fo/4799_*6927:1785_**7322:tZ7HHpI-Mb8i_hogo_RXaI_HQMh_EGNOudvif55oaX0/a2248ce0583d1b7d/Lb2XJCYaSUPz4Z82k4PjYc1jRPlWpan.DlBX_zTRuYw-1785_**********.1.1-IYFREaPEEyuLJHt_IHY961Hv.h4PBD8EhNoVJuMwSniYBWuq6FSKyk8NEnWttCYL",
+          "status": 200,
+          "duration_ms": 47.0
+        },
+        {
+          "event": "response_observed",
+          "url": "blob:https://challenges.cloudflare.com/0bd4dfe2-7c26-4f52-bb9a-1f2e5a517ec6",
+          "status": 200,
+          "duration_ms": 0.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://chatgpt.com/cdn-cgi/challenge-platform/h/g/orchestrate/chl_page/v1?ray=a224_%2A%2A%2A%2A%2A%2A%2A%2A596f",
+          "status": 200,
+          "duration_ms": 63.0
+        }
+      ]
+    },
+    "request_count": 1,
+    "findings": [
+      {
+        "title": "Security-relevant browser console output observed",
+        "category": "Browser Console",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "target": "https://chatgpt.com/",
+        "endpoint": "https://chatgpt.com/",
+        "evidence": "Console warning: WebGL: INVALID_ENUM: getInternalformatParameter: invalid internalformat. Source: browser Related observations: {\"external_script_origins\": [\"challenges.cloudflare.com\"], \"inline_script_blocks\": 1, \"user_controlled_inputs\": 1, \"api_calls\": 1, \"console_errors\": 36, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+        "impact": "Console output can expose implementation details or authentication failure behavior to users and attackers.",
+        "recommendation": "Remove development logging and ensure client-side errors are handled without sensitive diagnostic output.",
+        "verification": "Reload the page in PhantomScan Browser observation and confirm the console event is absent.",
+        "agent": "Browser Security Agent",
+        "timestamp": "2026-07-28T14:24:58.0_*4272+00:00",
+        "cve_id": null,
+        "cvss_score": null,
+        "parameter": null,
+        "module": "browser_console",
+        "recommended_fix": "Remove debug console output and sanitize client-side error handling.",
+        "remediation_status": "OPEN",
+        "verification_status": "NOT_VERIFIED",
+        "risk_status": "ACTIVE"
+      },
+      {
+        "title": "CSP missing or weak with browser-observed script surfaces",
+        "category": "CSP",
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "target": "https://chatgpt.com/",
+        "endpoint": "https://chatgpt.com/",
+        "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [\"challenges.cloudflare.com\"], \"inline_script_blocks\": 1, \"user_controlled_inputs\": 1, \"api_calls\": 1, \"console_errors\": 36, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+        "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+        "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+        "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+        "agent": "Browser Security Agent",
+        "timestamp": "2026-07-28T14:24:58.0_*4272+00:00",
+        "cve_id": null,
+        "cvss_score": null,
+        "parameter": null,
+        "module": "csp_analysis",
+        "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+        "remediation_status": "OPEN",
+        "verification_status": "NOT_VERIFIED",
+        "risk_status": "ACTIVE"
+      }
+    ],
+    "correlation": {
+      "related_observations": {
+        "external_script_origins": [
+          "challenges.cloudflare.com"
+        ],
+        "inline_script_blocks": 1,
+        "user_controlled_inputs": 1,
+        "api_calls": 1,
+        "console_errors": 36,
+        "javascript_sinks": [],
+        "previous_related_findings": 0
+      },
+      "independent_signal_count": 5,
+      "confidence_hint": "HIGH"
+    }
+  },
+  "ai_analyst_output": {
+    "generated_at": "2026-07-28T14:25:18.334950+00:00",
+    "ai_available": false,
+    "ai_status": "AI Analysis Unavailable - deterministic analysis shown",
+    "safety": {
+      "grounded_in_scan_evidence": true,
+      "can_start_active_test": false,
+      "active_tests": "recommend_only"
+    },
+    "security_summary": {
+      "overall_security_posture": "Moderate Risk",
+      "most_important_risks": [
+        "Missing Content Security Policy",
+        "Missing Content Security Policy"
+      ],
+      "what_changed": "4 new finding(s), 1 new API route(s), 1 new route(s)",
+      "immediate_attention": "2 priority items need immediate attention.",
+      "can_wait": [
+        "Could not establish TLS connection",
+        "Server version disclosure",
+        "Non-production or administrative hostnames discovered"
+      ],
+      "positive_security_controls": [
+        "Secure cookies detected",
+        "HSTS enabled",
+        "No high-risk CVEs detected"
+      ],
+      "recommended_next_action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "authentication_focus": "No high-confidence authentication findings in active risk set."
+    },
+    "ai_narrative": "",
+    "priorities": [
+      {
+        "priority": 1,
+        "finding_id": 255,
+        "title": "Missing Content Security Policy",
+        "score": 53.0,
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "recommended_action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 255,
+          "label": "Finding #255",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 2,
+        "finding_id": 252,
+        "title": "Missing Content Security Policy",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Content-Security-Policy: default-src 'self'",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 252,
+          "label": "Finding #252",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 3,
+        "finding_id": 253,
+        "title": "Could not establish TLS connection",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Ensure HTTPS is properly configured",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 253,
+          "label": "Finding #253",
+          "title": "Could not establish TLS connection",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 4,
+        "finding_id": 254,
+        "title": "Server version disclosure",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Remove or obfuscate the 'server' header in server config",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 254,
+          "label": "Finding #254",
+          "title": "Server version disclosure",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 5,
+        "finding_id": 256,
+        "title": "Non-production or administrative hostnames discovered",
+        "score": 15.0,
+        "severity": "LOW",
+        "confidence": "POTENTIAL",
+        "recommended_action": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+        "factors": [
+          "severity=LOW",
+          "confidence=POTENTIAL",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 256,
+          "label": "Finding #256",
+          "title": "Non-production or administrative hostnames discovered",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        }
+      }
+    ],
+    "related_security_chains": [
+      {
+        "title": "Related Security Chain: Missing Content Security Policy",
+        "primary": {
+          "type": "finding",
+          "id": 252,
+          "label": "Finding #252",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 253,
+            "label": "Finding #253",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 254,
+            "label": "Finding #254",
+            "title": "Server version disclosure",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 255,
+            "label": "Finding #255",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 256,
+            "label": "Finding #256",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Could not establish TLS connection",
+        "primary": {
+          "type": "finding",
+          "id": 253,
+          "label": "Finding #253",
+          "title": "Could not establish TLS connection",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 252,
+            "label": "Finding #252",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 254,
+            "label": "Finding #254",
+            "title": "Server version disclosure",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 255,
+            "label": "Finding #255",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 256,
+            "label": "Finding #256",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Server version disclosure",
+        "primary": {
+          "type": "finding",
+          "id": 254,
+          "label": "Finding #254",
+          "title": "Server version disclosure",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 252,
+            "label": "Finding #252",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 253,
+            "label": "Finding #253",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 255,
+            "label": "Finding #255",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 256,
+            "label": "Finding #256",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Content Security Policy",
+        "primary": {
+          "type": "finding",
+          "id": 255,
+          "label": "Finding #255",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 252,
+            "label": "Finding #252",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 253,
+            "label": "Finding #253",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 254,
+            "label": "Finding #254",
+            "title": "Server version disclosure",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 256,
+            "label": "Finding #256",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Non-production or administrative hostnames discovered",
+        "primary": {
+          "type": "finding",
+          "id": 256,
+          "label": "Finding #256",
+          "title": "Non-production or administrative hostnames discovered",
+          "endpoint": "https://chatgpt.com/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 252,
+            "label": "Finding #252",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 253,
+            "label": "Finding #253",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 254,
+            "label": "Finding #254",
+            "title": "Server version disclosure",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 255,
+            "label": "Finding #255",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      }
+    ],
+    "root_causes": [
+      {
+        "name": "Browser Security Policy",
+        "finding_count": 1,
+        "highest_severity": "MEDIUM",
+        "finding_ids": [
+          252
+        ],
+        "summary": "1 related finding appear to share this root area."
+      },
+      {
+        "name": "Application Security",
+        "finding_count": 2,
+        "highest_severity": "MEDIUM",
+        "finding_ids": [
+          253,
+          255
+        ],
+        "summary": "2 related findings appear to share this root area."
+      },
+      {
+        "name": "Dependency and CVE",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          254
+        ],
+        "summary": "1 related finding appear to share this root area."
+      },
+      {
+        "name": "Access Control",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          256
+        ],
+        "summary": "1 related finding appear to share this root area."
+      }
+    ],
+    "remediation_plan": {
+      "IMMEDIATE": [
+        {
+          "priority": 1,
+          "finding_id": 255,
+          "title": "Missing Content Security Policy",
+          "action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+          "citation": {
+            "type": "finding",
+            "id": 255,
+            "label": "Finding #255",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 2,
+          "finding_id": 252,
+          "title": "Missing Content Security Policy",
+          "action": "Add: Content-Security-Policy: default-src 'self'",
+          "citation": {
+            "type": "finding",
+            "id": 252,
+            "label": "Finding #252",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Finding"
+          }
+        }
+      ],
+      "TODAY": [],
+      "THIS_WEEK": [
+        {
+          "priority": 3,
+          "finding_id": 253,
+          "title": "Could not establish TLS connection",
+          "action": "Ensure HTTPS is properly configured",
+          "citation": {
+            "type": "finding",
+            "id": 253,
+            "label": "Finding #253",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 4,
+          "finding_id": 254,
+          "title": "Server version disclosure",
+          "action": "Remove or obfuscate the 'server' header in server config",
+          "citation": {
+            "type": "finding",
+            "id": 254,
+            "label": "Finding #254",
+            "title": "Server version disclosure",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 5,
+          "finding_id": 256,
+          "title": "Non-production or administrative hostnames discovered",
+          "action": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+          "citation": {
+            "type": "finding",
+            "id": 256,
+            "label": "Finding #256",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "https://chatgpt.com/",
+            "source": "Finding"
+          }
+        }
+      ]
+    },
+    "score_explanation": {
+      "score": 81,
+      "deductions": [
+        {
+          "label": "3 Medium severity findings",
+          "points": -21
+        },
+        {
+          "label": "2 Low severity findings",
+          "points": -4
+        }
+      ],
+      "credits": [
+        {
+          "label": "3 positive security controls",
+          "points": 6
+        }
+      ]
+    },
+    "positive_controls": [
+      {
+        "title": "Secure cookies detected",
+        "evidence": "Observed cookies include Secure, HttpOnly, and SameSite metadata."
+      },
+      {
+        "title": "HSTS enabled",
+        "evidence": "Browser network evidence includes Strict-Transport-Security."
+      },
+      {
+        "title": "No high-risk CVEs detected",
+        "evidence": "Persisted findings contain no high or critical CVE result."
+      }
+    ],
+    "scan_comparison": {
+      "previous_scan_id": null,
+      "new_findings": [
+        "Could not establish TLS connection",
+        "Missing Content Security Policy",
+        "Non-production or administrative hostnames discovered",
+        "Server version disclosure"
+      ],
+      "resolved_findings": [],
+      "worsened_findings": [],
+      "new_routes": [
+        "https://chatgpt.com/"
+      ],
+      "new_apis": [
+        "/cdn-cgi/challenge-platform/h/g/fo/1540_**1727:1785_**7320:KwflyLJhKyMSdjDuY9ORJ3_7mkNlEyMEVTxh4hdQiDA/a2248cd9ae48596f/j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV"
+      ],
+      "new_technologies": [],
+      "new_third_parties": [
+        "!SlmXG!OOYuX!Ijnb2!jLdlw!XGknp!colno!HIfOO!hUXQ2!HORgO!&render=explicit!XAKSj!qrQpP!iAKvN!Llmva!Array.prototype.!pRlJ9!OWoAQ!bqzwR8!AhkdY!gbgFB1!CISdM!5|1|2|3|4|0!SBbRE8!AtHUe!Set!length!iFfnq!EcJx3!aOwGp1!hJHth!PetZi!stringify!CbKVg!kOQr6!SPjV4!vCcov!bASXY!KGPfh4!17|1|11|15|9|5|10|4|3|8|14|16|2|7|12|0|6|13!GLuac!responseText!ZDWir!loading!LReMY!xtpzA9!WiHAS!HzMzo!VopTu!zkem2!jtIXT!oAYXV!shift!ucnFi!fbMuo!dDdtF!UiVss!OkAsx!fqcch!Rfnpd!1|4|2|0|3!zwEVk!yUrmt!2|14|15|1|16|17|10|7|18|0|12|6|19|9|13|8|11|4|3|5!bwBvD!NQuLk1!KmIBV!bruvJ!eyhnw!KNLif!twgHB!vxhfy!UBhlB7!AENYO!yUsHr!VkLaT!JekCF!xtOzR!KusC4!PpzeA!EruRN!vpcWc!.main-wrapper!qdjhD!juxgV!visibility!IMQBL!BVSIZ!kJYDs!IYvZR!3096vrBflg!href!",
+        "challenges.cloudflare.com",
+        "www.cloudflare.com?utm_source=challenge&utm_campaign=`+lG+Os(nE.O2))));continue}break}}function",
+        "www.w3.org"
+      ],
+      "new_authentication_surfaces": [],
+      "removed_exposure": []
+    },
+    "security_timeline": [
+      {
+        "timestamp": "2026-07-28 14:24:47",
+        "title": "scan created",
+        "detail": "Created defend scan for https://chatgpt.com/ with medium intensity and modules: none",
+        "source": "System"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:47",
+        "title": "started",
+        "detail": "Orchestrating defend scan for https://chatgpt.com/",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:47",
+        "title": "started",
+        "detail": "Scanning https://chatgpt.com/",
+        "source": "Scanner Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Session Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "skipped",
+        "detail": "NVD_API_KEY not configured",
+        "source": "CVE Matcher Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "Infrastructure Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "API Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Dependency Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Generated 3 findings",
+        "source": "Analyzer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Authentication Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Injection Analysis Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "Threat Intelligence Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "WebSocket Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "browser observation started",
+        "detail": "Starting browser observation for https://chatgpt.com/",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:52",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Access Control Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "browser observation completed",
+        "detail": "Browser observation completed with 18 network events, 1 APIs, and 2 findings",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "started",
+        "detail": "Enriching 7 findings with AI",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "completed",
+        "detail": "Enriched 0 critical/high findings",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "started",
+        "detail": "Creating Hindi explanations for 7 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "completed",
+        "detail": "Hindi explanation added to 0 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "finding skipped",
+        "detail": "1 validation error for FindingCreate\ntimestamp\n  Input should be a valid datetime or date, unexpected extra characters at the end of the input [type=datetime_from_date_parsing, input_value='2026-07-28T14:24:58.0_*4272+00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "finding skipped",
+        "detail": "1 validation error for FindingCreate\ntimestamp\n  Input should be a valid datetime or date, unexpected extra characters at the end of the input [type=datetime_from_date_parsing, input_value='2026-07-28T14:24:58.0_*4272+00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:24:58",
+        "title": "started",
+        "detail": "Generating remediation checklist for 5 findings",
+        "source": "Fixer Agent"
+      },
+      {
+        "timestamp": "2026-07-28T14:24:52.478101Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Content Security Policy",
+        "source": "Finding",
+        "finding_id": 255
+      },
+      {
+        "timestamp": "2026-07-28T14:24:52.648836Z",
+        "title": "LOW finding detected",
+        "detail": "Non-production or administrative hostnames discovered",
+        "source": "Finding",
+        "finding_id": 256
+      },
+      {
+        "timestamp": "2026-07-28T14:24:58.161840Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Content Security Policy",
+        "source": "Finding",
+        "finding_id": 252
+      },
+      {
+        "timestamp": "2026-07-28T14:24:58.172838Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Could not establish TLS connection",
+        "source": "Finding",
+        "finding_id": 253
+      },
+      {
+        "timestamp": "2026-07-28T14:24:58.183838Z",
+        "title": "LOW finding detected",
+        "detail": "Server version disclosure",
+        "source": "Finding",
+        "finding_id": 254
+      }
+    ],
+    "executive_report": {
+      "Overall Posture": "Moderate Risk",
+      "Major Risks": [
+        "Missing Content Security Policy",
+        "Missing Content Security Policy",
+        "Could not establish TLS connection"
+      ],
+      "Improvements": [],
+      "New Exposure": [
+        "/cdn-cgi/challenge-platform/h/g/fo/1540_**1727:1785_**7320:KwflyLJhKyMSdjDuY9ORJ3_7mkNlEyMEVTxh4hdQiDA/a2248cd9ae48596f/j5mhI9AlIpk65j37KbfFivQpjLP2RBahhJREgoQyHrQ-1785_**********.1.1-qzXShHxYirH0CksE8pdh9H9RYMLQyeQfZ4X1RSOXPdGGDISypN2NHfBSfCaXrFLV",
+        "https://chatgpt.com/",
+        "!SlmXG!OOYuX!Ijnb2!jLdlw!XGknp!colno!HIfOO!hUXQ2!HORgO!&render=explicit!XAKSj!qrQpP!iAKvN!Llmva!Array.prototype.!pRlJ9!OWoAQ!bqzwR8!AhkdY!gbgFB1!CISdM!5|1|2|3|4|0!SBbRE8!AtHUe!Set!length!iFfnq!EcJx3!aOwGp1!hJHth!PetZi!stringify!CbKVg!kOQr6!SPjV4!vCcov!bASXY!KGPfh4!17|1|11|15|9|5|10|4|3|8|14|16|2|7|12|0|6|13!GLuac!responseText!ZDWir!loading!LReMY!xtpzA9!WiHAS!HzMzo!VopTu!zkem2!jtIXT!oAYXV!shift!ucnFi!fbMuo!dDdtF!UiVss!OkAsx!fqcch!Rfnpd!1|4|2|0|3!zwEVk!yUrmt!2|14|15|1|16|17|10|7|18|0|12|6|19|9|13|8|11|4|3|5!bwBvD!NQuLk1!KmIBV!bruvJ!eyhnw!KNLif!twgHB!vxhfy!UBhlB7!AENYO!yUsHr!VkLaT!JekCF!xtOzR!KusC4!PpzeA!EruRN!vpcWc!.main-wrapper!qdjhD!juxgV!visibility!IMQBL!BVSIZ!kJYDs!IYvZR!3096vrBflg!href!",
+        "challenges.cloudflare.com",
+        "www.cloudflare.com?utm_source=challenge&utm_campaign=`+lG+Os(nE.O2))));continue}break}}function",
+        "www.w3.org"
+      ],
+      "Recommended Priorities": [
+        "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "Add: Content-Security-Policy: default-src 'self'",
+        "Ensure HTTPS is properly configured"
+      ],
+      "Verification Status": "2 priority items need immediate attention.",
+      "What's Already Secure": [
+        "Secure cookies detected",
+        "HSTS enabled",
+        "No high-risk CVEs detected"
+      ]
+    },
+    "developer_report": [
+      {
+        "finding_id": 252,
+        "affected_endpoint": "https://chatgpt.com/",
+        "evidence": "No CSP header found",
+        "observed_behavior": "No CSP header found",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Content Security Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Content-Security-Policy: default-src 'self'",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 2
+      },
+      {
+        "finding_id": 253,
+        "affected_endpoint": "https://chatgpt.com/",
+        "evidence": "Failed to connect to chatgpt.com:443",
+        "observed_behavior": "Failed to connect to chatgpt.com:443",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Could not establish TLS connection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Ensure HTTPS is properly configured",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 3
+      },
+      {
+        "finding_id": 254,
+        "affected_endpoint": "https://chatgpt.com/",
+        "evidence": "Header 'server: cloudflare'",
+        "observed_behavior": "Header 'server: cloudflare'",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Server version disclosure"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove or obfuscate the 'server' header in server config",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 4
+      },
+      {
+        "finding_id": 255,
+        "affected_endpoint": "https://chatgpt.com/",
+        "evidence": "No Content-Security-Policy header was captured.",
+        "observed_behavior": "No Content-Security-Policy header was captured.",
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Missing Content Security Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+        "recommended_priority": 1
+      },
+      {
+        "finding_id": 256,
+        "affected_endpoint": "https://chatgpt.com/",
+        "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): internal.chatgpt.com.",
+        "observed_behavior": "Supplied reconnaissance includes sensitive-looking hostname(s): internal.chatgpt.com.",
+        "severity": "LOW",
+        "confidence": "POTENTIAL",
+        "related_findings": [
+          "Related Security Chain: Non-production or administrative hostnames discovered"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+        "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+        "recommended_priority": 5
+      }
+    ],
+    "suggested_prompts": [
+      "What should I fix first?",
+      "Why is my security score this value?",
+      "Which findings affect authentication?",
+      "Which APIs are highest priority?",
+      "What changed since my previous scan?",
+      "Which findings are confirmed?",
+      "Explain this issue in Hindi.",
+      "Give me a remediation checklist.",
+      "Which issues were resolved?",
+      "Which attack surfaces are new?"
+    ],
+    "citations": [
+      {
+        "type": "finding",
+        "id": 255,
+        "label": "Finding #255",
+        "title": "Missing Content Security Policy",
+        "endpoint": "https://chatgpt.com/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 252,
+        "label": "Finding #252",
+        "title": "Missing Content Security Policy",
+        "endpoint": "https://chatgpt.com/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 253,
+        "label": "Finding #253",
+        "title": "Could not establish TLS connection",
+        "endpoint": "https://chatgpt.com/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 254,
+        "label": "Finding #254",
+        "title": "Server version disclosure",
+        "endpoint": "https://chatgpt.com/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 256,
+        "label": "Finding #256",
+        "title": "Non-production or administrative hostnames discovered",
+        "endpoint": "https://chatgpt.com/",
+        "source": "Finding"
+      }
+    ],
+    "grounding": {
+      "source": "scanner-generated evidence only",
+      "evidence_hash": "3f4fc292e4dce6305b719ef456cda7aa097e0b8f7ddd208dcc08b27cb5ed534d"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 import uuid
 from typing import Any
 
@@ -99,6 +100,7 @@ class ScanJobManager:
             )
             raise
         except Exception as exc:
+            traceback.print_exc()
             await update_scan_status(scan_id, "error", str(exc)[:1000])
             await add_audit_log(scan_id, "Job Manager", "scan_failed", str(exc)[:2000])
             scan = await get_scan(scan_id)

@@ -1,0 +1,2754 @@
+{
+  "scan_id": 32,
+  "target_url": "http://httpbin.org/",
+  "mode": "defend",
+  "intensity": "medium",
+  "scanner": {
+    "subdomains": [
+      "beta.httpbin.org",
+      "httpbin.org",
+      "www.httpbin.org"
+    ],
+    "open_ports": [
+      53,
+      80,
+      443
+    ],
+    "tech_stack": {
+      "technologies": [
+        "awselb/2.0"
+      ],
+      "headers": {
+        "server": "awselb/2.0",
+        "date": "Tue, 28 Jul 2026 14:07:41 GMT",
+        "content-type": "text/html",
+        "content-length": "162",
+        "connection": "keep-alive"
+      },
+      "server": "awselb/2.0",
+      "x_powered_by": "",
+      "framework": "unknown"
+    },
+    "dns_records": {
+      "A": [
+        "44.217.217.109",
+        "54.205.132.94",
+        "3.93.135.160",
+        "100.55.252.62",
+        "67.202.0.102",
+        "3.222.96.182"
+      ],
+      "AAAA": [],
+      "MX": [],
+      "TXT": [
+        "\"v=spf1 include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all\""
+      ],
+      "CNAME": [],
+      "NS": [
+        "ns-1053.awsdns-03.org.",
+        "ns-1555.awsdns-02.co.uk.",
+        "ns-173.awsdns-21.com.",
+        "ns-884.awsdns-46.net."
+      ],
+      "SOA": [
+        "ns-1053.awsdns-03.org. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+      ]
+    },
+    "dangling_cnames": [],
+    "waf_detected": "none"
+  },
+  "shadow_recon": {
+    "whois": {
+      "registrar": "Amazon Registrar, Inc.",
+      "creation_date": "2011-06-12 21:57:10",
+      "expiration_date": "2027-06-12 21:57:10",
+      "name_servers": "['ns-1053.awsdns-03.org', 'ns-1555.awsdns-02.co.uk', 'ns-173.awsdns-21.com', 'ns-884.awsdns-46.net']",
+      "registrant_org": "c/o whoisproxy.com",
+      "raw": {
+        "status": "clientTransferProhibited https://icann.org/epp#clientTransferProhibited",
+        "emails": "['trustandsafety@support.aws.com', '9c56579da75e83e39933a942d2fc192479db7f236462798b9d7aeffb9b1d01af@httpbin.org.whoisproxy.org', '9c56579da75e83e39933a942d2fc19246b68d54b423555e84c254aa134780722@httpbin.org.whoisproxy.org', '9c56579da75e83e39933a942d2fc1924295a3f3fc6df717e7684254ab68a6225@httpbin.org.whoisproxy.org', '9c56579da75e83e39933a942d2fc19241b499c188dc074b909e35a93c26f958b@httpbin.org.whoisproxy.org']",
+        "dnssec": "unsigned",
+        "country": "US"
+      }
+    },
+    "dork_urls": [
+      "site:httpbin.org ext:env OR ext:sql OR ext:log OR ext:bak",
+      "site:httpbin.org inurl:admin OR inurl:login OR inurl:dashboard",
+      "site:httpbin.org \"index of /\" OR \"parent directory\"",
+      "\"httpbin.org\" filetype:pdf OR filetype:xlsx OR filetype:docx",
+      "site:httpbin.org intitle:\"phpinfo\" OR intitle:\"phpmyadmin\"",
+      "site:httpbin.org inurl:api OR inurl:rest OR inurl:graphql"
+    ],
+    "disallowed_paths": [],
+    "sitemap_urls": [],
+    "exposed_files": [],
+    "leaked_emails": [],
+    "js_sourcemaps": [],
+    "robots_txt": "<html>\r\n<head><title>503 Service Temporarily Unavailable</title></head>\r\n<body>\r\n<center><h1>503 Service Temporarily Unavailable</h1></center>\r\n</body>\r\n</html>\r\n",
+    "sitemap_xml": "<html>\r\n<head><title>503 Service Temporarily Unavailable</title></head>\r\n<body>\r\n<center><h1>503 Service Temporarily Unavailable</h1></center>\r\n</body>\r\n</html>\r\n",
+    "internal_ips": [],
+    "html_comments": []
+  },
+  "findings": [
+    {
+      "id": 226,
+      "scan_id": 32,
+      "title": "Missing Content Security Policy",
+      "category": "Security Headers",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No CSP header found",
+      "impact": "XSS and data injection attacks are easier without CSP",
+      "recommendation": "Add: Content-Security-Policy: default-src 'self'",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.074498Z",
+      "description": "No CSP header found",
+      "how_exploited": "XSS and data injection attacks are easier without CSP",
+      "fix": "Add: Content-Security-Policy: default-src 'self'",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Content-Security-Policy: default-src 'self'",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 227,
+      "scan_id": 32,
+      "title": "Missing HTTP Strict Transport Security",
+      "category": "Security Headers",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No HSTS header",
+      "impact": "SSL stripping and MITM attacks possible",
+      "recommendation": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.085481Z",
+      "description": "No HSTS header",
+      "how_exploited": "SSL stripping and MITM attacks possible",
+      "fix": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 228,
+      "scan_id": 32,
+      "title": "Missing Clickjacking Protection",
+      "category": "Security Headers",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No X-Frame-Options or CSP frame-ancestors",
+      "impact": "Page can be embedded in malicious iframes",
+      "recommendation": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.099511Z",
+      "description": "No X-Frame-Options or CSP frame-ancestors",
+      "how_exploited": "Page can be embedded in malicious iframes",
+      "fix": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 229,
+      "scan_id": 32,
+      "title": "Missing X-Content-Type-Options",
+      "category": "Security Headers",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No X-Content-Type-Options: nosniff",
+      "impact": "Browser may MIME-sniff responses, enabling drive-download attacks",
+      "recommendation": "Add: X-Content-Type-Options: nosniff",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.111506Z",
+      "description": "No X-Content-Type-Options: nosniff",
+      "how_exploited": "Browser may MIME-sniff responses, enabling drive-download attacks",
+      "fix": "Add: X-Content-Type-Options: nosniff",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: X-Content-Type-Options: nosniff",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 230,
+      "scan_id": 32,
+      "title": "Missing Referrer-Policy",
+      "category": "Security Headers",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No Referrer-Policy header",
+      "impact": "Referrer URL may leak in cross-origin requests",
+      "recommendation": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.124037Z",
+      "description": "No Referrer-Policy header",
+      "how_exploited": "Referrer URL may leak in cross-origin requests",
+      "fix": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 231,
+      "scan_id": 32,
+      "title": "Missing Permissions-Policy",
+      "category": "Security Headers",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No Permissions-Policy header",
+      "impact": "Browser features (camera, mic, etc.) unrestricted",
+      "recommendation": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.134040Z",
+      "description": "No Permissions-Policy header",
+      "how_exploited": "Browser features (camera, mic, etc.) unrestricted",
+      "fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 232,
+      "scan_id": 32,
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Failed to connect to httpbin.org:443",
+      "impact": "TLS may not be available",
+      "recommendation": "Ensure HTTPS is properly configured",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.146038Z",
+      "description": "Failed to connect to httpbin.org:443",
+      "how_exploited": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Ensure HTTPS is properly configured",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 233,
+      "scan_id": 32,
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Header 'server: awselb/2.0'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "recommendation": "Remove or obfuscate the 'server' header in server config",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-28T14:08:25.157039Z",
+      "description": "Header 'server: awselb/2.0'",
+      "how_exploited": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove or obfuscate the 'server' header in server config",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 234,
+      "scan_id": 32,
+      "title": "Missing Content Security Policy",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No Content-Security-Policy header was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-28T14:07:43.772312Z",
+      "description": "No Content-Security-Policy header was captured.",
+      "how_exploited": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "fix": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 235,
+      "scan_id": 32,
+      "title": "Missing frame embedding protection",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Neither X-Frame-Options nor CSP frame-ancestors was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-28T14:07:43.772312Z",
+      "description": "Neither X-Frame-Options nor CSP frame-ancestors was captured.",
+      "how_exploited": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "fix": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 236,
+      "scan_id": 32,
+      "title": "Missing MIME sniffing protection",
+      "category": "Infrastructure Security",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "X-Content-Type-Options: nosniff was not captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Send X-Content-Type-Options: nosniff on application responses.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-28T14:07:43.772312Z",
+      "description": "X-Content-Type-Options: nosniff was not captured.",
+      "how_exploited": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "fix": "Send X-Content-Type-Options: nosniff on application responses.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Send X-Content-Type-Options: nosniff on application responses.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 237,
+      "scan_id": 32,
+      "title": "Detailed technology versions disclosed in headers",
+      "category": "Infrastructure Security",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Captured version-bearing headers: server: awselb/2.0.",
+      "impact": "Precise versions help an attacker prioritize version-specific exploits.",
+      "recommendation": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+      "verification": "Capture a new response and confirm unnecessary version details are absent.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-28T14:07:43.772312Z",
+      "description": "Captured version-bearing headers: server: awselb/2.0.",
+      "how_exploited": "Precise versions help an attacker prioritize version-specific exploits.",
+      "fix": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 238,
+      "scan_id": 32,
+      "title": "Target uses cleartext HTTP",
+      "category": "Infrastructure Security",
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "The supplied target URL explicitly uses the http scheme.",
+      "impact": "Traffic can be observed and modified in transit, undermining confidentiality and integrity.",
+      "recommendation": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+      "verification": "Confirm the HTTP endpoint redirects to HTTPS and no sensitive content is served before redirecting.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-28T14:07:43.772312Z",
+      "description": "The supplied target URL explicitly uses the http scheme.",
+      "how_exploited": "Traffic can be observed and modified in transit, undermining confidentiality and integrity.",
+      "fix": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 239,
+      "scan_id": 32,
+      "title": "Non-production or administrative hostnames discovered",
+      "category": "Threat Intelligence",
+      "severity": "LOW",
+      "confidence": "POTENTIAL",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): beta.httpbin.org.",
+      "impact": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "recommendation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+      "agent": "Threat Intelligence Agent",
+      "timestamp": "2026-07-28T14:07:44.544227Z",
+      "description": "Supplied reconnaissance includes sensitive-looking hostname(s): beta.httpbin.org.",
+      "how_exploited": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "fix": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "hindi_findings": [
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Content Security Policy",
+      "category": "Security Headers",
+      "severity": "medium",
+      "evidence": "No CSP header found",
+      "impact": "XSS and data injection attacks are easier without CSP",
+      "fix": "Add: Content-Security-Policy: default-src 'self'",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing HTTP Strict Transport Security",
+      "category": "Security Headers",
+      "severity": "medium",
+      "evidence": "No HSTS header",
+      "impact": "SSL stripping and MITM attacks possible",
+      "fix": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Clickjacking Protection",
+      "category": "Security Headers",
+      "severity": "medium",
+      "evidence": "No X-Frame-Options or CSP frame-ancestors",
+      "impact": "Page can be embedded in malicious iframes",
+      "fix": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing X-Content-Type-Options",
+      "category": "Security Headers",
+      "severity": "low",
+      "evidence": "No X-Content-Type-Options: nosniff",
+      "impact": "Browser may MIME-sniff responses, enabling drive-download attacks",
+      "fix": "Add: X-Content-Type-Options: nosniff",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Referrer-Policy",
+      "category": "Security Headers",
+      "severity": "low",
+      "evidence": "No Referrer-Policy header",
+      "impact": "Referrer URL may leak in cross-origin requests",
+      "fix": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Permissions-Policy",
+      "category": "Security Headers",
+      "severity": "low",
+      "evidence": "No Permissions-Policy header",
+      "impact": "Browser features (camera, mic, etc.) unrestricted",
+      "fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "medium",
+      "evidence": "Failed to connect to httpbin.org:443",
+      "impact": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "endpoint": "http://httpbin.org/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "low",
+      "evidence": "Header 'server: awselb/2.0'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "endpoint": "",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Browser Security Agent",
+      "title": "CSP missing or weak with browser-observed script surfaces",
+      "category": "CSP",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 0, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 1, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+      "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+      "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+      "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+      "timestamp": "2026-07-28T14:07:49.6_*3727+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": "csp_analysis",
+      "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Missing Content Security Policy",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "No Content-Security-Policy header was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "timestamp": "2026-07-28T14:07:43.772312+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Missing frame embedding protection",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Neither X-Frame-Options nor CSP frame-ancestors was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "timestamp": "2026-07-28T14:07:43.772312+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Missing MIME sniffing protection",
+      "category": "Infrastructure Security",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "X-Content-Type-Options: nosniff was not captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Send X-Content-Type-Options: nosniff on application responses.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "timestamp": "2026-07-28T14:07:43.772312+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Detailed technology versions disclosed in headers",
+      "category": "Infrastructure Security",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Captured version-bearing headers: server: awselb/2.0.",
+      "impact": "Precise versions help an attacker prioritize version-specific exploits.",
+      "recommendation": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+      "verification": "Capture a new response and confirm unnecessary version details are absent.",
+      "timestamp": "2026-07-28T14:07:43.772312+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Target uses cleartext HTTP",
+      "category": "Infrastructure Security",
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "The supplied target URL explicitly uses the http scheme.",
+      "impact": "Traffic can be observed and modified in transit, undermining confidentiality and integrity.",
+      "recommendation": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+      "verification": "Confirm the HTTP endpoint redirects to HTTPS and no sensitive content is served before redirecting.",
+      "timestamp": "2026-07-28T14:07:43.772312+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE",
+      "hindi_report": "**1. Kya hai yeh? (Simple Hindi mein)**\nIska matlab hai ki website **HTTP** use kar rahi hai, **HTTPS** nahi.\n*   **HTTP (Cleartext):** Data (passwords, tokens, cookies) **plain text** mein travel karta hai. Koi bhi beech mein (router, Wi-Fi owner, ISP) padh sakta hai.\n*   **HTTPS (Encrypted):** Data **encrypt** hoke travel karta hai. Beech wala sirf garbage characters dekhta hai.\n\nYahan `http://httpbin.org/` pe **TLS/SSL certificate nahi hai**, isliye connection **secure nahi hai**.\n\n---\n\n**2. Attacker kaise exploit karta hai? (MITM Attack)**\nAttacker **Man-in-the-Middle (MITM)** position banata hai:\n\n1.  **Network Sniffing:** Attacker same Wi-Fi pe hai (cafe, airport) ya router compromise kiya hua hai. Woh `tcpdump` ya `Wireshark` se traffic capture karta hai. Usse **Session Cookies**, **Authorization Headers (Bearer tokens)**, **Form Data (username/password)** mil jate hain.\n2.  **Session Hijacking:** Attacker cookie churake **Session Hijacking** karta hai — bina password ke victim ke account mein ghus jata hai.\n3.  **Data Tampering:** Request/Response modify karta hai. Example: Amount `100` ko `1000` kar diya, ya response mein **XSS** payload inject kar diya.\n4.  **Credential Theft:** Agar **Basic Auth** ya login form HTTP pe hai, toh password direct mil jata hai.\n5.  **Downgrade/Strip:** Agar site HTTPS bhi support karti hai, toh attacker **SSL Strip** karke user ko forcefully HTTP pe laata hai.\n\n> **Note:** `httpbin.org` ek **testing tool** hai, yahan real user data nahi hota. Lekin production mein yeh **Critical** vulnerability hoti hai.\n\n---\n\n**3. Is platform (http://httpbin.org/) ke liye Exact Fix kya hai?**\n\n**Fix: HTTP band karo, Sirf HTTPS allow karo.**\n\n**Exact Steps for httpbin.org maintainers:**\n\n1.  **Valid TLS Certificate Install Karo:**\n    *   **Let's Encrypt** (Free, 90 days) ya koi bhi CA se certificate lo.\n    *   `certbot --nginx -d httpbin.org -d www.httpbin.org` run karo.\n\n2.  **Web Server Config (Nginx/Apache) Mein Redirect Dalein:**\n    ```nginx\n    # HTTP (Port 80) -> HTTPS (Port 443) Permanent Redirect\n    server {\n        listen 80;\n        server_name httpbin.org www.httpbin.org;\n        return 301 https://$host$request_uri;\n    }\n\n    # HTTPS Server Block\n    server {\n        listen 443 ssl http2;\n        server_name httpbin.org www.httpbin.org;\n\n        ssl_certificate /etc/letsencrypt/live/httpbin.org/fullchain.pem;\n        ssl_certificate_key /etc/letsencrypt/live/httpbin.org/privkey.pem;\n\n        # Modern SSL Config (Mozilla SSL Config Generator se lo)\n        ssl_protocols TLSv1.2 TLSv1.3;\n        ssl_ciphers HIGH:!aNULL:!MD5;\n\n        # ... baaki location / proxy_pass config ...\n    }\n    ```\n\n3.  **HSTS Header Add Karo (Browser ko force HTTPS karne ke liye):**\n    ```nginx\n    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains; preload\" always;\n    ```\n\n4.  **Secure Cookies Set Karo (Application Code Mein):**\n    *   Har `Set-Cookie` header mein `Secure` flag hona chahiye.\n    *   Example: `session=abc123; Secure; HttpOnly; SameSite=Strict`\n\n5.  **HSTS Preload List Mein Submit Karo:**\n    *   `https://hstspreload.org/` pe domain submit karo. Isse browser pehle se jaanta hai ki ye site **sir"
+    },
+    {
+      "agent": "Threat Intelligence Agent",
+      "title": "Non-production or administrative hostnames discovered",
+      "category": "Threat Intelligence",
+      "severity": "LOW",
+      "confidence": "POTENTIAL",
+      "target": "http://httpbin.org/",
+      "endpoint": "http://httpbin.org/",
+      "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): beta.httpbin.org.",
+      "impact": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "recommendation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+      "timestamp": "2026-07-28T14:07:44.544227+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "markdown_report": "# PhantomScan Remediation Checklist\n\n## HIGH\n\n- [ ] **[HIGH]** Target uses cleartext HTTP\n  - Affected: http://httpbin.org/\n  - Fix: `Serve the application exclusively over HTTPS and redirect cleartext requests.`\n  - Owner: backend\n  - ETA: 4h\n\n## MEDIUM\n\n- [ ] **[MEDIUM]** Missing Content Security Policy\n  - Affected: http://httpbin.org/\n  - Fix: `Add: Content-Security-Policy: default-src 'self'`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Missing HTTP Strict Transport Security\n  - Affected: http://httpbin.org/\n  - Fix: `Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Missing Clickjacking Protection\n  - Affected: http://httpbin.org/\n  - Fix: `Add: X-Frame-Options: DENY or frame-ancestors 'none'`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Could not establish TLS connection\n  - Affected: http://httpbin.org/\n  - Fix: `Ensure HTTPS is properly configured`\n  - Owner: devops\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Missing Content Security Policy\n  - Affected: http://httpbin.org/\n  - Fix: `Deploy a restrictive, application-specific Content-Security-Policy.`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Missing frame embedding protection\n  - Affected: http://httpbin.org/\n  - Fix: `Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.`\n  - Owner: backend\n  - ETA: 1d\n\n## LOW\n\n- [ ] **[LOW]** Missing X-Content-Type-Options\n  - Affected: http://httpbin.org/\n  - Fix: `Add: X-Content-Type-Options: nosniff`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Missing Referrer-Policy\n  - Affected: http://httpbin.org/\n  - Fix: `Add: Referrer-Policy: strict-origin-when-cross-origin`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Missing Permissions-Policy\n  - Affected: http://httpbin.org/\n  - Fix: `Add: Permissions-Policy: geolocation=(), microphone=(), camera=()`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Server version disclosure\n  - Affected: http://httpbin.org/\n  - Fix: `Remove or obfuscate the 'server' header in server config`\n  - Owner: devops\n  - ETA: 1w\n\n- [ ] **[LOW]** Missing MIME sniffing protection\n  - Affected: http://httpbin.org/\n  - Fix: `Send X-Content-Type-Options: nosniff on application responses.`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Detailed technology versions disclosed in headers\n  - Affected: http://httpbin.org/\n  - Fix: `Remove unnecessary product/version headers without relying on obscurity as a primary control.`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Non-production or administrative hostnames discovered\n  - Affected: http://httpbin.org/\n  - Fix: `Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.`\n  - Owner: backend\n  - ETA: 1w\n\n\n# Browser Observation Report\nEngine: playwright_chromium\nPages visited: 1\nNetwork events: 1\nAPIs discovered: 0\nConsole events: 1\nWebSockets: 0\nSafety pause: none\n- [LOW/HIGH] CSP missing or weak with browser-observed script surfaces",
+  "active_security": null,
+  "browser_security": {
+    "status": "complete",
+    "target_url": "http://httpbin.org/",
+    "browser_engine": "playwright_chromium",
+    "session": "[REDACTED]",
+    "pages": [
+      {
+        "url": "http://httpbin.org/",
+        "title": "503 Service Temporarily Unavailable"
+      }
+    ],
+    "routes": [
+      {
+        "route": "http://httpbin.org/",
+        "source": "browser_navigation"
+      }
+    ],
+    "dom": [
+      {
+        "page": "http://httpbin.org/",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [],
+        "links": [],
+        "event_handlers": [],
+        "inline_script_count": 0,
+        "inline_scripts": [],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      }
+    ],
+    "network_events": [
+      {
+        "url": "http://httpbin.org/",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 503,
+        "content_type": "text/html",
+        "duration_ms": 3391.0,
+        "initiator": "browser",
+        "redirect_chain": [],
+        "request_headers_summary": {},
+        "response_headers_summary": {
+          "content-type": "text/html"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null
+      }
+    ],
+    "console_events": [
+      {
+        "page": "http://httpbin.org/",
+        "timestamp": 1785247668.7241397,
+        "type": "error",
+        "message": "Failed to load resource: the server responded with a status of 503 (Service Temporarily Unavailable)",
+        "source": "browser"
+      }
+    ],
+    "api_inventory": [],
+    "storage": {
+      "localStorage": {},
+      "sessionStorage": {},
+      "indexedDB": {
+        "metadata_observed": false
+      },
+      "sensitive_client_storage": []
+    },
+    "cookies": [],
+    "csp": [
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      }
+    ],
+    "csp_violations": [],
+    "javascript": [],
+    "source_maps": [],
+    "auth_flow": {
+      "steps": [],
+      "session_created": false,
+      "logout_observed": false,
+      "session_lifecycle": {
+        "creation": "not_observed",
+        "refresh": "not_observed",
+        "logout_invalidation": "not_observed"
+      }
+    },
+    "websockets": [],
+    "service_workers": [],
+    "cache": [],
+    "third_party": [],
+    "dataflow": {
+      "input_to_api": [],
+      "api_to_dom": [],
+      "sink_classifications": []
+    },
+    "screenshots": [
+      {
+        "page": "http://httpbin.org/",
+        "bytes": 9570,
+        "stored": false
+      }
+    ],
+    "safety": {
+      "target_origin": "http://httpbin.org",
+      "max_pages": 8,
+      "page_count": 1,
+      "safety_paused": false,
+      "pause_reason": null,
+      "repeated_server_errors": 1,
+      "latency_spikes": 0,
+      "events": [
+        {
+          "event": "response_observed",
+          "url": "http://httpbin.org/",
+          "status": 503,
+          "duration_ms": 3391.0
+        }
+      ]
+    },
+    "request_count": 0,
+    "findings": [
+      {
+        "title": "CSP missing or weak with browser-observed script surfaces",
+        "category": "CSP",
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "target": "http://httpbin.org/",
+        "endpoint": "http://httpbin.org/",
+        "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 0, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 1, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+        "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+        "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+        "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+        "agent": "Browser Security Agent",
+        "timestamp": "2026-07-28T14:07:49.6_*3727+00:00",
+        "cve_id": null,
+        "cvss_score": null,
+        "parameter": null,
+        "module": "csp_analysis",
+        "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+        "remediation_status": "OPEN",
+        "verification_status": "NOT_VERIFIED",
+        "risk_status": "ACTIVE"
+      }
+    ],
+    "correlation": {
+      "related_observations": {
+        "external_script_origins": [],
+        "inline_script_blocks": 0,
+        "user_controlled_inputs": 0,
+        "api_calls": 0,
+        "console_errors": 1,
+        "javascript_sinks": [],
+        "previous_related_findings": 0
+      },
+      "independent_signal_count": 1,
+      "confidence_hint": "LOW"
+    }
+  },
+  "ai_analyst_output": {
+    "generated_at": "2026-07-28T14:08:45.365277+00:00",
+    "ai_available": false,
+    "ai_status": "AI Analysis Unavailable - deterministic analysis shown",
+    "safety": {
+      "grounded_in_scan_evidence": true,
+      "can_start_active_test": false,
+      "active_tests": "recommend_only"
+    },
+    "security_summary": {
+      "overall_security_posture": "Moderate Risk",
+      "most_important_risks": [
+        "Target uses cleartext HTTP",
+        "Missing Content Security Policy"
+      ],
+      "what_changed": "13 new finding(s), 1 new route(s)",
+      "immediate_attention": "2 priority items need immediate attention.",
+      "can_wait": [
+        "Missing frame embedding protection",
+        "Missing Content Security Policy",
+        "Missing HTTP Strict Transport Security",
+        "Missing Clickjacking Protection",
+        "Could not establish TLS connection"
+      ],
+      "positive_security_controls": [
+        "No high-risk CVEs detected"
+      ],
+      "recommended_next_action": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+      "authentication_focus": "No high-confidence authentication findings in active risk set."
+    },
+    "ai_narrative": "",
+    "priorities": [
+      {
+        "priority": 1,
+        "finding_id": 238,
+        "title": "Target uses cleartext HTTP",
+        "score": 83.0,
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "recommended_action": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+        "factors": [
+          "severity=HIGH",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 238,
+          "label": "Finding #238",
+          "title": "Target uses cleartext HTTP",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 2,
+        "finding_id": 234,
+        "title": "Missing Content Security Policy",
+        "score": 53.0,
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "recommended_action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 234,
+          "label": "Finding #234",
+          "title": "Missing Content Security Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 3,
+        "finding_id": 235,
+        "title": "Missing frame embedding protection",
+        "score": 53.0,
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "recommended_action": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 235,
+          "label": "Finding #235",
+          "title": "Missing frame embedding protection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 4,
+        "finding_id": 226,
+        "title": "Missing Content Security Policy",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Content-Security-Policy: default-src 'self'",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 226,
+          "label": "Finding #226",
+          "title": "Missing Content Security Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 5,
+        "finding_id": 227,
+        "title": "Missing HTTP Strict Transport Security",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 227,
+          "label": "Finding #227",
+          "title": "Missing HTTP Strict Transport Security",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 6,
+        "finding_id": 228,
+        "title": "Missing Clickjacking Protection",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 228,
+          "label": "Finding #228",
+          "title": "Missing Clickjacking Protection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 7,
+        "finding_id": 232,
+        "title": "Could not establish TLS connection",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Ensure HTTPS is properly configured",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 232,
+          "label": "Finding #232",
+          "title": "Could not establish TLS connection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 8,
+        "finding_id": 236,
+        "title": "Missing MIME sniffing protection",
+        "score": 28.0,
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "recommended_action": "Send X-Content-Type-Options: nosniff on application responses.",
+        "factors": [
+          "severity=LOW",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 236,
+          "label": "Finding #236",
+          "title": "Missing MIME sniffing protection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 9,
+        "finding_id": 237,
+        "title": "Detailed technology versions disclosed in headers",
+        "score": 28.0,
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "recommended_action": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+        "factors": [
+          "severity=LOW",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 237,
+          "label": "Finding #237",
+          "title": "Detailed technology versions disclosed in headers",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 10,
+        "finding_id": 229,
+        "title": "Missing X-Content-Type-Options",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: X-Content-Type-Options: nosniff",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 229,
+          "label": "Finding #229",
+          "title": "Missing X-Content-Type-Options",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 11,
+        "finding_id": 230,
+        "title": "Missing Referrer-Policy",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 230,
+          "label": "Finding #230",
+          "title": "Missing Referrer-Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 12,
+        "finding_id": 231,
+        "title": "Missing Permissions-Policy",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 231,
+          "label": "Finding #231",
+          "title": "Missing Permissions-Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 13,
+        "finding_id": 233,
+        "title": "Server version disclosure",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Remove or obfuscate the 'server' header in server config",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 233,
+          "label": "Finding #233",
+          "title": "Server version disclosure",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 14,
+        "finding_id": 239,
+        "title": "Non-production or administrative hostnames discovered",
+        "score": 15.0,
+        "severity": "LOW",
+        "confidence": "POTENTIAL",
+        "recommended_action": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+        "factors": [
+          "severity=LOW",
+          "confidence=POTENTIAL",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 239,
+          "label": "Finding #239",
+          "title": "Non-production or administrative hostnames discovered",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        }
+      }
+    ],
+    "related_security_chains": [
+      {
+        "title": "Related Security Chain: Missing Content Security Policy",
+        "primary": {
+          "type": "finding",
+          "id": 226,
+          "label": "Finding #226",
+          "title": "Missing Content Security Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 231,
+            "label": "Finding #231",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing HTTP Strict Transport Security",
+        "primary": {
+          "type": "finding",
+          "id": 227,
+          "label": "Finding #227",
+          "title": "Missing HTTP Strict Transport Security",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 231,
+            "label": "Finding #231",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Clickjacking Protection",
+        "primary": {
+          "type": "finding",
+          "id": 228,
+          "label": "Finding #228",
+          "title": "Missing Clickjacking Protection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 231,
+            "label": "Finding #231",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing X-Content-Type-Options",
+        "primary": {
+          "type": "finding",
+          "id": 229,
+          "label": "Finding #229",
+          "title": "Missing X-Content-Type-Options",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 231,
+            "label": "Finding #231",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Referrer-Policy",
+        "primary": {
+          "type": "finding",
+          "id": 230,
+          "label": "Finding #230",
+          "title": "Missing Referrer-Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 231,
+            "label": "Finding #231",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Permissions-Policy",
+        "primary": {
+          "type": "finding",
+          "id": 231,
+          "label": "Finding #231",
+          "title": "Missing Permissions-Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Could not establish TLS connection",
+        "primary": {
+          "type": "finding",
+          "id": 232,
+          "label": "Finding #232",
+          "title": "Could not establish TLS connection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Server version disclosure",
+        "primary": {
+          "type": "finding",
+          "id": 233,
+          "label": "Finding #233",
+          "title": "Server version disclosure",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Content Security Policy",
+        "primary": {
+          "type": "finding",
+          "id": 234,
+          "label": "Finding #234",
+          "title": "Missing Content Security Policy",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing frame embedding protection",
+        "primary": {
+          "type": "finding",
+          "id": 235,
+          "label": "Finding #235",
+          "title": "Missing frame embedding protection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing MIME sniffing protection",
+        "primary": {
+          "type": "finding",
+          "id": 236,
+          "label": "Finding #236",
+          "title": "Missing MIME sniffing protection",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Detailed technology versions disclosed in headers",
+        "primary": {
+          "type": "finding",
+          "id": 237,
+          "label": "Finding #237",
+          "title": "Detailed technology versions disclosed in headers",
+          "endpoint": "http://httpbin.org/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      }
+    ],
+    "root_causes": [
+      {
+        "name": "Application Security",
+        "finding_count": 4,
+        "highest_severity": "HIGH",
+        "finding_ids": [
+          232,
+          234,
+          236,
+          238
+        ],
+        "summary": "4 related findings appear to share this root area."
+      },
+      {
+        "name": "Browser Security Policy",
+        "finding_count": 8,
+        "highest_severity": "MEDIUM",
+        "finding_ids": [
+          226,
+          227,
+          228,
+          229,
+          230,
+          231,
+          235,
+          237
+        ],
+        "summary": "8 related findings appear to share this root area."
+      },
+      {
+        "name": "Dependency and CVE",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          233
+        ],
+        "summary": "1 related finding appear to share this root area."
+      },
+      {
+        "name": "Access Control",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          239
+        ],
+        "summary": "1 related finding appear to share this root area."
+      }
+    ],
+    "remediation_plan": {
+      "IMMEDIATE": [
+        {
+          "priority": 1,
+          "finding_id": 238,
+          "title": "Target uses cleartext HTTP",
+          "action": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+          "citation": {
+            "type": "finding",
+            "id": 238,
+            "label": "Finding #238",
+            "title": "Target uses cleartext HTTP",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 2,
+          "finding_id": 234,
+          "title": "Missing Content Security Policy",
+          "action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+          "citation": {
+            "type": "finding",
+            "id": 234,
+            "label": "Finding #234",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        }
+      ],
+      "TODAY": [
+        {
+          "priority": 3,
+          "finding_id": 235,
+          "title": "Missing frame embedding protection",
+          "action": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+          "citation": {
+            "type": "finding",
+            "id": 235,
+            "label": "Finding #235",
+            "title": "Missing frame embedding protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        }
+      ],
+      "THIS_WEEK": [
+        {
+          "priority": 4,
+          "finding_id": 226,
+          "title": "Missing Content Security Policy",
+          "action": "Add: Content-Security-Policy: default-src 'self'",
+          "citation": {
+            "type": "finding",
+            "id": 226,
+            "label": "Finding #226",
+            "title": "Missing Content Security Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 5,
+          "finding_id": 227,
+          "title": "Missing HTTP Strict Transport Security",
+          "action": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+          "citation": {
+            "type": "finding",
+            "id": 227,
+            "label": "Finding #227",
+            "title": "Missing HTTP Strict Transport Security",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 6,
+          "finding_id": 228,
+          "title": "Missing Clickjacking Protection",
+          "action": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+          "citation": {
+            "type": "finding",
+            "id": 228,
+            "label": "Finding #228",
+            "title": "Missing Clickjacking Protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 7,
+          "finding_id": 232,
+          "title": "Could not establish TLS connection",
+          "action": "Ensure HTTPS is properly configured",
+          "citation": {
+            "type": "finding",
+            "id": 232,
+            "label": "Finding #232",
+            "title": "Could not establish TLS connection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 8,
+          "finding_id": 236,
+          "title": "Missing MIME sniffing protection",
+          "action": "Send X-Content-Type-Options: nosniff on application responses.",
+          "citation": {
+            "type": "finding",
+            "id": 236,
+            "label": "Finding #236",
+            "title": "Missing MIME sniffing protection",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 9,
+          "finding_id": 237,
+          "title": "Detailed technology versions disclosed in headers",
+          "action": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+          "citation": {
+            "type": "finding",
+            "id": 237,
+            "label": "Finding #237",
+            "title": "Detailed technology versions disclosed in headers",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 10,
+          "finding_id": 229,
+          "title": "Missing X-Content-Type-Options",
+          "action": "Add: X-Content-Type-Options: nosniff",
+          "citation": {
+            "type": "finding",
+            "id": 229,
+            "label": "Finding #229",
+            "title": "Missing X-Content-Type-Options",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 11,
+          "finding_id": 230,
+          "title": "Missing Referrer-Policy",
+          "action": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+          "citation": {
+            "type": "finding",
+            "id": 230,
+            "label": "Finding #230",
+            "title": "Missing Referrer-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 12,
+          "finding_id": 231,
+          "title": "Missing Permissions-Policy",
+          "action": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+          "citation": {
+            "type": "finding",
+            "id": 231,
+            "label": "Finding #231",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 13,
+          "finding_id": 233,
+          "title": "Server version disclosure",
+          "action": "Remove or obfuscate the 'server' header in server config",
+          "citation": {
+            "type": "finding",
+            "id": 233,
+            "label": "Finding #233",
+            "title": "Server version disclosure",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 14,
+          "finding_id": 239,
+          "title": "Non-production or administrative hostnames discovered",
+          "action": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+          "citation": {
+            "type": "finding",
+            "id": 239,
+            "label": "Finding #239",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "http://httpbin.org/",
+            "source": "Finding"
+          }
+        }
+      ]
+    },
+    "score_explanation": {
+      "score": 32,
+      "deductions": [
+        {
+          "label": "1 High severity finding",
+          "points": -14
+        },
+        {
+          "label": "6 Medium severity findings",
+          "points": -42
+        },
+        {
+          "label": "7 Low severity findings",
+          "points": -14
+        }
+      ],
+      "credits": [
+        {
+          "label": "1 positive security control",
+          "points": 2
+        }
+      ]
+    },
+    "positive_controls": [
+      {
+        "title": "No high-risk CVEs detected",
+        "evidence": "Persisted findings contain no high or critical CVE result."
+      }
+    ],
+    "scan_comparison": {
+      "previous_scan_id": null,
+      "new_findings": [
+        "Could not establish TLS connection",
+        "Detailed technology versions disclosed in headers",
+        "Missing Clickjacking Protection",
+        "Missing Content Security Policy",
+        "Missing HTTP Strict Transport Security",
+        "Missing MIME sniffing protection",
+        "Missing Permissions-Policy",
+        "Missing Referrer-Policy",
+        "Missing X-Content-Type-Options",
+        "Missing frame embedding protection",
+        "Non-production or administrative hostnames discovered",
+        "Server version disclosure",
+        "Target uses cleartext HTTP"
+      ],
+      "resolved_findings": [],
+      "worsened_findings": [],
+      "new_routes": [
+        "http://httpbin.org/"
+      ],
+      "new_apis": [],
+      "new_technologies": [],
+      "new_third_parties": [],
+      "new_authentication_surfaces": [],
+      "removed_exposure": []
+    },
+    "security_timeline": [
+      {
+        "timestamp": "2026-07-28 14:07:37",
+        "title": "scan created",
+        "detail": "Created defend scan for http://httpbin.org/ with medium intensity and modules: none",
+        "source": "System"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:37",
+        "title": "started",
+        "detail": "Orchestrating defend scan for http://httpbin.org/",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:37",
+        "title": "started",
+        "detail": "Scanning http://httpbin.org/",
+        "source": "Scanner Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:43",
+        "title": "completed",
+        "detail": "Completed pure analysis with 5 findings",
+        "source": "Infrastructure Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:43",
+        "title": "browser observation started",
+        "detail": "Starting browser observation for http://httpbin.org/",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Access Control Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "WebSocket Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "skipped",
+        "detail": "NVD_API_KEY not configured",
+        "source": "CVE Matcher Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "API Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Authentication Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Injection Analysis Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "Threat Intelligence Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Session Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:44",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Dependency Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:46",
+        "title": "completed",
+        "detail": "Generated 8 findings",
+        "source": "Analyzer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:49",
+        "title": "browser observation completed",
+        "detail": "Browser observation completed with 1 network events, 0 APIs, and 1 findings",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:49",
+        "title": "started",
+        "detail": "Enriching 15 findings with AI",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:07:50",
+        "title": "started",
+        "detail": "Creating Hindi explanations for 15 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:08:00",
+        "title": "completed",
+        "detail": "Enriched 1 critical/high findings",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:08:25",
+        "title": "completed",
+        "detail": "Hindi explanation added to 1 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:08:25",
+        "title": "finding skipped",
+        "detail": "1 validation error for FindingCreate\ntimestamp\n  Input should be a valid datetime or date, unexpected extra characters at the end of the input [type=datetime_from_date_parsing, input_value='2026-07-28T14:07:49.6_*3727+00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-28 14:08:25",
+        "title": "started",
+        "detail": "Generating remediation checklist for 14 findings",
+        "source": "Fixer Agent"
+      },
+      {
+        "timestamp": "2026-07-28T14:07:43.772312Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Content Security Policy",
+        "source": "Finding",
+        "finding_id": 234
+      },
+      {
+        "timestamp": "2026-07-28T14:07:43.772312Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing frame embedding protection",
+        "source": "Finding",
+        "finding_id": 235
+      },
+      {
+        "timestamp": "2026-07-28T14:07:43.772312Z",
+        "title": "LOW finding detected",
+        "detail": "Missing MIME sniffing protection",
+        "source": "Finding",
+        "finding_id": 236
+      },
+      {
+        "timestamp": "2026-07-28T14:07:43.772312Z",
+        "title": "LOW finding detected",
+        "detail": "Detailed technology versions disclosed in headers",
+        "source": "Finding",
+        "finding_id": 237
+      },
+      {
+        "timestamp": "2026-07-28T14:07:43.772312Z",
+        "title": "HIGH finding detected",
+        "detail": "Target uses cleartext HTTP",
+        "source": "Finding",
+        "finding_id": 238
+      },
+      {
+        "timestamp": "2026-07-28T14:07:44.544227Z",
+        "title": "LOW finding detected",
+        "detail": "Non-production or administrative hostnames discovered",
+        "source": "Finding",
+        "finding_id": 239
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.074498Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Content Security Policy",
+        "source": "Finding",
+        "finding_id": 226
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.085481Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing HTTP Strict Transport Security",
+        "source": "Finding",
+        "finding_id": 227
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.099511Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Clickjacking Protection",
+        "source": "Finding",
+        "finding_id": 228
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.111506Z",
+        "title": "LOW finding detected",
+        "detail": "Missing X-Content-Type-Options",
+        "source": "Finding",
+        "finding_id": 229
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.124037Z",
+        "title": "LOW finding detected",
+        "detail": "Missing Referrer-Policy",
+        "source": "Finding",
+        "finding_id": 230
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.134040Z",
+        "title": "LOW finding detected",
+        "detail": "Missing Permissions-Policy",
+        "source": "Finding",
+        "finding_id": 231
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.146038Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Could not establish TLS connection",
+        "source": "Finding",
+        "finding_id": 232
+      },
+      {
+        "timestamp": "2026-07-28T14:08:25.157039Z",
+        "title": "LOW finding detected",
+        "detail": "Server version disclosure",
+        "source": "Finding",
+        "finding_id": 233
+      }
+    ],
+    "executive_report": {
+      "Overall Posture": "Moderate Risk",
+      "Major Risks": [
+        "Target uses cleartext HTTP",
+        "Missing Content Security Policy",
+        "Missing frame embedding protection"
+      ],
+      "Improvements": [],
+      "New Exposure": [
+        "http://httpbin.org/"
+      ],
+      "Recommended Priorities": [
+        "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+        "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy."
+      ],
+      "Verification Status": "2 priority items need immediate attention.",
+      "What's Already Secure": [
+        "No high-risk CVEs detected"
+      ]
+    },
+    "developer_report": [
+      {
+        "finding_id": 226,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No CSP header found",
+        "observed_behavior": "No CSP header found",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Content Security Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Content-Security-Policy: default-src 'self'",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 4
+      },
+      {
+        "finding_id": 227,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No HSTS header",
+        "observed_behavior": "No HSTS header",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing HTTP Strict Transport Security"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 5
+      },
+      {
+        "finding_id": 228,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No X-Frame-Options or CSP frame-ancestors",
+        "observed_behavior": "No X-Frame-Options or CSP frame-ancestors",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Clickjacking Protection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: X-Frame-Options: DENY or frame-ancestors 'none'",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 6
+      },
+      {
+        "finding_id": 229,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No X-Content-Type-Options: nosniff",
+        "observed_behavior": "No X-Content-Type-Options: nosniff",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing X-Content-Type-Options"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: X-Content-Type-Options: nosniff",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 10
+      },
+      {
+        "finding_id": 230,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No Referrer-Policy header",
+        "observed_behavior": "No Referrer-Policy header",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Referrer-Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Referrer-Policy: strict-origin-when-cross-origin",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 11
+      },
+      {
+        "finding_id": 231,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No Permissions-Policy header",
+        "observed_behavior": "No Permissions-Policy header",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Permissions-Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 12
+      },
+      {
+        "finding_id": 232,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "Failed to connect to httpbin.org:443",
+        "observed_behavior": "Failed to connect to httpbin.org:443",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Could not establish TLS connection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Ensure HTTPS is properly configured",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 7
+      },
+      {
+        "finding_id": 233,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "Header 'server: awselb/2.0'",
+        "observed_behavior": "Header 'server: awselb/2.0'",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Server version disclosure"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove or obfuscate the 'server' header in server config",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 13
+      },
+      {
+        "finding_id": 234,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "No Content-Security-Policy header was captured.",
+        "observed_behavior": "No Content-Security-Policy header was captured.",
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Missing Content Security Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+        "recommended_priority": 2
+      },
+      {
+        "finding_id": 235,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "Neither X-Frame-Options nor CSP frame-ancestors was captured.",
+        "observed_behavior": "Neither X-Frame-Options nor CSP frame-ancestors was captured.",
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Missing frame embedding protection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Set CSP frame-ancestors or X-Frame-Options to the intended embedding policy.",
+        "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+        "recommended_priority": 3
+      },
+      {
+        "finding_id": 236,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "X-Content-Type-Options: nosniff was not captured.",
+        "observed_behavior": "X-Content-Type-Options: nosniff was not captured.",
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Missing MIME sniffing protection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Send X-Content-Type-Options: nosniff on application responses.",
+        "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+        "recommended_priority": 8
+      },
+      {
+        "finding_id": 237,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "Captured version-bearing headers: server: awselb/2.0.",
+        "observed_behavior": "Captured version-bearing headers: server: awselb/2.0.",
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Detailed technology versions disclosed in headers"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove unnecessary product/version headers without relying on obscurity as a primary control.",
+        "verification": "Capture a new response and confirm unnecessary version details are absent.",
+        "recommended_priority": 9
+      },
+      {
+        "finding_id": 238,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "The supplied target URL explicitly uses the http scheme.",
+        "observed_behavior": "The supplied target URL explicitly uses the http scheme.",
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "related_findings": [],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Serve the application exclusively over HTTPS and redirect cleartext requests.",
+        "verification": "Confirm the HTTP endpoint redirects to HTTPS and no sensitive content is served before redirecting.",
+        "recommended_priority": 1
+      },
+      {
+        "finding_id": 239,
+        "affected_endpoint": "http://httpbin.org/",
+        "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): beta.httpbin.org.",
+        "observed_behavior": "Supplied reconnaissance includes sensitive-looking hostname(s): beta.httpbin.org.",
+        "severity": "LOW",
+        "confidence": "POTENTIAL",
+        "related_findings": [],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+        "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+        "recommended_priority": 14
+      }
+    ],
+    "suggested_prompts": [
+      "What should I fix first?",
+      "Why is my security score this value?",
+      "Which findings affect authentication?",
+      "Which APIs are highest priority?",
+      "What changed since my previous scan?",
+      "Which findings are confirmed?",
+      "Explain this issue in Hindi.",
+      "Give me a remediation checklist.",
+      "Which issues were resolved?",
+      "Which attack surfaces are new?"
+    ],
+    "citations": [
+      {
+        "type": "finding",
+        "id": 238,
+        "label": "Finding #238",
+        "title": "Target uses cleartext HTTP",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 234,
+        "label": "Finding #234",
+        "title": "Missing Content Security Policy",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 235,
+        "label": "Finding #235",
+        "title": "Missing frame embedding protection",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 226,
+        "label": "Finding #226",
+        "title": "Missing Content Security Policy",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 227,
+        "label": "Finding #227",
+        "title": "Missing HTTP Strict Transport Security",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 228,
+        "label": "Finding #228",
+        "title": "Missing Clickjacking Protection",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 232,
+        "label": "Finding #232",
+        "title": "Could not establish TLS connection",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 236,
+        "label": "Finding #236",
+        "title": "Missing MIME sniffing protection",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 237,
+        "label": "Finding #237",
+        "title": "Detailed technology versions disclosed in headers",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 229,
+        "label": "Finding #229",
+        "title": "Missing X-Content-Type-Options",
+        "endpoint": "http://httpbin.org/",
+        "source": "Finding"
+      }
+    ],
+    "grounding": {
+      "source": "scanner-generated evidence only",
+      "evidence_hash": "1c700e720e869b5e926cd9c55268c570c2d9915996e03f0d59dd679fe9ed5647"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import traceback
 from collections.abc import Awaitable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -342,6 +343,7 @@ class OrchestratorAgent(Agent):
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            traceback.print_exc()
             self.status = "error"
             await update_scan_status(scan_id, "error", str(exc)[:1000])
             await self.log_action("error", str(exc)[:2000])
@@ -400,6 +402,7 @@ class OrchestratorAgent(Agent):
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            traceback.print_exc()
             await add_audit_log(
                 scan_id,
                 "AI Security Analyst Agent",
@@ -414,6 +417,7 @@ class OrchestratorAgent(Agent):
         try:
             return await asyncio.gather(*tasks)
         except BaseException:
+            traceback.print_exc()
             for task in tasks:
                 if not task.done():
                     task.cancel()
@@ -473,6 +477,7 @@ class OrchestratorAgent(Agent):
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            traceback.print_exc()
             await add_audit_log(scan_id, agent_name, "error", str(exc)[:2000])
             await self.publish(
                 scan_id,
@@ -705,7 +710,7 @@ class OrchestratorAgent(Agent):
         safe_target = target_url.replace("://", "_").replace("/", "_").replace(".", "_")[:60]
 
         json_path = reports_dir / f"{safe_target}_{timestamp}.json"
-        with open(json_path, "w") as f:
+        with open(json_path, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, default=str, ensure_ascii=False)
 
         md_path = reports_dir / f"{safe_target}_{timestamp}.md"
@@ -737,11 +742,11 @@ class OrchestratorAgent(Agent):
             lines.append("## Remediation Checklist")
             lines.append(markdown_report if markdown_report.startswith("#") else f"```\n{markdown_report}\n```")
             lines.append("")
-        with open(md_path, "w") as f:
+        with open(md_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
         rem_path = reports_dir / f"{safe_target}_remediation_{timestamp}.md"
-        with open(rem_path, "w") as f:
+        with open(rem_path, "w", encoding="utf-8") as f:
             f.write(markdown_report or "# PhantomScan Remediation Checklist\nNo findings.")
 
         hindi_path = reports_dir / f"{safe_target}_hindi_{timestamp}.md"
@@ -751,7 +756,7 @@ class OrchestratorAgent(Agent):
                 hindi_lines.append(f"### {hf.get('title', 'Finding')}")
                 hindi_lines.append(hf["hindi_report"])
                 hindi_lines.append("")
-        with open(hindi_path, "w") as f:
+        with open(hindi_path, "w", encoding="utf-8") as f:
             f.write("\n".join(hindi_lines) or "# No Hindi explanations generated.")
 
         recon_path = reports_dir / f"{safe_target}_recon_{timestamp}.md"
@@ -792,7 +797,7 @@ class OrchestratorAgent(Agent):
         recon_lines.append("### Internal IPs Found")
         for ip in shadow_output.get("internal_ips", []):
             recon_lines.append(f"- {ip}")
-        with open(recon_path, "w") as f:
+        with open(recon_path, "w", encoding="utf-8") as f:
             f.write("\n".join(recon_lines))
 
         pentest_log_path = reports_dir / f"{safe_target}_pentest_log_{timestamp}.json"
@@ -803,7 +808,7 @@ class OrchestratorAgent(Agent):
                 "findings": active_result.get("findings", []),
                 "request_count": active_result.get("request_count", 0),
             }
-        with open(pentest_log_path, "w") as f:
+        with open(pentest_log_path, "w", encoding="utf-8") as f:
             json.dump(pentest_data, f, indent=2, default=str)
 
         await self.log_action("reports_written", f"Reports saved to {reports_dir}")
