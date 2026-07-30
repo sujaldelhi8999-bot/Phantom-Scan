@@ -1,21 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Download, GitCompareArrows, RotateCcw, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, GitCompareArrows, RotateCcw, Sparkles } from 'lucide-react';
 
-import { Button, Drawer, EmptyState, ErrorState, GlassPanel, MetricCard, RemediationChecklist, SectionHeader, SecurityScore, SeverityBadge, StatusBadge, Surface } from '../../components/ui/Primitives';
+import {
+  Button,
+  cx,
+  Drawer,
+  EmptyState,
+  ErrorState,
+  MetricCard,
+  Page,
+  PageHeader,
+  RemediationChecklist,
+  Section,
+  SectionHeader,
+  SeverityBadge,
+  StatusBadge,
+} from '../../components/ui/Primitives';
 import { apiErrorMessage, getAIAnalysis, getScan, getScanArtifacts, startScan } from '../../services/api';
 import { usePhantomData } from '../../hooks/usePhantomData';
-import type { AISecurityAnalystOutput, BrowserSecurityOutput, ScanArtifactsResponse, ScanResponse } from '../../types';
+import type { AISecurityAnalystOutput, BrowserSecurityOutput, Finding, ScanArtifactsResponse, ScanResponse } from '../../types';
 import { countBySeverity, previousScanForTarget, scanDuration, securityScore, targetName } from '../../utils/derived';
-
-type ObservabilityTab = 'Overview' | 'Attack Surface' | 'Browser' | 'Network' | 'Console' | 'APIs' | 'Authentication' | 'Storage' | 'WebSockets' | 'Technologies' | 'Findings';
-const observabilityTabs: ObservabilityTab[] = ['Overview', 'Attack Surface', 'Browser', 'Network', 'Console', 'APIs', 'Authentication', 'Storage', 'WebSockets', 'Technologies', 'Findings'];
-const networkFilters = ['All', 'API', 'Auth', 'GraphQL', 'WebSocket', 'Scripts', 'Third Party', 'Errors'];
-
-function asArray(value: unknown): Array<Record<string, unknown>> {
-  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null) : [];
-}
 
 function text(value: unknown, fallback = ''): string {
   if (value === null || value === undefined) return fallback;
@@ -23,8 +29,23 @@ function text(value: unknown, fallback = ''): string {
   return String(value);
 }
 
-function JsonBlock({ value }: { value: unknown }) {
-  return <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap rounded-2xl bg-slate-950/70 p-4 font-mono text-xs text-slate-300">{JSON.stringify(value ?? {}, null, 2)}</pre>;
+function asArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null) : [];
+}
+
+function JsonBlock({ value, label }: { value: unknown; label?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)} className="group">
+      <summary className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {label || 'Technical Details'}
+      </summary>
+      <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-[var(--bg-inset)] p-3 font-mono text-[10px] text-[var(--text-secondary)]">
+        {JSON.stringify(value ?? {}, null, 2)}
+      </pre>
+    </details>
+  );
 }
 
 function displayValue(value: unknown): string {
@@ -33,40 +54,219 @@ function displayValue(value: unknown): string {
   return text(value, 'None');
 }
 
+/* ── Executive Summary ── */
+
+function ExecutiveSummary({ counts, score, scan }: { counts: Record<string, number>; score: number; scan: ScanResponse }) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  return (
+    <Section>
+      <SectionHeader title="Executive Summary" description="Severity breakdown and overall assessment" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <MetricCard label="Score" value={`${score}/100`} />
+        <MetricCard label="Total" value={total} />
+        <MetricCard label="Critical" value={counts.CRITICAL} accent={counts.CRITICAL > 0} />
+        <MetricCard label="High" value={counts.HIGH} accent={counts.HIGH > 0} />
+        <MetricCard label="Medium" value={counts.MEDIUM} />
+        <MetricCard label="Low / Info" value={counts.LOW + counts.INFO} />
+      </div>
+      {counts.CRITICAL > 0 || counts.HIGH > 0 ? (
+        <div className="mt-3 rounded-md border border-[var(--warning-subtle)] px-3 py-2 text-xs text-[var(--warning)]">
+          {counts.CRITICAL > 0
+            ? 'Critical findings require immediate attention.'
+            : 'High-severity findings should be prioritized for remediation.'}
+        </div>
+      ) : total === 0 ? (
+        <div className="mt-3 rounded-md border border-[var(--success-subtle)] px-3 py-2 text-xs text-[var(--success)]">
+          No unresolved findings detected.
+        </div>
+      ) : null}
+    </Section>
+  );
+}
+
+/* ── Findings with progressive disclosure ── */
+
+function FindingCard({ finding }: { finding: Finding }) {
+  const [open, setOpen] = useState(false);
+  const hasDetails = finding.description || finding.evidence || finding.recommendation || finding.fix || finding.how_exploited;
+  return (
+    <div className="rounded-md border border-[var(--border-default)]">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
+        aria-expanded={open}
+      >
+        <SeverityBadge severity={finding.severity} compact />
+        <span className="min-w-0 flex-1 text-xs font-medium text-[var(--text-primary)]">{finding.title}</span>
+        <span className="text-[10px] text-[var(--text-muted)]">{finding.module || finding.agent || ''}</span>
+        {finding.cve_id ? (
+          <span className="font-mono text-[10px] text-[var(--accent-hover)]">{finding.cve_id}</span>
+        ) : null}
+        {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />}
+      </button>
+      {open && hasDetails ? (
+        <div className="border-t border-[var(--border-subtle)] space-y-2.5 px-3 py-2.5">
+          {finding.description ? (
+            <div>
+              <div className="text-[10px] font-semibold text-[var(--text-muted)]">Description</div>
+              <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{finding.description}</p>
+            </div>
+          ) : null}
+          {finding.evidence ? (
+            <div>
+              <div className="text-[10px] font-semibold text-[var(--text-muted)]">Evidence</div>
+              <pre className="mt-0.5 whitespace-pre-wrap rounded bg-[var(--bg-inset)] p-2 font-mono text-[10px] text-[var(--text-secondary)]">{finding.evidence}</pre>
+            </div>
+          ) : null}
+          {finding.endpoint ? (
+            <div>
+              <div className="text-[10px] font-semibold text-[var(--text-muted)]">Endpoint</div>
+              <code className="mt-0.5 block break-all font-mono text-xs text-[var(--accent-hover)]">{finding.endpoint}</code>
+            </div>
+          ) : null}
+          {finding.recommendation || finding.fix ? (
+            <div>
+              <div className="text-[10px] font-semibold text-[var(--text-muted)]">Remediation</div>
+              <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{finding.recommendation || finding.fix}</p>
+              <div className="mt-2">
+                <RemediationChecklist
+                  items={(finding.recommendation || finding.fix || '')
+                    .split(/\n|\.\s+/)
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                    .slice(0, 5)}
+                />
+              </div>
+            </div>
+          ) : null}
+          {finding.how_exploited ? (
+            <div>
+              <div className="text-[10px] font-semibold text-[var(--text-muted)]">Exploitation</div>
+              <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{finding.how_exploited}</p>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2 text-[10px] text-[var(--text-muted)]">
+            {finding.confidence ? <StatusBadge status={finding.confidence} /> : null}
+            {finding.remediation_status ? <StatusBadge status={finding.remediation_status} /> : null}
+            {finding.risk_status && finding.risk_status !== 'ACTIVE' ? <StatusBadge status={finding.risk_status} /> : null}
+            <span className="text-[var(--text-disabled)]">{finding.agent}</span>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* ── Analyst Report ── */
+
 function AnalystReport({ analysis }: { analysis: AISecurityAnalystOutput | null | undefined }) {
   if (!analysis) {
-    return <Surface className="p-6"><EmptyState title="No AI Security Analyst artifact" description="Open or refresh this report after a completed scan to generate grounded analyst output." /></Surface>;
+    return (
+      <Section>
+        <EmptyState title="No analyst artifact" description="Open or refresh the report after completion." />
+      </Section>
+    );
   }
   const summary = analysis.security_summary ?? {};
   const priorities = analysis.priorities ?? [];
   const executive = Object.entries(analysis.executive_report ?? {});
   const developer = analysis.developer_report ?? [];
+
   return (
-    <Surface className="p-6">
-      <SectionHeader title="AI Security Analyst" description="Evidence-grounded executive and developer analysis. The analyst cannot start active tests." />
-      <div className="mb-5 flex flex-wrap gap-2"><StatusBadge status={analysis.ai_status ?? 'Deterministic analysis'} /><StatusBadge status={analysis.safety?.can_start_active_test === false ? 'Active tests disabled' : 'Active tests unavailable'} /></div>
-      {analysis.ai_narrative ? <div className="mb-5 rounded-2xl bg-violet-500/[0.08] p-4 text-sm leading-6 text-violet-100/90">{analysis.ai_narrative}</div> : null}
-      <div className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-2xl bg-white/[0.035] p-4"><div className="mb-2 flex items-center gap-2 text-sm text-violet-200"><Sparkles className="h-4 w-4" />Posture</div><div className="text-lg font-semibold text-slate-50">{displayValue(summary.overall_security_posture)}</div></div>
-        <div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Analyst Score</div><div className="mt-2 text-3xl font-semibold text-slate-50">{analysis.score_explanation?.score ?? '--'}</div></div>
-        <div className="rounded-2xl bg-white/[0.035] p-4 md:col-span-2"><div className="text-sm text-slate-500">Recommended Next Action</div><div className="mt-2 text-sm leading-6 text-slate-200">{displayValue(summary.recommended_next_action)}</div></div>
+    <Section>
+      <SectionHeader
+        title="AI Security Analyst"
+        description="Evidence-grounded analysis. Cannot start active tests."
+      />
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        <StatusBadge status={analysis.ai_status ?? 'Deterministic analysis'} />
+        <StatusBadge status={analysis.safety?.can_start_active_test === false ? 'Active tests disabled' : 'Active tests unavailable'} />
       </div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      {analysis.ai_narrative ? (
+        <div className="mb-4 rounded-md p-3 text-xs leading-relaxed text-[var(--text-primary)]">{analysis.ai_narrative}</div>
+      ) : null}
+      <div className="grid gap-2 sm:grid-cols-4">
+        <div className="rounded-md p-3">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--accent-hover)]">
+            <Sparkles className="h-3.5 w-3.5" />Posture
+          </div>
+          <div className="mt-1 text-xs text-[var(--text-primary)]">{displayValue(summary.overall_security_posture)}</div>
+        </div>
+        <div className="rounded-md p-3">
+          <div className="text-xs text-[var(--text-muted)]">Analyst Score</div>
+          <div className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{analysis.score_explanation?.score ?? '--'}</div>
+        </div>
+        <div className="rounded-md p-3 sm:col-span-2">
+          <div className="text-xs text-[var(--text-muted)]">Recommended Next Action</div>
+          <div className="mt-1 text-xs text-[var(--text-secondary)]">{displayValue(summary.recommended_next_action)}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div>
-          <h3 className="mb-3 font-semibold text-slate-100">Top Priorities</h3>
-          <div className="space-y-2">{priorities.length ? priorities.slice(0, 5).map((item) => <div key={`${item.priority}-${item.finding_id}`} className="rounded-2xl bg-white/[0.035] p-4"><div className="flex flex-wrap items-center gap-2"><StatusBadge status={`Priority ${item.priority}`} /><StatusBadge status={text(item.severity, 'INFO')} /><span className="font-medium text-slate-100">{text(item.title)}</span></div><p className="mt-2 text-sm leading-6 text-slate-400">{text(item.recommended_action, 'Review evidence and remediate.')}</p></div>) : <EmptyState title="No active priorities" description="Resolved, accepted-risk, and false-positive findings are excluded from this list." />}</div>
+          <h3 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Top Priorities</h3>
+          <div className="space-y-1.5">
+            {priorities.length ? (
+              priorities.slice(0, 5).map((item) => (
+                <div key={`${item.priority}-${item.finding_id}`} className="rounded-md p-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge status={`Priority ${item.priority}`} />
+                    <StatusBadge status={text(item.severity, 'INFO')} />
+                    <span className="text-xs font-medium text-[var(--text-primary)]">{text(item.title)}</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">{text(item.recommended_action, 'Review and remediate.')}</p>
+                </div>
+              ))
+            ) : (
+              <EmptyState title="No priorities" description="Resolved and accepted-risk findings excluded." compact />
+            )}
+          </div>
         </div>
         <div>
-          <h3 className="mb-3 font-semibold text-slate-100">Executive Report</h3>
-          <div className="space-y-2">{executive.map(([label, value]) => <div key={label} className="rounded-2xl bg-white/[0.035] p-4"><div className="text-xs uppercase tracking-[0.18em] text-slate-600">{label}</div><div className="mt-2 text-sm leading-6 text-slate-300">{displayValue(value)}</div></div>)}</div>
+          <h3 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Executive Report</h3>
+          <div className="space-y-1.5">
+            {executive.length ? (
+              executive.map(([label, value]) => (
+                <div key={label} className="rounded-md p-3">
+                  <div className="text-[10px] font-semibold text-[var(--text-disabled)]">{label}</div>
+                  <div className="mt-0.5 text-xs text-[var(--text-secondary)]">{displayValue(value)}</div>
+                </div>
+              ))
+            ) : (
+              <EmptyState title="No report" description="No executive report generated." compact />
+            )}
+          </div>
         </div>
       </div>
-      {developer.length ? <div className="mt-5"><h3 className="mb-3 font-semibold text-slate-100">Developer Analysis</h3><div className="grid gap-3 lg:grid-cols-2">{developer.slice(0, 6).map((item) => <div key={String(item.finding_id)} className="rounded-2xl bg-white/[0.035] p-4"><div className="flex flex-wrap items-center gap-2"><StatusBadge status={`Finding ${text(item.finding_id)}`} /><StatusBadge status={text(item.severity, 'INFO')} /></div><div className="mt-2 break-all font-mono text-xs text-slate-500">{text(item.affected_endpoint)}</div><p className="mt-2 text-sm leading-6 text-slate-400">{text(item.remediation, 'No remediation text available.')}</p></div>)}</div></div> : null}
-    </Surface>
+
+      {developer.length ? (
+        <div className="mt-4">
+          <h3 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">Developer Analysis</h3>
+          <div className="grid gap-2 lg:grid-cols-2">
+            {developer.slice(0, 6).map((item) => (
+              <div key={String(item.finding_id)} className="rounded-md p-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <StatusBadge status={`Finding ${text(item.finding_id)}`} />
+                  <StatusBadge status={text(item.severity, 'INFO')} />
+                </div>
+                <div className="mt-1 break-all font-mono text-[10px] text-[var(--text-muted)]">{text(item.affected_endpoint)}</div>
+                <p className="mt-1 text-[11px] text-[var(--text-muted)]">{text(item.remediation, 'No remediation text.')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </Section>
   );
 }
 
-function networkMatchesFilter(entry: Record<string, unknown>, filter: string) {
+/* ── Browser Observability ── */
+
+type ObsTab = 'Overview' | 'Attack Surface' | 'Browser' | 'Network' | 'Console' | 'APIs' | 'Authentication' | 'Storage' | 'WebSockets' | 'Technologies' | 'Findings';
+const obsTabs: ObsTab[] = ['Overview', 'Attack Surface', 'Browser', 'Network', 'Console', 'APIs', 'Authentication', 'Storage', 'WebSockets', 'Technologies', 'Findings'];
+const networkFilters = ['All', 'API', 'Auth', 'GraphQL', 'WebSocket', 'Scripts', 'Third Party', 'Errors'];
+
+function networkFilterMatch(entry: Record<string, unknown>, filter: string) {
   const classification = text(entry.classification).toUpperCase();
   const status = Number(entry.status ?? 0);
   if (filter === 'All') return true;
@@ -80,61 +280,165 @@ function networkMatchesFilter(entry: Record<string, unknown>, filter: string) {
   return true;
 }
 
-function ObservabilityTabs({ browserOutput }: { browserOutput: BrowserSecurityOutput | null | undefined }) {
-  const [tab, setTab] = useState<ObservabilityTab>('Overview');
+function BrowserObservability({ browserOutput }: { browserOutput: BrowserSecurityOutput | null | undefined }) {
+  const [tab, setTab] = useState<ObsTab>('Overview');
   const [networkFilter, setNetworkFilter] = useState('All');
   const [selectedNetwork, setSelectedNetwork] = useState<Record<string, unknown> | null>(null);
-  const pages = asArray(browserOutput?.pages);
-  const routes = asArray(browserOutput?.routes);
-  const dom = asArray(browserOutput?.dom);
-  const network = asArray(browserOutput?.network_events);
-  const consoleEvents = asArray(browserOutput?.console_events);
-  const apis = asArray(browserOutput?.api_inventory);
-  const cookies = asArray(browserOutput?.cookies);
-  const websockets = asArray(browserOutput?.websockets);
-  const technologies = asArray(browserOutput?.third_party);
-  const browserFindings = asArray(browserOutput?.findings);
-  const filteredNetwork = network.filter((entry) => networkMatchesFilter(entry, networkFilter));
 
   if (!browserOutput) {
-    return <Surface className="p-6"><EmptyState title="No browser observability artifact" description="Run a new scan to collect Browser, Network, DOM, API, Storage, and WebSocket evidence." /></Surface>;
+    return (
+      <Section>
+        <EmptyState title="No browser data" description="Run a new scan to collect observability data." />
+      </Section>
+    );
   }
 
+  const pages = asArray(browserOutput.pages);
+  const routes = asArray(browserOutput.routes);
+  const network = asArray(browserOutput.network_events);
+  const consoleEvents = asArray(browserOutput.console_events);
+  const apis = asArray(browserOutput.api_inventory);
+  const technologies = asArray(browserOutput.third_party);
+  const browserFindings = asArray(browserOutput.findings);
+  const filteredNetwork = network.filter((entry) => networkFilterMatch(entry, networkFilter));
+
   return (
-    <Surface className="p-6">
-      <SectionHeader title="Advanced Observability" description="Browser, Network, DOM, JavaScript, API, Authentication, Storage, WebSocket, and correlation evidence from this scan." />
-      <div className="mb-5 flex flex-wrap gap-2">
-        {observabilityTabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`rounded-2xl px-3 py-2 text-sm font-semibold ${tab === item ? 'bg-violet-500/15 text-violet-100 ring-1 ring-violet-400/25' : 'bg-white/[0.04] text-slate-400 hover:text-slate-200'}`}>{item}</button>)}
+    <Section>
+      <SectionHeader title="Browser Observability" description="Browser, network, and DOM evidence from the scan." />
+
+      <div className="mb-3 flex flex-wrap gap-1">
+        {obsTabs.map((item) => (
+          <button
+            key={item}
+            onClick={() => setTab(item)}
+            className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+              tab === item ? 'bg-[var(--accent-subtle)] text-[var(--accent-hover)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            }`}
+          >
+            {item}
+          </button>
+        ))}
       </div>
 
-      {tab === 'Overview' ? <div className="grid gap-3 md:grid-cols-4"><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Engine</div><div className="mt-2 text-slate-100">{text(browserOutput.browser_engine, 'unknown')}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Pages</div><div className="mt-2 text-2xl font-semibold text-slate-50">{pages.length}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Network Events</div><div className="mt-2 text-2xl font-semibold text-slate-50">{network.length}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">APIs</div><div className="mt-2 text-2xl font-semibold text-slate-50">{apis.length}</div></div><div className="rounded-2xl bg-white/[0.035] p-4 md:col-span-4"><div className="mb-2 text-sm text-slate-500">Correlation</div><JsonBlock value={browserOutput.correlation} /></div></div> : null}
+      {tab === 'Overview' && (
+        <div className="grid gap-2 sm:grid-cols-4">
+          <div className="rounded-md p-3">
+            <div className="text-[11px] text-[var(--text-muted)]">Engine</div>
+            <div className="mt-1 text-xs text-[var(--text-primary)]">{text(browserOutput.browser_engine, 'unknown')}</div>
+          </div>
+          <div className="rounded-md p-3">
+            <div className="text-[11px] text-[var(--text-muted)]">Pages</div>
+            <div className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{pages.length}</div>
+          </div>
+          <div className="rounded-md p-3">
+            <div className="text-[11px] text-[var(--text-muted)]">Network Events</div>
+            <div className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{network.length}</div>
+          </div>
+          <div className="rounded-md p-3">
+            <div className="text-[11px] text-[var(--text-muted)]">APIs</div>
+            <div className="mt-1 text-lg font-semibold text-[var(--text-primary)]">{apis.length}</div>
+          </div>
+        </div>
+      )}
 
-      {tab === 'Attack Surface' ? <div className="grid gap-3 md:grid-cols-2">{routes.map((route, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-4"><div className="break-all font-mono text-sm text-slate-100">{text(route.route)}</div><div className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-600">{text(route.source, 'observed')}</div></div>)}</div> : null}
+      {tab === 'Attack Surface' && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {routes.map((route, i) => (
+            <div key={i} className="rounded-md p-3">
+              <div className="break-all font-mono text-xs text-[var(--text-primary)]">{text(route.route)}</div>
+              <div className="mt-1 text-[10px] text-[var(--text-muted)]">{text(route.source, 'observed')}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {tab === 'Browser' ? <div className="grid gap-4 lg:grid-cols-2"><div><h3 className="mb-3 font-semibold text-slate-100">Pages Visited</h3><div className="space-y-2">{pages.map((page, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-3"><div className="break-all font-mono text-sm text-slate-200">{text(page.url)}</div><div className="mt-1 text-xs text-slate-500">{text(page.title)} {text(page.status)}</div></div>)}</div></div><div><h3 className="mb-3 font-semibold text-slate-100">DOM Summary</h3><div className="space-y-2">{dom.map((page, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-3"><div className="break-all font-mono text-sm text-slate-200">{text(page.page)}</div><div className="mt-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-3"><span>Forms {asArray(page.forms).length}</span><span>Inputs {asArray(page.inputs).length}</span><span>CSP Events {asArray(browserOutput.csp_violations).length}</span></div></div>)}</div></div></div> : null}
+      {tab === 'Network' && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-1">
+            {networkFilters.map((item) => (
+              <button
+                key={item}
+                onClick={() => setNetworkFilter(item)}
+                className={`rounded-md px-2 py-1 text-[11px] ${networkFilter === item ? 'bg-[var(--accent-subtle)] text-[var(--accent-hover)]' : 'text-[var(--text-muted)]'}`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="space-y-1 max-h-96 overflow-y-auto">
+            {filteredNetwork.map((entry, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedNetwork(entry)}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--bg-hover)]"
+              >
+                <span className="font-mono text-[var(--text-primary)]">{text(entry.method)}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[var(--text-muted)]">{text(entry.url)}</span>
+                <StatusBadge status={text(entry.classification, 'UNKNOWN')} />
+                <span className="shrink-0 text-[var(--text-muted)]">{text(entry.status, '--')}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {tab === 'Network' ? <div className="space-y-4"><div className="flex flex-wrap gap-2">{networkFilters.map((item) => <button key={item} onClick={() => setNetworkFilter(item)} className={`rounded-2xl px-3 py-2 text-sm ${networkFilter === item ? 'bg-violet-500/15 text-violet-100' : 'bg-white/[0.04] text-slate-400'}`}>{item}</button>)}</div><div className="hidden overflow-hidden rounded-2xl border border-white/[0.06] md:block"><div className="grid grid-cols-[90px_1.6fr_120px_90px_110px_130px] gap-3 border-b border-white/[0.06] px-4 py-3 text-xs uppercase tracking-[0.18em] text-slate-600"><span>Method</span><span>Endpoint</span><span>Type</span><span>Status</span><span>Duration</span><span>Initiator</span></div>{filteredNetwork.map((entry, index) => <button key={index} onClick={() => setSelectedNetwork(entry)} className="grid w-full grid-cols-[90px_1.6fr_120px_90px_110px_130px] gap-3 border-b border-white/[0.04] px-4 py-3 text-left last:border-b-0 hover:bg-white/[0.04]"><span className="font-mono text-sm text-slate-200">{text(entry.method)}</span><span className="truncate font-mono text-sm text-slate-400">{text(entry.url)}</span><span><StatusBadge status={text(entry.classification, 'UNKNOWN')} /></span><span className="text-sm text-slate-300">{text(entry.status, '--')}</span><span className="text-sm text-slate-400">{text(entry.duration_ms, '--')} ms</span><span className="truncate text-sm text-slate-500">{text(entry.initiator)}</span></button>)}</div><div className="space-y-2 md:hidden">{filteredNetwork.map((entry, index) => <button key={index} onClick={() => setSelectedNetwork(entry)} className="w-full rounded-2xl bg-white/[0.035] p-4 text-left"><div className="flex justify-between gap-3"><span className="font-mono text-sm text-slate-100">{text(entry.method)}</span><StatusBadge status={text(entry.classification, 'UNKNOWN')} /></div><div className="mt-2 break-all font-mono text-xs text-slate-500">{text(entry.url)}</div></button>)}</div></div> : null}
+      {tab === 'Console' && (
+        <div className="space-y-1">
+          {consoleEvents.length ? (
+            consoleEvents.map((event, i) => (
+              <div key={i} className="flex items-start gap-2 rounded-md px-3 py-2 text-xs">
+                <StatusBadge status={text(event.type, 'log')} />
+                <span className="min-w-0 flex-1 text-[var(--text-secondary)]">{text(event.message)}</span>
+                <span className="shrink-0 text-[var(--text-muted)]">{text(event.source)}</span>
+              </div>
+            ))
+          ) : (
+            <EmptyState title="No console events" description="No browser console messages captured." compact />
+          )}
+        </div>
+      )}
 
-      {tab === 'Console' ? <div className="space-y-2">{consoleEvents.length ? consoleEvents.map((event, index) => <div key={index} className="grid gap-3 rounded-2xl bg-white/[0.035] p-4 md:grid-cols-[120px_120px_1fr_160px]"><span className="text-sm text-slate-500">{text(event.timestamp)}</span><StatusBadge status={text(event.type, 'log')} /><span className="text-sm text-slate-300">{text(event.message)}</span><span className="truncate text-xs text-slate-500">{text(event.source)}</span></div>) : <EmptyState title="No console events" description="No browser console messages were captured for this scan." />}</div> : null}
+      {tab === 'Technologies' && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {technologies.map((item, i) => (
+            <div key={i} className="rounded-md p-3">
+              <div className="font-mono text-xs text-[var(--text-primary)]">{text(item.domain)}</div>
+              <div className="mt-1 text-[11px] text-[var(--text-muted)]">{text(item.purpose, 'unknown')}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {tab === 'APIs' ? <div className="grid gap-3 md:grid-cols-2">{apis.map((api, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-4"><div className="flex items-center gap-2"><span className="font-mono text-sm text-slate-100">{text(api.method)}</span><StatusBadge status={text(api.classification, 'API')} /></div><div className="mt-2 break-all font-mono text-sm text-slate-400">{text(api.endpoint)}</div><div className="mt-3 text-xs text-slate-500">Status: {JSON.stringify(api.status_codes)} | Auth: {text(api.authentication, 'unknown')}</div><JsonBlock value={{ parameters: api.observed_parameters, response_fields: api.response_fields }} /></div>)}</div> : null}
+      {tab === 'Findings' && (
+        <div className="space-y-1.5">
+          {browserFindings.length ? (
+            browserFindings.map((finding, i) => (
+              <div key={i} className="rounded-md p-3">
+                <div className="flex items-center gap-1.5">
+                  <StatusBadge status={text(finding.severity, 'INFO')} />
+                  <StatusBadge status={text(finding.confidence, 'POTENTIAL')} />
+                  <span className="text-xs font-medium text-[var(--text-primary)]">{text(finding.title)}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <EmptyState title="No browser findings" description="Browser observation did not produce additional findings." compact />
+          )}
+        </div>
+      )}
 
-      {tab === 'Authentication' ? <JsonBlock value={browserOutput.auth_flow} /> : null}
-
-      {tab === 'Storage' ? <div className="grid gap-4 lg:grid-cols-2"><div><h3 className="mb-3 font-semibold text-slate-100">Cookies</h3><div className="space-y-2">{cookies.map((cookie, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-4"><div className="font-mono text-sm text-slate-100">{text(cookie.name)}</div><div className="mt-2 flex flex-wrap gap-2"><StatusBadge status={`Secure ${text(cookie.secure)}`} /><StatusBadge status={`HttpOnly ${text(cookie.httponly)}`} /><StatusBadge status={`SameSite ${text(cookie.samesite, 'none')}`} /></div><div className="mt-2 text-xs text-slate-500">{text(cookie.domain)} {text(cookie.path)} {text(cookie.expires)}</div></div>)}</div></div><div><h3 className="mb-3 font-semibold text-slate-100">Browser Storage Metadata</h3><JsonBlock value={browserOutput.storage} /></div></div> : null}
-
-      {tab === 'WebSockets' ? <div className="space-y-2">{websockets.length ? websockets.map((socket, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-4"><div className="break-all font-mono text-sm text-slate-100">{text(socket.url)}</div><div className="mt-2 flex flex-wrap gap-2"><StatusBadge status={text(socket.authentication_state, 'unknown')} /><StatusBadge status={text(socket.disconnect_behavior, 'not connected')} /></div><JsonBlock value={socket.message_schema ?? socket.messages} /></div>) : <EmptyState title="No WebSockets observed" description="No browser-visible WebSocket endpoints were captured." />}</div> : null}
-
-      {tab === 'Technologies' ? <div className="grid gap-3 md:grid-cols-2">{technologies.map((item, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-4"><div className="font-mono text-sm text-slate-100">{text(item.domain)}</div><div className="mt-2 text-sm text-slate-400">{text(item.purpose, 'unknown')}</div><div className="mt-2 break-all text-xs text-slate-500">{text(item.resource)}</div><div className="mt-2 flex gap-2"><StatusBadge status={`SRI ${text(item.integrity, 'unknown')}`} /><StatusBadge status={text(item.crossorigin, 'crossorigin not set')} /></div></div>)}</div> : null}
-
-      {tab === 'Findings' ? <div className="space-y-3">{browserFindings.length ? browserFindings.map((finding, index) => <div key={index} className="rounded-2xl bg-white/[0.035] p-4"><div className="flex flex-wrap items-center gap-2"><StatusBadge status={text(finding.severity, 'INFO')} /><StatusBadge status={text(finding.confidence, 'POTENTIAL')} /><span className="font-medium text-slate-100">{text(finding.title)}</span></div><p className="mt-3 text-sm leading-6 text-slate-400">{text(finding.evidence)}</p></div>) : <EmptyState title="No browser-derived findings" description="The browser observation artifact did not produce additional findings." />}</div> : null}
+      {['Browser', 'APIs', 'Authentication', 'Storage', 'WebSockets'].includes(tab) && (
+        <JsonBlock value={browserOutput} label="Raw Browser Data" />
+      )}
 
       <Drawer title="Request Details" open={Boolean(selectedNetwork)} onClose={() => setSelectedNetwork(null)}>
-        {selectedNetwork ? <div className="space-y-5"><section><h3 className="mb-2 font-semibold text-slate-100">General</h3><JsonBlock value={{ method: selectedNetwork.method, url: selectedNetwork.url, status: selectedNetwork.status, type: selectedNetwork.classification, auth: selectedNetwork.authentication_state }} /></section><section><h3 className="mb-2 font-semibold text-slate-100">Headers</h3><JsonBlock value={{ request: selectedNetwork.request_headers_summary, response: selectedNetwork.response_headers_summary }} /></section><section><h3 className="mb-2 font-semibold text-slate-100">Schema</h3><JsonBlock value={selectedNetwork.response_schema} /></section><section><h3 className="mb-2 font-semibold text-slate-100">Timing / Initiator</h3><JsonBlock value={{ duration_ms: selectedNetwork.duration_ms, initiator: selectedNetwork.initiator, redirect_chain: selectedNetwork.redirect_chain }} /></section></div> : null}
+        {selectedNetwork ? <JsonBlock value={selectedNetwork} /> : null}
       </Drawer>
-    </Surface>
+    </Section>
   );
 }
+
+/* ── Main Report Page ── */
 
 export default function ReportPage() {
   const { scan_id } = useParams();
@@ -144,7 +448,7 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   const previous = scan ? previousScanForTarget(scans, scan) : undefined;
-  const previousFindings = previous ? findings.filter((finding) => finding.scan_id === previous.id) : [];
+  const previousFindings = previous ? findings.filter((f) => f.scan_id === previous.id) : [];
 
   useEffect(() => {
     if (!scan_id) return;
@@ -152,18 +456,16 @@ export default function ReportPage() {
     const load = async () => {
       try {
         const [nextScan, nextArtifacts] = await Promise.all([getScan(scan_id), getScanArtifacts(scan_id)]);
-        let hydratedArtifacts = nextArtifacts;
+        let hydrated = nextArtifacts;
         if (!nextArtifacts.ai_analyst_output && nextScan.status === 'complete') {
           try {
             const analysis = await getAIAnalysis(scan_id);
-            hydratedArtifacts = { ...nextArtifacts, ai_analyst_output: analysis };
-          } catch {
-            hydratedArtifacts = nextArtifacts;
-          }
+            hydrated = { ...nextArtifacts, ai_analyst_output: analysis };
+          } catch { /* ok */ }
         }
         if (!active) return;
         setScan(nextScan);
-        setArtifacts(hydratedArtifacts);
+        setArtifacts(hydrated);
         setError(null);
       } catch (err) {
         if (active) setError(apiErrorMessage(err, 'Unable to load report.'));
@@ -180,18 +482,18 @@ export default function ReportPage() {
   const previousCounts = countBySeverity(previousFindings);
   const previousScore = securityScore(previousFindings);
 
-  const exportJson = () => {
+  const exportJson = useCallback(() => {
     if (!scan) return;
     const blob = new Blob([JSON.stringify({ scan, artifacts }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `phantomscan-report-${scan.scan_id}.json`;
-    anchor.click();
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `phantomscan-report-${scan.scan_id}.json`;
+    a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [scan, artifacts]);
 
-  const rescan = async () => {
+  const rescan = useCallback(async () => {
     if (!scan) return;
     try {
       const next = await startScan({ target_url: scan.target_url, mode: 'defend', intensity: scan.intensity });
@@ -201,24 +503,197 @@ export default function ReportPage() {
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Unable to start rescan.'));
     }
-  };
+  }, [scan, refresh]);
 
-  if (error) return <ErrorState title="Unable to load report" description="PhantomScan could not retrieve this assessment." detail={error} action={<Button onClick={() => window.location.reload()}>Retry</Button>} />;
-  if (!scan) return <Surface className="p-6"><EmptyState title="Loading report" description="Retrieving scan evidence from the backend." /></Surface>;
+  if (error) {
+    return (
+      <ErrorState
+        title="Unable to load report"
+        description={error}
+        action={<Button onClick={() => window.location.reload()}>Retry</Button>}
+      />
+    );
+  }
+
+  if (!scan) {
+    return <Section><LoadingReport /></Section>;
+  }
 
   return (
-    <div className="space-y-6">
-      <GlassPanel className="p-6"><div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div><div className="mb-3 flex flex-wrap gap-2"><StatusBadge status={scan.status} /><StatusBadge status={scan.mode === 'pentest' ? 'Authorized Testing' : 'Defend'} /></div><h1 className="text-2xl font-semibold text-slate-50">Security Assessment</h1><div className="mt-2 font-mono text-sm text-slate-400">{targetName(scan.target_url)}</div></div><div className="flex flex-wrap gap-3"><Button variant="secondary" onClick={exportJson}><Download className="h-4 w-4" />Export JSON</Button><Button variant="secondary" onClick={rescan}><RotateCcw className="h-4 w-4" />Rescan</Button><Button variant="secondary" onClick={() => setCompareOpen((value) => !value)} disabled={!previous}><GitCompareArrows className="h-4 w-4" />Compare</Button></div></div></GlassPanel>
-      <div className="grid gap-4 md:grid-cols-5"><MetricCard label="Security Score" value={score} /><MetricCard label="Critical" value={counts.CRITICAL} tone={counts.CRITICAL ? 'red' : 'green'} /><MetricCard label="High" value={counts.HIGH} tone={counts.HIGH ? 'amber' : 'green'} /><MetricCard label="Medium" value={counts.MEDIUM} tone="amber" /><MetricCard label="Low" value={counts.LOW} tone="purple" /></div>
-      <Surface className="p-6"><div className="grid gap-8 lg:grid-cols-[220px_1fr]"><SecurityScore score={score} /><div className="grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Started</div><div className="mt-1 text-slate-100">{new Date(scan.created_at).toLocaleString()}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Duration</div><div className="mt-1 text-slate-100">{scanDuration(scan)}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Requests</div><div className="mt-1 text-slate-100">{scan.request_count}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Sandbox</div><div className="mt-1 text-slate-100">{scan.sandbox_id ?? 'Not used'}</div></div></div></div></Surface>
-      {compareOpen && previous ? <Surface className="p-6"><SectionHeader title="Scan Comparison" description={`Previous scan ${previous.id} vs current scan ${scan.scan_id}`} /><div className="grid gap-3 md:grid-cols-5">{[['Security Score', previousScore, score], ['Critical', previousCounts.CRITICAL, counts.CRITICAL], ['High', previousCounts.HIGH, counts.HIGH], ['Resolved', previousFindings.length, Math.max(0, previousFindings.length - scan.findings.length)], ['New', 0, Math.max(0, scan.findings.length - previousFindings.length)]].map(([label, before, after]) => <div key={String(label)} className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">{label}</div><div className="mt-2 text-xl font-semibold text-slate-50">{before} → {after}</div></div>)}</div></Surface> : null}
+    <Page>
+      {/* Report Header */}
+      <PageHeader
+        title="Security Assessment"
+        description={`${targetName(scan.target_url)}`}
+        action={
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={exportJson}>
+              <Download className="h-3.5 w-3.5" />Export
+            </Button>
+            <Button variant="secondary" onClick={rescan}>
+              <RotateCcw className="h-3.5 w-3.5" />Rescan
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setCompareOpen((v) => !v)}
+              disabled={!previous}
+            >
+              <GitCompareArrows className="h-3.5 w-3.5" />Compare
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Scan metadata badges */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <StatusBadge status={scan.status} />
+        <StatusBadge status={scan.mode === 'pentest' ? 'Authorized Testing' : 'Defend'} />
+        <span className="text-[var(--text-muted)]">Scan #{scan.scan_id}</span>
+        <span className="text-[var(--text-muted)]">·</span>
+        <span className="text-[var(--text-muted)]">{new Date(scan.created_at).toLocaleString()}</span>
+        {scan.completed_at ? (
+          <>
+            <span className="text-[var(--text-muted)]">·</span>
+            <span className="text-[var(--text-muted)]">{scanDuration(scan)}</span>
+          </>
+        ) : null}
+      </div>
+
+      {/* Executive Summary */}
+      <ExecutiveSummary counts={counts} score={score} scan={scan} />
+
+      {/* Comparison */}
+      {compareOpen && previous ? (
+        <Section>
+          <SectionHeader title="Scan Comparison" description={`Previous scan ${previous.id} vs current ${scan.scan_id}`} />
+          <div className="grid gap-2 sm:grid-cols-5">
+            {([
+              ['Score', String(previousScore), String(score)],
+              ['Critical', String(previousCounts.CRITICAL), String(counts.CRITICAL)],
+              ['High', String(previousCounts.HIGH), String(counts.HIGH)],
+              ['Resolved', String(previousFindings.length), String(Math.max(0, previousFindings.length - scan.findings.length))],
+              ['New', '0', String(Math.max(0, scan.findings.length - previousFindings.length))],
+            ] as const).map(([label, before, after]) => (
+              <div key={label} className="rounded-md p-3">
+                <div className="text-xs text-[var(--text-muted)]">{label}</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{before} → {after}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {/* Findings */}
+      <Section>
+        <SectionHeader title="Findings" description={`${scan.findings.length} total`} />
+        {scan.findings.length ? (
+          <div className="space-y-1.5">
+            {scan.findings.map((finding) => (
+              <FindingCard key={finding.id} finding={finding} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="No findings" description="The scan did not detect any issues." />
+        )}
+      </Section>
+
+      {/* Remediation Section */}
+      {(() => {
+        const actionable = scan.findings.filter(
+          (f) => f.recommendation || f.fix
+        );
+        if (!actionable.length) return null;
+        return (
+          <Section>
+            <SectionHeader title="Remediation Actions" description="Recommended fixes from findings" />
+            <div className="space-y-2">
+              {actionable.slice(0, 8).map((finding) => (
+                <div key={finding.id} className="rounded-md border border-[var(--border-default)] p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <SeverityBadge severity={finding.severity} compact />
+                    <span className="text-xs font-medium text-[var(--text-primary)]">{finding.title}</span>
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] mb-2">{finding.recommendation || finding.fix}</p>
+                  <RemediationChecklist
+                    items={(finding.recommendation || finding.fix || '')
+                      .split(/\n|\.\s+/)
+                      .map((item) => item.trim())
+                      .filter(Boolean)
+                      .slice(0, 5)}
+                  />
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      })()}
+
       <AnalystReport analysis={artifacts?.ai_analyst_output} />
-      {activeOutput ? <Surface className="p-6"><SectionHeader title="Active Security Evidence" description="Structured active-test output persisted by the backend sandbox run." /><div className="grid gap-3 md:grid-cols-4"><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Active Score</div><div className="mt-1 text-2xl font-semibold text-slate-50">{activeOutput.score?.score ?? '--'}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Plan Modules</div><div className="mt-1 text-2xl font-semibold text-slate-50">{activeOutput.test_plan?.modules?.length ?? 0}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Events</div><div className="mt-1 text-2xl font-semibold text-slate-50">{activeOutput.events?.length ?? 0}</div></div><div className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">Sandbox</div><div className="mt-1 break-all text-sm text-slate-100">{activeOutput.sandbox_id ?? 'Not provided'}</div></div></div>{activeOutput.evidence?.length ? <div className="mt-5 space-y-3">{activeOutput.evidence.slice(0, 8).map((item, index) => <div key={index} className="rounded-2xl bg-slate-950/60 p-4"><div className="font-medium text-slate-100">{String(item.title ?? `Evidence ${index + 1}`)}</div><div className="mt-2 break-all font-mono text-xs text-slate-500">{String(item.endpoint ?? '')}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">{String(item.evidence ?? '')}</p></div>)}</div> : <EmptyState title="No active evidence artifact" description="The active engine completed without finding-specific evidence records." />}</Surface> : null}
-      <ObservabilityTabs browserOutput={artifacts?.browser_security_output} />
-      <Surface className="p-6"><SectionHeader title="Findings" description="Persisted findings for this assessment." />{scan.findings.length ? <div className="space-y-3">{scan.findings.map((finding) => <div key={finding.id} className="rounded-2xl bg-white/[0.035] p-4"><div className="flex flex-wrap items-center gap-3"><SeverityBadge severity={finding.severity} /><div className="font-medium text-slate-100">{finding.title}</div></div><p className="mt-3 text-sm leading-6 text-slate-400">{finding.evidence || finding.description}</p><div className="mt-4"><RemediationChecklist items={(finding.recommendation || finding.fix || 'Rerun after remediation.').split(/\n|\.\s+/).map((item) => item.trim()).filter(Boolean).slice(0, 5)} /></div></div>)}</div> : <EmptyState title="No findings" description="Your latest scan found no actionable issues." />}</Surface>
-      <Surface className="p-6"><SectionHeader title="Report Artifacts" description="Generated backend artifacts retained with the scan." />{artifacts?.markdown_report ? <pre className="max-h-[520px] overflow-auto whitespace-pre-wrap rounded-2xl bg-slate-950/70 p-4 text-sm text-slate-300">{artifacts.markdown_report}</pre> : <EmptyState title="No markdown report" description="The backend did not persist a remediation report for this scan." />}</Surface>
-      <Surface className="p-6"><SectionHeader title="Hindi Explanations" description="Hindi AI output persisted by the backend when configured." />{artifacts?.hindi_findings?.length ? <div className="space-y-3">{artifacts.hindi_findings.map((item, index) => <div key={`${String(item.title)}-${index}`} className="rounded-2xl bg-white/[0.035] p-4"><div className="font-medium text-slate-100">{String(item.title ?? `Finding ${index + 1}`)}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">{[item.how_exploited, item.fix, item.recommendation].filter(Boolean).map(String).join('\n\n') || 'No Hindi text persisted.'}</p></div>)}</div> : <EmptyState title="No Hindi explanations" description="Hindi output is available when the backend AI explainer has a configured provider and returns results." />}</Surface>
-      <div className="text-sm text-slate-500"><Link to="/history" className="text-violet-300 hover:text-violet-200">Back to Scan History</Link></div>
+
+      {/* Active security output */}
+      {activeOutput ? (
+        <Section>
+          <SectionHeader title="Active Security Evidence" description="Results from the sandboxed active test." />
+          <div className="grid gap-2 sm:grid-cols-4">
+            <MetricCard label="Score" value={activeOutput.score?.score ?? '--'} />
+            <MetricCard label="Modules" value={activeOutput.test_plan?.modules?.length ?? 0} />
+            <MetricCard label="Events" value={activeOutput.events?.length ?? 0} />
+            <MetricCard label="Sandbox" value={activeOutput.sandbox_id?.slice(0, 16) ?? 'N/A'} />
+          </div>
+          {activeOutput.evidence?.length ? (
+            <div className="mt-4 space-y-2">
+              {activeOutput.evidence.slice(0, 8).map((item, i) => (
+                <div key={i} className="rounded-md bg-[var(--bg-inset)] p-3">
+                  <div className="text-xs font-medium text-[var(--text-primary)]">{String(item.title ?? `Evidence ${i + 1}`)}</div>
+                  <div className="mt-1 break-all font-mono text-[10px] text-[var(--text-muted)]">{String(item.endpoint ?? '')}</div>
+                  <p className="mt-1 whitespace-pre-wrap text-[11px] text-[var(--text-secondary)]">{String(item.evidence ?? '')}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No evidence" description="No finding-specific evidence records." compact />
+          )}
+        </Section>
+      ) : null}
+
+      <BrowserObservability browserOutput={artifacts?.browser_security_output} />
+
+      {/* Report artifacts - behind accordion */}
+      {artifacts?.markdown_report ? (
+        <Section>
+          <JsonBlock value={artifacts.markdown_report} label="Markdown Report" />
+        </Section>
+      ) : null}
+
+      {artifacts?.hindi_findings?.length ? (
+        <Section>
+          <SectionHeader title="Hindi Explanations" />
+          <div className="space-y-2">
+            {artifacts.hindi_findings.map((item, i) => (
+              <div key={`${String(item.title)}-${i}`} className="rounded-md p-3">
+                <div className="text-xs font-medium text-[var(--text-primary)]">{String(item.title ?? `Finding ${i + 1}`)}</div>
+                <p className="mt-1 whitespace-pre-wrap text-[11px] text-[var(--text-muted)]">
+                  {[item.how_exploited, item.fix, item.recommendation].filter(Boolean).map(String).join('\n\n') || 'No text.'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      <div className="text-xs text-[var(--text-muted)]">
+        <Link to="/history" className="text-[var(--accent-hover)] hover:text-[var(--accent)]">Back to Scan History</Link>
+      </div>
+    </Page>
+  );
+}
+
+function LoadingReport() {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--border-default)] px-6 py-8 text-center">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--border-default)] border-t-[var(--accent)] mb-3" />
+      <h3 className="text-sm font-semibold text-[var(--text-primary)]">Loading report</h3>
+      <p className="mt-1 max-w-sm text-xs text-[var(--text-muted)]">Retrieving scan evidence from the backend.</p>
     </div>
   );
 }

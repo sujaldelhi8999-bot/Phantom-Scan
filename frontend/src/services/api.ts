@@ -5,16 +5,23 @@ import type {
   AISecurityAnalystOutput,
   ActiveMapRequest,
   ActiveMapResponse,
+  ActiveRunRequest,
   AskPhantomScanResponse,
   ActiveScoreResponse,
   AuditLog,
+  AuthorizedTestJobResponse,
+  AuthorizedTestJobResultsResponse,
+  AuthorizedTestRunResponse,
   AuthorizationChallengeRequest,
   AuthorizationChallengeResponse,
   AuthorizationStatusResponse,
+  ExecutionStatusResponse,
   Finding,
   FindingAIExplanation,
   FindingVerificationResponse,
   HealthResponse,
+  JobEvent,
+  JobEventsResponse,
   LabManifestResponse,
   LabScenarioRequest,
   LabScenarioResponse,
@@ -206,5 +213,79 @@ export async function getAuthorizationStatus(targetUrl: string): Promise<Authori
 
 export async function revokeAuthorization(id: number): Promise<AuthorizationStatusResponse> {
   const response = await apiClient.post<AuthorizationStatusResponse>(`/api/authorization/${id}/revoke`);
+  return response.data;
+}
+
+export async function startAuthorizedTest(payload: ActiveRunRequest): Promise<AuthorizedTestRunResponse> {
+  const response = await apiClient.post<AuthorizedTestRunResponse>('/api/active/run', payload);
+  return response.data;
+}
+
+export async function getAuthorizedTestJobStatus(jobId: string): Promise<AuthorizedTestJobResponse> {
+  const response = await apiClient.get<AuthorizedTestJobResponse>(`/api/active/jobs/${jobId}`);
+  return response.data;
+}
+
+export async function getAuthorizedTestJobResults(jobId: string): Promise<AuthorizedTestJobResultsResponse> {
+  const response = await apiClient.get<AuthorizedTestJobResultsResponse>(`/api/active/jobs/${jobId}/results`);
+  return response.data;
+}
+
+export async function getExecutionStatus(): Promise<ExecutionStatusResponse> {
+  const response = await apiClient.get<ExecutionStatusResponse>('/api/execution/status');
+  return response.data;
+}
+
+export async function getJobEvents(jobId: string, afterSequence = 0): Promise<JobEventsResponse> {
+  const response = await apiClient.get<JobEventsResponse>(`/api/active/jobs/${jobId}/events`, {
+    params: { after_sequence: afterSequence }
+  });
+  return response.data;
+}
+
+export async function addToPrivateScope(targetUrl: string): Promise<{ success: boolean; message: string; target_url: string }> {
+  const response = await apiClient.post('/api/admin/scope/add', { target_url: targetUrl });
+  return response.data;
+}
+
+export async function listPrivateScope(): Promise<Array<{ id: number; target_url: string; added_by: string; added_at: string | null; last_used: string | null }>> {
+  const response = await apiClient.get('/api/admin/scope/list');
+  return response.data;
+}
+
+export async function removeFromPrivateScope(targetUrl: string): Promise<{ success: boolean; message: string }> {
+  const response = await apiClient.delete('/api/admin/scope/remove', { params: { target_url: targetUrl } });
+  return response.data;
+}
+
+export async function getUserRole(): Promise<{ role: string }> {
+  const response = await apiClient.get('/api/admin/scope/role');
+  return response.data;
+}
+
+export async function startDos(targetUrl: string, intensity: string, duration: number): Promise<any> {
+  const response = await apiClient.post('/api/admin/dos/start', { target_url: targetUrl, intensity, duration });
+  return response.data;
+}
+
+export async function stopDos(jobId: string): Promise<any> {
+  const response = await apiClient.post(`/api/admin/dos/stop/${jobId}`);
+  return response.data;
+}
+
+export async function getDosStatus(jobId: string): Promise<any> {
+  const response = await apiClient.get(`/api/admin/dos/status/${jobId}`);
+  return response.data;
+}
+
+export async function getDosHistory(): Promise<any[]> {
+  const response = await apiClient.get('/api/admin/dos/history');
+  return response.data;
+}
+
+export async function getJobEvidence(jobId: string, findingId?: number): Promise<any[]> {
+  const response = await apiClient.get(`/api/active/jobs/${jobId}/evidence`, {
+    params: findingId ? { finding_id: findingId } : {}
+  });
   return response.data;
 }

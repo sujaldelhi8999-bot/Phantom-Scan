@@ -1,114 +1,184 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  background: #070A12;
+
+  --app-canvas: #EFF2F6;
+  --app-canvas-alt: #E8ECF1;
+  --sidebar-canvas: #F6F8FA;
+  --topbar-canvas: rgba(255, 255, 255, 0.9);
+
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F9FAFB;
+  --surface-tertiary: #F1F4F8;
+  --surface-selected: #EAF1FF;
+  --surface-hover: #F1F5F9;
+
+  --text-strong: #162033;
+  --text-default: #344054;
+  --text-muted: #667085;
+  --text-subtle: #98A2B3;
+
+  --border-light: #E9EDF3;
+  --border-default: #DCE2EA;
+  --border-strong: #CBD5E1;
+
+  --brand: #2563D9;
+  --brand-hover: #1D4FC4;
+  --brand-soft: #E8F0FF;
+
+  --success: #137A45;
+  --success-soft: #EAF7F0;
+  --success-border: #BFE7CF;
+
+  --warning: #A75A05;
+  --warning-soft: #FFF5E5;
+  --warning-border: #F2D59C;
+
+  --danger: #B42318;
+  --danger-soft: #FFF0EE;
+  --danger-border: #F2C4BE;
+
+  --info: #245FC4;
+  --info-soft: #EAF3FF;
+  --info-border: #C9DDF8;
+
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-float: 0 8px 24px rgba(16, 24, 40, 0.09);
+  --shadow-drawer: -4px 0 20px rgba(16, 24, 40, 0.08);
+
+  --radius-control: 7px;
+  --radius-panel: 11px;
+  --radius-drawer: 0;
 }
 
 html {
   min-width: 320px;
   min-height: 100%;
-  background: #070A12;
+  background: var(--app-canvas);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #070A12;
+  background: var(--app-canvas);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--text-default);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-button,
-input {
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.025em; color: var(--text-strong); }
+h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-strong); }
+h3 { font-size: 13px; font-weight: 600; color: var(--text-strong); }
+
+*, *::before, *::after {
+  border-color: var(--border-light);
+}
+
+button, input, select, textarea {
   font: inherit;
+  font-size: 13px;
 }
 
-button,
-label {
+button, label {
   -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {
-  color: #f8fafc;
-  background: rgba(124, 58, 237, 0.55);
+  color: #FFFFFF;
+  background: rgba(37, 99, 235, 0.3);
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #070b15;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 2px solid #070b15;
   border-radius: 999px;
-  background: #273249;
+  background: #CDD5DF;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b4964;
+  background: #9CA4B0;
 }
 
-.bg-app {
-  background:
-    radial-gradient(circle at 28% -10%, rgba(139, 92, 246, 0.18), transparent 32rem),
-    radial-gradient(circle at 82% 18%, rgba(56, 189, 248, 0.08), transparent 28rem),
-    radial-gradient(circle at 86% 82%, rgba(245, 158, 11, 0.055), transparent 30rem),
-    linear-gradient(135deg, #070A12 0%, #0B1020 48%, #070A12 100%);
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
 }
 
-.bg-grid {
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
-  background-size: 44px 44px;
+@layer utilities {
+  .scrollbar-compact {
+    scrollbar-width: thin;
+    scrollbar-color: #CDD5DF transparent;
+  }
 }
 
-.glass-panel {
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 1.5rem;
-  background: rgba(17, 24, 39, 0.55);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.amber-glass {
-  border-color: rgba(245, 158, 11, 0.16);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(245, 158, 11, 0.08);
-}
-
-.shadow-soft {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
-}
-
-.shadow-violet {
-  box-shadow: 0 14px 34px rgba(139, 92, 246, 0.25);
-}
-
-.top-13 {
-  top: 3.25rem;
+@layer base {
+  :root {
+    /* backward-compatible aliases for old code */
+    --bg-app: var(--app-canvas);
+    --bg-sidebar: var(--sidebar-canvas);
+    --bg-topbar: var(--topbar-canvas);
+    --bg-surface: var(--surface-primary);
+    --bg-surface-soft: var(--surface-secondary);
+    --bg-inset: var(--surface-tertiary);
+    --bg-hover: var(--surface-hover);
+    --bg-selected: var(--surface-selected);
+    --text-primary: var(--text-strong);
+    --text-secondary: var(--text-default);
+    --text-muted: var(--text-muted, #667085);
+    --text-disabled: var(--text-subtle);
+    --accent: var(--brand);
+    --accent-hover: var(--brand-hover);
+    --accent-subtle: var(--brand-soft);
+    --accent-muted: var(--brand-soft);
+    --border-subtle: var(--border-light);
+    --border-active: var(--brand);
+    --border-focus: var(--brand);
+    --error: var(--danger);
+    --error-subtle: var(--danger-soft);
+    --error-border: var(--danger-border);
+    --success-subtle: var(--success-soft);
+    --warning-subtle: var(--warning-soft);
+    --warning-border: var(--warning-border, #F2D59C);
+    --info-subtle: var(--info-soft);
+    --info-border: var(--info-border, #C9DDF8);
+    --shadow-xs: var(--shadow-card);
+    --shadow-sm: var(--shadow-card);
+    --shadow-md: var(--shadow-float);
+    --shadow-lg: var(--shadow-float);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@layer utilities {
+  .card-bright {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+  .card-bright .title {
+    @apply text-lg font-semibold text-gray-900 dark:text-white mb-4;
   }
 }

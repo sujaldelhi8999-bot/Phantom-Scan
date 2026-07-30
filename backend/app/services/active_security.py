@@ -1,5 +1,6 @@
 import json
 import re
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html.parser import HTMLParser
@@ -8,7 +9,7 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import httpx
 
-from app.database import add_audit_log
+from app.database import add_audit_log, create_evidence_record, update_evidence_finding
 from app.security import build_finding, redact_sensitive, redact_url
 from app.services.active_gate import ActiveTargetGate
 from app.services.authorization import TargetAuthorizationService, canonicalize_target
@@ -462,6 +463,8 @@ class ActiveTargetClient:
         budget: ExecutionBudget,
         authorization_service: TargetAuthorizationService | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        emit_event: Any = None,
+        job_id: str | None = None,
     ) -> None:
         self.scan_id = scan_id
         self.user_id = user_id
@@ -471,6 +474,8 @@ class ActiveTargetClient:
         self.authorization_service = authorization_service or TargetAuthorizationService()
         self.budget = budget
         self.transport = transport
+        self.emit_event = emit_event
+        self.job_id = job_id
 
     async def request(
         self,
@@ -479,6 +484,9 @@ class ActiveTargetClient:
         url_or_path: str,
         headers: dict[str, str] | None = None,
         json_body: dict[str, Any] | None = None,
+        *,
+        surface: str = "",
+        safe_test_marker: str = "",
     ) -> dict[str, Any]:
         self.budget.check()
         method = method.upper()
@@ -491,7 +499,13 @@ class ActiveTargetClient:
         if self.authorization_context.get("authorization_status") == "VERIFIED":
             authorization_id = self.authorization_context.get("authorization_id")
             await self.authorization_service.require_verified(candidate.url, self.user_id, int(authorization_id))
+        request_id = uuid.uuid4().hex[:16]
         request_number = await self.budget.reserve_request()
+        safe_headers_summary = {k: "[REDACTED]" if k.lower() in {"authorization", "cookie", "x-api-key", "set-cookie"} else v for k, v in (headers or {}).items()}
+        body_shape = None
+        if json_body:
+            body_shape = f"{len(json_body)} keys: {', '.join(list(json_body.keys())[:8])}" if isinstance(json_body, dict) else "non-dict body"
+        start_ts = datetime.now(timezone.utc).isoformat()
         await add_audit_log(
             self.scan_id,
             "Active Security Engine",
@@ -504,7 +518,41 @@ class ActiveTargetClient:
             request_count=request_number,
             sandbox_id=self.sandbox_id,
         )
+        request_path = urlsplit(candidate.url).path or "/"
+        if self.emit_event:
+            await self.emit_event(
+                "TEST_REQUEST_SENT",
+                f"{method} {request_path}",
+                module=module,
+                status="SENT",
+                metadata={
+                    "request_id": request_id,
+                    "method": method,
+                    "route": request_path,
+                    "safe_headers": safe_headers_summary,
+                    "body_shape": body_shape,
+                    "content_type": (headers or {}).get("Content-Type") or (headers or {}).get("content-type"),
+                },
+            )
         timeout = min(8.0, max(1.0, self.budget.limits.max_scan_duration / 4))
+        evidence = {
+            "request_id": request_id,
+            "job_id": self.job_id,
+            "scan_id": self.scan_id,
+            "module": module,
+            "surface": surface,
+            "method": method,
+            "request_url": candidate.url,
+            "safe_test_marker": safe_test_marker,
+            "request_timestamp": start_ts,
+            "response_status": None,
+            "response_time_ms": None,
+            "response_observed": False,
+            "detection_result": "INCONCLUSIVE",
+            "evidence_summary": "",
+            "finding_id": None,
+            "error": None,
+        }
         try:
             async with httpx.AsyncClient(
                 timeout=timeout,
@@ -526,16 +574,71 @@ class ActiveTargetClient:
                             truncated = True
                             break
                     decoded = body.decode(response.encoding or "utf-8", errors="replace")
-                    return {
+                    end_ts = datetime.now(timezone.utc).isoformat()
+                    duration_ms = round((datetime.now(timezone.utc) - datetime.fromisoformat(start_ts)).total_seconds() * 1000)
+                    safe_resp_headers = {k: "[REDACTED]" if k.lower() in {"set-cookie", "authorization"} else v for k, v in response.headers.items()}
+                    resp_summary = decoded[:300] if decoded else ""
+                    evidence["response_status"] = response.status_code
+                    evidence["response_time_ms"] = duration_ms
+                    evidence["response_observed"] = True
+                    if self.emit_event:
+                        await self.emit_event(
+                            "RESPONSE_RECEIVED",
+                            f"HTTP {response.status_code} from {request_path}",
+                            module=module,
+                            status=str(response.status_code),
+                            metadata={
+                                "request_id": request_id,
+                                "method": method,
+                                "route": request_path,
+                                "status_code": response.status_code,
+                                "response_headers": safe_resp_headers,
+                                "response_summary": resp_summary,
+                                "truncated": truncated,
+                                "duration_ms": duration_ms,
+                            },
+                        )
+                    ev_result = {
                         "url": candidate.url,
                         "status_code": response.status_code,
                         "headers": {key.lower(): value for key, value in response.headers.items()},
                         "raw_body": decoded,
                         "body": redact_sensitive(decoded, self.budget.limits.max_response_size),
                         "truncated": truncated,
+                        "_request_id": request_id,
+                        "_evidence": evidence,
                     }
+                    evidence_id = await create_evidence_record(evidence)
+                    ev_result["_evidence_id"] = evidence_id
+                    return ev_result
         except httpx.HTTPError as exc:
-            return {"url": candidate.url, "status_code": None, "headers": {}, "body": "", "error": str(exc), "truncated": False}
+            error_msg = str(exc)[:500]
+            evidence["error"] = error_msg
+            if self.emit_event:
+                await self.emit_event(
+                    "RESPONSE_RECEIVED",
+                    f"HTTP error for {request_path}: {str(exc)[:100]}",
+                    module=module,
+                    status="ERROR",
+                    metadata={
+                        "request_id": request_id,
+                        "method": method,
+                        "route": request_path,
+                        "error": str(exc)[:300],
+                    },
+                )
+            evidence_id = await create_evidence_record(evidence)
+            return {
+                "url": candidate.url,
+                "status_code": None,
+                "headers": {},
+                "body": "",
+                "error": str(exc),
+                "truncated": False,
+                "_request_id": request_id,
+                "_evidence": evidence,
+                "_evidence_id": evidence_id,
+            }
 
 
 class ActiveSecurityEngine:
@@ -553,6 +656,8 @@ class ActiveSecurityEngine:
         sandbox_id: str,
         budget: ExecutionBudget | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        emit_event: Any = None,
+        job_id: str | None = None,
     ) -> None:
         self.target = canonicalize_target(target_url)
         self.attack_surface = attack_surface or {}
@@ -564,6 +669,7 @@ class ActiveSecurityEngine:
         self.user_id = user_id
         self.sandbox_id = sandbox_id
         self.budget = budget or ExecutionBudget(limits)
+        self.emit_event = emit_event
         self.client = ActiveTargetClient(
             scan_id=scan_id,
             user_id=user_id,
@@ -572,6 +678,8 @@ class ActiveSecurityEngine:
             authorization_context=authorization_context,
             budget=self.budget,
             transport=transport,
+            emit_event=emit_event,
+            job_id=job_id,
         )
         self.mapper = AttackSurfaceMapper(fetch=self.client.request, transport=transport, limits=limits)
         self.planner = SecurityTestPlanner()
@@ -653,20 +761,41 @@ class ActiveSecurityEngine:
         results = await handler(surfaces[:3])
         for surface in surfaces[:3]:
             await self.emit("surface_tested", str(surface.get("id") or surface.get("path") or module), selected_module=module)
+        for finding in results:
+            if self.emit_event:
+                await self.emit_event(
+                    "SECURITY_CONTROL_EVALUATED",
+                    f"Control evaluated for {module}: {finding.get('severity', 'INFO')} - {finding.get('title', 'No title')[:100]}",
+                    module=module,
+                    status=finding.get("severity", "INFO"),
+                    metadata={
+                        "finding_title": finding.get("title"),
+                        "severity": finding.get("severity"),
+                        "confidence": finding.get("confidence"),
+                        "endpoint": finding.get("endpoint"),
+                    },
+                )
         return results
 
     async def check_input_security(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
+            sid = str(surface.get("id", ""))
             if str(surface.get("method", "GET")).upper() == "POST":
                 response = await self.client.request(
                     "input_security",
                     "POST",
                     self.surface_target(surface),
                     json_body={"display_name": "PHANTOMSCAN_INPUT_PROBE", "age": "not-a-number"},
+                    surface=sid,
+                    safe_test_marker="PHANTOMSCAN_INPUT_PROBE",
                 )
             else:
-                response = await self.client.request("input_security", "GET", self.with_parameter(surface, "q", "PHANTOMSCAN_INPUT_PROBE"))
+                response = await self.client.request(
+                    "input_security", "GET", self.with_parameter(surface, "q", "PHANTOMSCAN_INPUT_PROBE"),
+                    surface=sid,
+                    safe_test_marker="PHANTOMSCAN_INPUT_PROBE",
+                )
             body = str(response.get("body", "")).lower()
             if response.get("status_code") == 200 and "accepted invalid input" in body:
                 findings.append(
@@ -690,7 +819,11 @@ class ActiveSecurityEngine:
         findings = []
         for surface in surfaces:
             parameter = self.first_parameter(surface, "customer")
-            response = await self.client.request("injection", "GET", self.with_parameter(surface, parameter, "PHANTOMSCAN_DATA_PROBE"))
+            response = await self.client.request(
+                "injection", "GET", self.with_parameter(surface, parameter, "PHANTOMSCAN_DATA_PROBE"),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="PHANTOMSCAN_DATA_PROBE",
+            )
             body = str(response.get("body", "")).lower()
             if response.get("status_code") and int(response["status_code"]) >= 500 and any(token in body for token in ["data layer error", "sql", "sqlite", "odbc"]):
                 findings.append(
@@ -715,7 +848,11 @@ class ActiveSecurityEngine:
         findings = []
         marker = '<span data-phantomscan-probe="1">probe</span>'
         for surface in surfaces:
-            response = await self.client.request("xss", "GET", self.with_parameter(surface, self.first_parameter(surface, "q"), marker))
+            response = await self.client.request(
+                "xss", "GET", self.with_parameter(surface, self.first_parameter(surface, "q"), marker),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="PHANTOMSCAN_XSS_PROBE",
+            )
             if marker.lower() in str(response.get("body", "")).lower():
                 findings.append(
                     self.make_finding(
@@ -737,7 +874,11 @@ class ActiveSecurityEngine:
     async def check_auth_session(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("auth_session", "GET", self.surface_target(surface))
+            response = await self.client.request(
+                "auth_session", "GET", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="auth_session_probe",
+            )
             headers = response.get("headers", {})
             if self.is_login_surface(surface) and response.get("status_code") in {200, 401, 403} and not self.has_rate_limit_headers(headers):
                 findings.append(
@@ -777,7 +918,11 @@ class ActiveSecurityEngine:
     async def check_access_control(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("access_control", "GET", self.surface_target(surface))
+            response = await self.client.request(
+                "access_control", "GET", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="access_control_probe",
+            )
             body = str(response.get("body", "")).lower()
             if response.get("status_code") == 200 and ("fake admin data" in body or "admin demo" in body or "users" in body):
                 findings.append(
@@ -801,7 +946,11 @@ class ActiveSecurityEngine:
         findings = []
         for surface in surfaces:
             page = "/lab/phantombank/transfer" if str(surface.get("path", "")).startswith("/lab/phantombank") else self.target.url
-            response = await self.client.request("csrf", "GET", page)
+            response = await self.client.request(
+                "csrf", "GET", page,
+                surface=str(surface.get("id", "")),
+                safe_test_marker="csrf_probe",
+            )
             body = str(response.get("body", "")).lower()
             if "<form" in body and "method=\"post\"" in body and not any(token in body for token in ["csrf", "xsrf", "authenticity_token"]):
                 findings.append(
@@ -824,22 +973,40 @@ class ActiveSecurityEngine:
     async def check_file_upload(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("file_upload", "GET", self.surface_target(surface))
-            body = str(response.get("body", "")).lower()
-            if "type=\"file\"" in body and (surface.get("vulnerable") or "stored as provided" in body):
+            sid = str(surface.get("id", ""))
+            upload_url = self.surface_target(surface)
+            get_response = await self.client.request(
+                "file_upload", "GET", upload_url,
+                surface=sid,
+                safe_test_marker="file_upload_get",
+            )
+            body = str(get_response.get("body", "")).lower()
+            if "type=\"file\"" not in body:
+                continue
+            upload_post_url = urljoin(upload_url, "/lab/phantombank/upload") if "/upload" not in upload_url else upload_url
+            post_response = await self.client.request(
+                "file_upload", "POST", upload_post_url,
+                json_body={"filename": "PHANTOMSCAN_TEST_FILE.txt", "content": "harmless test content"},
+                surface=sid,
+                safe_test_marker="PHANTOMSCAN_TEST_FILE.txt",
+            )
+            post_body = str(post_response.get("body", "")).lower()
+            post_status = post_response.get("status_code")
+            if surface.get("vulnerable") and post_status == 200 and "stored_as" in post_body:
                 findings.append(
                     self.make_finding(
-                        "File upload simulation advertises unsafe filename handling",
+                        "File upload accepted a test filename without validation",
                         "File Upload Security",
                         "MEDIUM",
-                        "MEDIUM",
+                        "HIGH",
                         "file_upload",
                         surface,
-                        response,
-                        "The upload page indicates user-supplied filenames are accepted as provided; no file was uploaded.",
+                        post_response,
+                        "A harmless test filename was accepted by the upload endpoint.",
                         "Weak filename, type, and storage controls can expose uploaded content or overwrite paths.",
                         "Validate type and extension, rename files, store outside the web root, and isolate processing.",
                         "Use benign fixtures to confirm unsafe filenames and content types are rejected.",
+                        evidence_records=[post_response.get("_evidence_id"), get_response.get("_evidence_id")],
                     )
                 )
         return findings
@@ -847,7 +1014,11 @@ class ActiveSecurityEngine:
     async def check_path_handling(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("path_handling", "GET", self.with_parameter(surface, "file", "../private/demo-statement.txt"))
+            response = await self.client.request(
+                "path_handling", "GET", self.with_parameter(surface, "file", "../private/demo-statement.txt"),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="../private/demo-statement.txt",
+            )
             if response.get("status_code") == 200 and "phantombank internal demo statement" in str(response.get("body", "")).lower():
                 findings.append(
                     self.make_finding(
@@ -870,7 +1041,11 @@ class ActiveSecurityEngine:
     async def check_api_security(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("api_security", "OPTIONS", self.surface_target(surface))
+            response = await self.client.request(
+                "api_security", "OPTIONS", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="api_options_probe",
+            )
             allow = str(response.get("headers", {}).get("allow", "")).upper()
             dangerous = sorted({method for method in ["PUT", "DELETE", "PATCH", "TRACE"] if method in allow})
             if dangerous:
@@ -899,6 +1074,8 @@ class ActiveSecurityEngine:
                 "POST",
                 self.surface_target(surface),
                 json_body={"query": "query PhantomScanIntrospection { __schema { queryType { name } } }"},
+                surface=str(surface.get("id", "")),
+                safe_test_marker="graphql_introspection_probe",
             )
             if response.get("status_code") == 200 and "__schema" in str(response.get("body", "")):
                 findings.append(
@@ -921,20 +1098,35 @@ class ActiveSecurityEngine:
     async def check_websocket(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            if str(surface.get("type")) == "websocket" and surface.get("auth_required") is False and surface.get("vulnerable", True):
+            sid = str(surface.get("id", ""))
+            ws_url = str(surface.get("url") or surface.get("path") or "")
+            http_url = ws_url.replace("ws://", "http://").replace("wss://", "https://")
+            response = await self.client.request(
+                "websocket", "GET", http_url,
+                surface=sid,
+                safe_test_marker="websocket_http_probe",
+            )
+            status = response.get("status_code")
+            body_lower = str(response.get("body", "")).lower()
+            if status == 426:
+                continue
+            auth_required = surface.get("auth_required")
+            vulnerable = surface.get("vulnerable", True)
+            if auth_required is False and vulnerable and status in (200, 404, 405):
                 findings.append(
                     self.make_finding(
-                        "WebSocket channel is discoverable without an authentication expectation",
+                        "WebSocket channel reachable via HTTP endpoint without visible auth",
                         "WebSocket Security",
                         "LOW",
                         "MEDIUM",
                         "websocket",
                         surface,
-                        {"url": surface.get("url") or surface.get("path"), "status_code": None, "headers": {}, "body": ""},
-                        "The attack-surface manifest lists a WebSocket channel without required authentication.",
+                        response,
+                        f"HTTP probe of WebSocket surface returned HTTP {status} without authentication.",
                         "Unauthenticated real-time channels may expose events or permit message abuse.",
                         "Require authenticated handshakes, validate Origin, and authorize every message.",
                         "Attempt an unauthenticated handshake and confirm it is rejected before messages are exchanged.",
+                        evidence_records=[response.get("_evidence_id")],
                     )
                 )
         return findings
@@ -942,7 +1134,11 @@ class ActiveSecurityEngine:
     async def check_jwt(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("jwt", "GET", self.surface_target(surface))
+            response = await self.client.request(
+                "jwt", "GET", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="jwt_probe",
+            )
             body = str(response.get("body", ""))
             lowered = body.lower()
             if '"alg":"none"' in lowered.replace(" ", "") or "localstorage" in lowered or re.search(r"eyJ[A-Za-z0-9_-]{8,}", body):
@@ -967,7 +1163,11 @@ class ActiveSecurityEngine:
         findings = []
         for surface in surfaces:
             parameter = self.first_parameter(surface, "next")
-            response = await self.client.request("redirect", "GET", self.with_parameter(surface, parameter, "https://example.invalid/phantomscan"))
+            response = await self.client.request(
+                "redirect", "GET", self.with_parameter(surface, parameter, "https://example.invalid/phantomscan"),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="https://example.invalid/phantomscan",
+            )
             location = str(response.get("headers", {}).get("location", ""))
             if response.get("status_code") in {301, 302, 303, 307, 308} and location.startswith("https://example.invalid"):
                 findings.append(
@@ -991,7 +1191,11 @@ class ActiveSecurityEngine:
     async def check_cors(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces[:1]:
-            response = await self.client.request("cors", "GET", self.surface_target(surface), headers={"Origin": "https://attacker.invalid"})
+            response = await self.client.request(
+                "cors", "GET", self.surface_target(surface), headers={"Origin": "https://attacker.invalid"},
+                surface=str(surface.get("id", "")),
+                safe_test_marker="cors_origin_probe",
+            )
             headers = response.get("headers", {})
             acao = str(headers.get("access-control-allow-origin", ""))
             acac = str(headers.get("access-control-allow-credentials", "")).lower()
@@ -1016,7 +1220,11 @@ class ActiveSecurityEngine:
     async def check_security_headers(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces[:1]:
-            response = await self.client.request("security_headers", "GET", self.surface_target(surface))
+            response = await self.client.request(
+                "security_headers", "GET", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="security_headers_probe",
+            )
             headers = response.get("headers", {})
             missing = [
                 name
@@ -1046,23 +1254,45 @@ class ActiveSecurityEngine:
 
     async def check_tls_https(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         parsed = urlsplit(self.target.url)
+        hostname = parsed.hostname or ""
+        origin_is_http = parsed.scheme == "http"
+        is_lab_target = ActiveTargetGate.is_builtin_lab_target(self.target.url) or ActiveTargetGate.is_loopback_host(hostname)
+        surface = surfaces[0] if surfaces else {"id": "root", "url": self.target.url, "path": parsed.path or "/", "parameters": []}
+        sid = str(surface.get("id", "root"))
+        response_observed = False
+        status = None
+        ev_id = None
+        if not is_lab_target:
+            https_url = self.target.url.replace("http://", "https://", 1)
+            response = await self.client.request(
+                "tls_https", "GET", https_url,
+                surface=sid,
+                safe_test_marker="tls_https_probe",
+            )
+            status = response.get("status_code")
+            response_observed = status is not None
+            ev_id = response.get("_evidence_id")
+            if response_observed and status < 500:
+                return []
         lab_vulnerable = any(surface.get("vulnerable") for surface in surfaces) and self.authorization_context.get("authorization_status") == "TRAINING"
-        external_http = parsed.scheme == "http" and not ActiveTargetGate.is_loopback_host(parsed.hostname or "")
+        external_http = origin_is_http and not is_lab_target and not response_observed
         if lab_vulnerable or external_http:
-            surface = surfaces[0] if surfaces else {"url": self.target.url, "path": parsed.path or "/", "parameters": []}
+            fake_resp = {"url": self.target.url, "status_code": None, "headers": {}, "body": "", "_evidence_id": ev_id}
             return [
                 self.make_finding(
                     "HTTPS transport enforcement is not demonstrated",
                     "TLS and HTTPS",
                     "LOW",
-                    "POTENTIAL",
+                    "MEDIUM" if external_http else "POTENTIAL",
                     "tls_https",
                     surface,
-                    {"url": self.target.url, "status_code": None, "headers": {}, "body": ""},
-                    "The target was reached over HTTP or the lab scenario marks HTTPS enforcement as vulnerable.",
+                    fake_resp,
+                    f"HTTPS check: scheme={parsed.scheme}. "
+                    f"{'Lab marks scenario as vulnerable.' if lab_vulnerable else 'External HTTP target could not be reached via HTTPS.'}",
                     "Credentials and session data should not be sent over cleartext transport outside local training.",
                     "Serve production targets over HTTPS and deploy HSTS after confirming all subresources use HTTPS.",
                     "Repeat the scan using the HTTPS origin and confirm HSTS is present where applicable.",
+                    evidence_records=[ev_id] if ev_id else None,
                 )
             ]
         return []
@@ -1070,7 +1300,11 @@ class ActiveSecurityEngine:
     async def check_sensitive_exposure(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
         findings = []
         for surface in surfaces:
-            response = await self.client.request("sensitive_exposure", "GET", self.surface_target(surface))
+            response = await self.client.request(
+                "sensitive_exposure", "GET", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="sensitive_exposure_probe",
+            )
             body = str(response.get("body", "")).lower()
             if response.get("status_code") == 200 and any(token in body for token in ["api_key", "debug", "demo_key"]):
                 findings.append(
@@ -1096,7 +1330,11 @@ class ActiveSecurityEngine:
             path = str(rule.get("path", "/"))
             method = str(rule.get("method", "GET"))
             expected_status = int(rule.get("expected_status", 200))
-            response = await self.client.request("business_logic", method, path)
+            response = await self.client.request(
+                "business_logic", method, path,
+                surface="workflow_rule",
+                safe_test_marker=f"business_logic_{rule.get('name', 'rule')}",
+            )
             if response.get("status_code") != expected_status:
                 findings.append(
                     self.make_finding(
@@ -1119,6 +1357,8 @@ class ActiveSecurityEngine:
                 "POST",
                 self.surface_target(surface),
                 json_body={"from_account": "alice", "to_account": "bob", "amount": -10},
+                surface=str(surface.get("id", "")),
+                safe_test_marker="negative_amount_probe",
             )
             body = str(response.get("body", "")).lower()
             if response.get("status_code") == 200 and "accepted" in body and "invalid amount" in body:
@@ -1182,22 +1422,34 @@ class ActiveSecurityEngine:
         module: str,
         surface: dict[str, Any],
         response: dict[str, Any],
-        evidence: str,
+        ev_text: str,
         impact: str,
         recommendation: str,
         verification: str,
         *,
         parameter: str | None = None,
+        evidence_records: list[int] | None = None,
     ) -> dict[str, Any]:
         endpoint = str(response.get("url") or surface.get("url") or surface.get("path") or self.target.url)
+        response_status = response.get("status_code")
+        response_observed = response_status is not None
+        request_id = response.get("_request_id", "")
+        has_evidence = bool(request_id) and response_observed
+        used_confidence = confidence if has_evidence else "LOW"
+        used_confidence = "CONFIRMED" if (has_evidence and confidence in ("CONFIRMED", "HIGH")) else used_confidence
+        evidence_note = f"Evidence request_id: {request_id}. " if request_id else "No request evidence recorded. "
+        evidence_note += f"HTTP status: {response_status}. Surface: {surface.get('id', 'unknown')}."
+        if not response_observed:
+            evidence_note += " No response received."
+            evidence_note += f" Error: {response.get('error', 'unknown')}" if response.get("error") else ""
         finding = build_finding(
             title=title,
             category=category,
             severity=severity,
-            confidence=confidence,
+            confidence=used_confidence,
             target=self.target.url,
             endpoint=endpoint,
-            evidence=f"{evidence} HTTP status: {response.get('status_code')}. Surface: {surface.get('id', 'unknown')}.",
+            evidence=evidence_note,
             impact=impact,
             recommendation=recommendation,
             verification=verification,
@@ -1212,6 +1464,14 @@ class ActiveSecurityEngine:
                 "verification_status": "NOT_VERIFIED",
             }
         )
+        if not response_observed and not has_evidence:
+            finding.update({
+                "confidence": "LOW",
+                "evidence": f"{ev_text} No real HTTP response was recorded. {evidence_note}",
+            })
+        finding["_evidence_ids"] = evidence_records or []
+        finding["_request_id"] = request_id
+        finding["_evidence_id"] = response.get("_evidence_id")
         return finding
 
     def final_report(self, status: str, error: str | None) -> str:

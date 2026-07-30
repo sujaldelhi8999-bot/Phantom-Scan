@@ -57,13 +57,6 @@ export function securityScore(findings: Finding[]): number {
   return Math.max(0, Math.min(100, 100 - penalty));
 }
 
-export function scoreLabel(score: number): string {
-  if (score >= 90) return 'Hardened';
-  if (score >= 70) return 'Good';
-  if (score >= 50) return 'Attention Required';
-  return 'Critical Attention';
-}
-
 export function latestCompletedScan(scans: ScanHistoryItem[]): ScanHistoryItem | undefined {
   return scans.find((scan) => scan.status === 'complete') ?? scans[0];
 }

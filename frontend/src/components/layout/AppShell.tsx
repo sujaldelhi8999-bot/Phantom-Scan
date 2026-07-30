@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import Layout from './Layout';
 import {
   Activity,
   Bell,
+  Bomb,
+  BrainCircuit,
   Bug,
   ChevronLeft,
   ClipboardList,
@@ -23,7 +26,7 @@ import {
   Stethoscope,
   UserCircle,
   Wrench,
-  X
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
@@ -31,13 +34,14 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { usePhantomData } from '../../hooks/usePhantomData';
 import { apiErrorMessage, askPhantomScan } from '../../services/api';
 import { deriveAssets, deriveNotifications, deriveTechnologies, latestCompletedScan, relativeTime, targetName } from '../../utils/derived';
-import { Button, Drawer, StatusBadge, cx } from '../ui/Primitives';
+import { Button, cx, Drawer, EmptyState, StatusBadge } from '../ui/Primitives';
+import { useAuth } from '../../context/AuthContext';
+import LoginModal from '../LoginModal';
 
 interface NavItem {
   label: string;
   path: string;
   icon: typeof Home;
-  amber?: boolean;
 }
 
 const navGroups: Array<{ label: string; items: NavItem[] }> = [
@@ -45,143 +49,183 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'Overview',
     items: [
       { label: 'Dashboard', path: '/', icon: Home },
-      { label: 'Live Scan', path: '/scan', icon: Activity }
-    ]
+      { label: 'Defend Scan', path: '/scan', icon: Activity },
+    ],
   },
   {
     label: 'Security',
     items: [
       { label: 'Findings', path: '/findings', icon: ShieldAlert },
       { label: 'Assets', path: '/assets', icon: Layers3 },
-      { label: 'CVE Intelligence', path: '/cve', icon: Bug },
-      { label: 'Remediation', path: '/remediation', icon: Wrench }
-    ]
+      { label: 'Reports', path: '/history', icon: FileText },
+      { label: 'Agents', path: '/agents', icon: Network },
+    ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Agents', path: '/agents', icon: Network },
-      { label: 'Scan History', path: '/history', icon: History },
-      { label: 'Audit Logs', path: '/audit-logs', icon: ClipboardList }
-    ]
+      { label: 'Authorized Testing', path: '/authorized-testing', icon: LockKeyhole },
+      { label: 'DoS Testing', path: '/private/dos', icon: Bomb },
+      { label: 'Self Audit', path: '/self-audit', icon: Stethoscope },
+    ],
   },
   {
     label: 'System',
     items: [
-      { label: 'Self Audit', path: '/self-audit', icon: Stethoscope },
-      { label: 'Notifications', path: '/notifications', icon: Bell },
+      { label: 'Attack Intelligence', path: '/intelligence', icon: BrainCircuit },
       { label: 'System Health', path: '/system-health', icon: HeartPulse },
-      { label: 'Settings', path: '/settings', icon: Settings }
-    ]
+      { label: 'Notifications', path: '/notifications', icon: Bell },
+      { label: 'Settings', path: '/settings', icon: Settings },
+    ],
   },
-  {
-    label: 'Authorized',
-    items: [{ label: 'Testing Workspace', path: '/authorized-testing', icon: LockKeyhole, amber: true }]
-  }
 ];
 
 const routeDetails: Record<string, { title: string; description: string }> = {
-  '/': { title: 'Security Overview', description: 'Monitor posture, findings, and system activity.' },
-  '/scan': { title: 'Security Scan', description: 'Assess the current security posture of a target.' },
-  '/findings': { title: 'Findings', description: 'Triage vulnerabilities detected by PhantomScan agents.' },
-  '/assets': { title: 'Assets', description: 'Review monitored targets derived from scan history.' },
-  '/cve': { title: 'CVE Intelligence', description: 'Correlate detected technologies with CVE findings.' },
-  '/remediation': { title: 'Remediation', description: 'Prioritize fixes from confirmed security evidence.' },
-  '/agents': { title: 'Agents', description: 'Observe live and historical agent operations.' },
-  '/history': { title: 'Scan History', description: 'Browse stored assessments and reports.' },
-  '/audit-logs': { title: 'Audit Logs', description: 'Append-only operational evidence from scans and agents.' },
-  '/self-audit': { title: 'Guardian Self-Audit', description: 'PhantomScan continuously evaluates its own security posture.' },
-  '/notifications': { title: 'Notifications', description: 'Events derived from findings, scans, agents, and system activity.' },
-  '/system-health': { title: 'System Health', description: 'Verify backend, realtime, database, and agent availability.' },
-  '/settings': { title: 'Settings', description: 'Runtime configuration and integration status.' },
-  '/authorized-testing': { title: 'Authorized Testing', description: 'Controlled security testing for approved targets.' }
+  '/': { title: 'Security Overview', description: 'Monitor posture, active operations, findings, and recent security activity.' },
+  '/scan': { title: 'Defend Scan', description: 'Run passive security assessments against targets.' },
+  '/findings': { title: 'Findings', description: 'Triage detected vulnerabilities and risks.' },
+  '/assets': { title: 'Assets', description: 'Monitored targets from scan history.' },
+  '/cve': { title: 'CVE Intelligence', description: 'Technology correlation with known vulnerabilities.' },
+  '/remediation': { title: 'Remediation', description: 'Prioritize and verify fixes.' },
+  '/agents': { title: 'Agents', description: 'Observe agent operations and status.' },
+  '/history': { title: 'Reports & History', description: 'Browse past assessments and reports.' },
+  '/audit-logs': { title: 'Audit Logs', description: 'Append-only operational records.' },
+  '/self-audit': { title: 'Self Audit', description: 'PhantomScan evaluates itself.' },
+  '/notifications': { title: 'Notifications', description: 'Events from findings and system activity.' },
+  '/system-health': { title: 'System Health', description: 'Backend, realtime, and agent availability.' },
+  '/settings': { title: 'Settings', description: 'Runtime configuration reference.' },
+  '/authorized-testing': { title: 'Authorized Testing', description: 'Controlled security testing for approved targets.' },
+  '/private/dos': { title: 'DoS Testing', description: 'Simulate Denial of Service attacks on authorized targets.' },
 };
 
 function currentRoute(pathname: string) {
-  if (pathname.startsWith('/report/')) return { title: 'Security Assessment', description: 'Review completed scan evidence and remediation guidance.' };
+  if (pathname.startsWith('/report/')) return { title: 'Security Assessment', description: 'Completed scan report and evidence.' };
   return routeDetails[pathname] ?? routeDetails['/'];
 }
 
-function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleCollapse }: { collapsed: boolean; mobileOpen: boolean; onCloseMobile: () => void; onToggleCollapse: () => void }) {
-  const content = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-4 py-5">
+/* ── Sidebar ── */
+
+function Sidebar({
+  collapsed,
+  mobileOpen,
+  onCloseMobile,
+  onToggleCollapse,
+}: {
+  collapsed: boolean;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+  onToggleCollapse: () => void;
+}) {
+  const location = useLocation();
+  const sidebar = (
+    <div className="flex h-full flex-col bg-[var(--sidebar-canvas)]">
+      {/* Logo area */}
+      <div className="flex items-center justify-between px-4 py-4">
         <Link to="/" className="min-w-0" onClick={onCloseMobile}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-500/15 ring-1 ring-violet-400/25">
-              <Shield className="h-5 w-5 text-violet-200" />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--brand)]">
+              <Shield className="h-3.5 w-3.5 text-white" />
             </div>
             {!collapsed ? (
-              <div className="leading-tight">
-                <div className="text-sm font-bold tracking-[0.2em] text-slate-50">PHANTOMSCAN</div>
-                <div className="text-xs text-slate-500">Guardian Console</div>
+              <div>
+                <div className="text-sm font-bold tracking-tight text-[var(--text-strong)]">PhantomScan</div>
+                <div className="text-[9px] font-medium text-[var(--text-subtle)]">Security Operations</div>
               </div>
             ) : null}
           </div>
         </Link>
-        <button className="rounded-xl p-2 text-slate-500 hover:bg-white/[0.06] hover:text-slate-200 lg:hidden" onClick={onCloseMobile} aria-label="Close navigation">
+        <button
+          className="rounded-md p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)] lg:hidden"
+          onClick={onCloseMobile}
+          aria-label="Close navigation"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex-1 space-y-6 overflow-y-auto px-3 pb-4">
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-compact">
         {navGroups.map((group) => (
-          <div key={group.label}>
-            {!collapsed ? <div className={cx('mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.24em]', group.label === 'Authorized' ? 'text-amber-300/80' : 'text-slate-600')}>{group.label}</div> : null}
-            <div className="space-y-1">
+          <div key={group.label} className="mt-5 first:mt-0">
+            {!collapsed ? (
+              <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle)]">
+                {group.label}
+              </div>
+            ) : null}
+            <div className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
+                const isActive = item.path === '/'
+                  ? location.pathname === '/'
+                  : location.pathname.startsWith(item.path);
                 return (
                   <NavLink
-                    key={item.path}
+                    key={`${group.label}-${item.path}`}
                     to={item.path}
                     end={item.path === '/'}
                     onClick={onCloseMobile}
-                    className={({ isActive }) =>
-                      cx(
-                        'group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition',
-                        isActive
-                          ? item.amber
-                            ? 'bg-amber-500/10 text-amber-100 ring-1 ring-amber-400/20'
-                            : 'bg-violet-500/10 text-slate-50 ring-1 ring-violet-400/15'
-                          : item.amber
-                            ? 'text-amber-200/75 hover:bg-amber-500/[0.07] hover:text-amber-100'
-                            : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-100',
-                        collapsed && 'justify-center'
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {isActive ? <span className={cx('absolute left-0 h-5 w-1 rounded-r-full', item.amber ? 'bg-amber-400' : 'bg-violet-400')} /> : null}
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {!collapsed ? <span className="truncate">{item.label}</span> : null}
-                      </>
+                    className={cx(
+                      'group relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[var(--surface-selected)] text-[var(--brand)]'
+                        : 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]',
+                      collapsed && 'justify-center',
                     )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!collapsed ? <span className="truncate">{item.label}</span> : null}
+                    {isActive ? (
+                      <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--brand)]" />
+                    ) : null}
                   </NavLink>
                 );
               })}
             </div>
           </div>
         ))}
-      </div>
-      <div className="hidden border-t border-white/[0.06] p-3 lg:block">
-        <Button variant="ghost" onClick={onToggleCollapse} className="w-full justify-center">
-          <ChevronLeft className={cx('h-4 w-4 transition', collapsed && 'rotate-180')} />
+      </nav>
+
+      {/* Bottom area */}
+      <div className="border-t border-[var(--border-light)] p-3">
+        <button
+          onClick={onToggleCollapse}
+          className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
+        >
+          <ChevronLeft className={cx('h-3.5 w-3.5 transition-transform', collapsed && 'rotate-180')} />
           {!collapsed ? 'Collapse' : null}
-        </Button>
+        </button>
       </div>
     </div>
   );
 
   return (
     <>
-      <aside className={cx('fixed inset-y-0 left-0 z-30 hidden border-r border-white/[0.06] bg-[#070A12]/80 backdrop-blur-xl transition-all duration-200 lg:block', collapsed ? 'w-[86px]' : 'w-[236px]')}>{content}</aside>
+      <aside
+        className={cx(
+          'fixed inset-y-0 left-0 z-30 hidden border-r border-[var(--border-light)] transition-all duration-200 lg:block',
+          collapsed ? 'w-[56px]' : 'w-[232px]',
+        )}
+      >
+        {sidebar}
+      </aside>
       <AnimatePresence>
         {mobileOpen ? (
           <>
-            <motion.div className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCloseMobile} />
-            <motion.aside className="fixed inset-y-0 left-0 z-50 w-[280px] border-r border-white/[0.08] bg-[#070A12] lg:hidden" initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ duration: 0.2 }}>
-              {content}
+            <motion.div
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onCloseMobile}
+            />
+            <motion.aside
+              className="fixed inset-y-0 left-0 z-50 w-[272px] border-r border-[var(--border-light)] bg-[var(--sidebar-canvas)] lg:hidden"
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ duration: 0.2 }}
+            >
+              {sidebar}
             </motion.aside>
           </>
         ) : null}
@@ -190,34 +234,42 @@ function Sidebar({ collapsed, mobileOpen, onCloseMobile, onToggleCollapse }: { c
   );
 }
 
+/* ── System Status Popover ── */
+
 function SystemStatusPopover({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { health, realtimeState, realtimeHealthy } = usePhantomData();
   if (!open) return null;
-  const rows = [
+  const rows: Array<[string, string]> = [
     ['Backend API', health ? 'Connected' : 'Unavailable'],
     ['WebSocket', realtimeState === 'open' ? 'Connected' : realtimeState],
     ['Database', health?.database === 'available' ? 'Healthy' : 'Unavailable'],
     ['Agents', health?.agents === 'available' ? 'Available' : 'Unavailable'],
-    ['Scheduler', health?.scheduler ?? 'unavailable']
+    ['Scheduler', health?.scheduler ?? 'unavailable'],
   ];
   return (
-    <div className="absolute right-0 top-12 z-30 w-80 rounded-3xl border border-white/[0.08] bg-[#0B1020]/95 p-4 shadow-2xl backdrop-blur-xl">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="font-semibold text-slate-100">System Status</div>
-        <button onClick={onClose} className="rounded-lg p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"><X className="h-4 w-4" /></button>
+    <div className="absolute right-0 top-10 z-30 w-72 rounded-xl border border-[var(--border-light)] bg-[var(--surface-primary)] p-3.5 shadow-[var(--shadow-float)]">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-xs font-semibold text-[var(--text-strong)]">System Status</div>
+        <button onClick={onClose} className="rounded p-0.5 text-[var(--text-subtle)] hover:text-[var(--text-default)]" aria-label="Close">
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1">
         {rows.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between rounded-2xl bg-white/[0.035] px-3 py-2 text-sm">
-            <span className="text-slate-400">{label}</span>
+          <div key={label} className="flex items-center justify-between rounded px-2.5 py-1.5 text-xs">
+            <span className="text-[var(--text-muted)]">{label}</span>
             <StatusBadge status={value} />
           </div>
         ))}
       </div>
-      <div className="mt-3 text-xs text-slate-500">Overall state: {realtimeHealthy ? 'Systems Online' : 'Connection Issue'}</div>
+      <div className="mt-2.5 text-[10px] text-[var(--text-subtle)]">
+        Overall: {realtimeHealthy ? 'All systems online' : 'Connection issue detected'}
+      </div>
     </div>
   );
 }
+
+/* ── Global Search ── */
 
 function GlobalSearch() {
   const navigate = useNavigate();
@@ -229,79 +281,201 @@ function GlobalSearch() {
     const needle = query.trim().toLowerCase();
     if (!needle) return [];
     return [
-      ...findings.filter((item) => `${item.title} ${item.category} ${item.target} ${item.cve_id ?? ''}`.toLowerCase().includes(needle)).slice(0, 4).map((finding) => ({ label: finding.title, detail: finding.target, path: '/findings', icon: ShieldAlert })),
-      ...assets.filter((asset) => `${asset.name} ${asset.target_url}`.toLowerCase().includes(needle)).slice(0, 3).map((asset) => ({ label: asset.name, detail: `${asset.findings.length} findings`, path: '/assets', icon: Layers3 })),
-      ...scans.filter((scan) => `${scan.target_url} ${scan.mode} ${scan.status}`.toLowerCase().includes(needle)).slice(0, 3).map((scan) => ({ label: targetName(scan.target_url), detail: `Scan ${scan.id} · ${scan.status}`, path: `/report/${scan.id}`, icon: FileText })),
-      ...technologies.filter((tech) => tech.name.toLowerCase().includes(needle)).slice(0, 3).map((tech) => ({ label: tech.name, detail: 'Detected technology', path: '/cve', icon: Bug })),
-      ...agents.filter((agent) => agent.name.toLowerCase().includes(needle)).slice(0, 3).map((agent) => ({ label: agent.name, detail: agent.status, path: '/agents', icon: Network }))
+      ...findings
+        .filter((item) => `${item.title} ${item.category} ${item.target} ${item.cve_id ?? ''}`.toLowerCase().includes(needle))
+        .slice(0, 4)
+        .map((finding) => ({ label: finding.title, detail: finding.target, path: '/findings', icon: ShieldAlert })),
+      ...assets
+        .filter((asset) => `${asset.name} ${asset.target_url}`.toLowerCase().includes(needle))
+        .slice(0, 3)
+        .map((asset) => ({ label: asset.name, detail: `${asset.findings.length} findings`, path: '/assets', icon: Layers3 })),
+      ...scans
+        .filter((scan) => `${scan.target_url} ${scan.mode} ${scan.status}`.toLowerCase().includes(needle))
+        .slice(0, 3)
+        .map((scan) => ({ label: targetName(scan.target_url), detail: `${scan.status}`, path: `/report/${scan.id}`, icon: FileText })),
+      ...technologies
+        .filter((tech) => tech.name.toLowerCase().includes(needle))
+        .slice(0, 3)
+        .map((tech) => ({ label: tech.name, detail: 'Technology', path: '/cve', icon: Bug })),
+      ...agents
+        .filter((agent) => agent.name.toLowerCase().includes(needle))
+        .slice(0, 3)
+        .map((agent) => ({ label: agent.name, detail: agent.status, path: '/agents', icon: Network })),
     ];
   }, [agents, assets, findings, query, scans, technologies]);
 
   return (
-    <div className="relative hidden w-[min(420px,32vw)] md:block">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+    <div className="relative w-[200px] lg:w-[260px]">
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-subtle)]" />
       <input
         value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search PhantomScan..."
-        className="h-11 w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-4 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-violet-400/50 focus:bg-white/[0.07]"
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search targets, findings, agents..."
+        className="h-8 w-full rounded-[var(--radius-control)] border border-[var(--border-light)] bg-[var(--surface-secondary)] pl-8 pr-3 text-xs text-[var(--text-default)] outline-none transition-colors placeholder:text-[var(--text-subtle)] focus:border-[var(--brand)] focus:bg-white focus:ring-2 focus:ring-[var(--brand)]/10"
       />
       {query ? (
-        <div className="absolute right-0 top-13 z-30 w-full overflow-hidden rounded-3xl border border-white/[0.08] bg-[#0B1020]/95 p-2 shadow-2xl backdrop-blur-xl">
-          {results.length ? results.map((result) => {
-            const Icon = result.icon;
-            return (
-              <button key={`${result.path}-${result.label}-${result.detail}`} onClick={() => { navigate(result.path); setQuery(''); }} className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left hover:bg-white/[0.06]">
-                <Icon className="h-4 w-4 text-violet-300" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-slate-100">{result.label}</span>
-                  <span className="block truncate text-xs text-slate-500">{result.detail}</span>
-                </span>
-              </button>
-            );
-          }) : <div className="px-4 py-6 text-center text-sm text-slate-500">No matching records.</div>}
+        <div className="absolute right-0 top-9 z-30 w-full overflow-hidden rounded-xl border border-[var(--border-light)] bg-[var(--surface-primary)] p-1.5 shadow-[var(--shadow-float)]">
+          {results.length ? (
+            results.map((r) => {
+              const Icon = r.icon;
+              return (
+                <button
+                  key={`${r.path}-${r.label}`}
+                  onClick={() => { navigate(r.path); setQuery(''); }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-[var(--surface-hover)]"
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--brand)]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs text-[var(--text-strong)]">{r.label}</span>
+                    <span className="block truncate text-[10px] text-[var(--text-muted)]">{r.detail}</span>
+                  </span>
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-3 py-5 text-center text-xs text-[var(--text-muted)]">No results found.</div>
+          )}
         </div>
       ) : null}
     </div>
   );
 }
 
+/* ── Command Palette ── */
+
 function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const { scans } = usePhantomData();
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   const lastScan = scans[0];
-  const actions = [
-    { label: 'Open Dashboard', path: '/', icon: Home },
-    { label: 'Start Defend Scan', path: '/scan', icon: Activity },
-    { label: 'Open Findings', path: '/findings', icon: ShieldAlert },
-    { label: 'Open Agents', path: '/agents', icon: Network },
-    { label: 'Open Self Audit', path: '/self-audit', icon: Stethoscope },
-    { label: 'Search Asset', path: '/assets', icon: Layers3 },
-    { label: 'View Last Scan', path: lastScan ? `/report/${lastScan.id}` : '/history', icon: FileClock },
-    { label: 'Open Authorized Testing', path: '/authorized-testing', icon: LockKeyhole }
+
+  const actionGroups = [
+    {
+      label: 'Navigation',
+      actions: [
+        { label: 'Dashboard', path: '/', icon: Home, shortcut: 'G D' },
+        { label: 'Findings', path: '/findings', icon: ShieldAlert, shortcut: 'G F' },
+        { label: 'Assets', path: '/assets', icon: Layers3, shortcut: 'G A' },
+        { label: 'Remediation', path: '/remediation', icon: Wrench, shortcut: 'G R' },
+        { label: 'Agents', path: '/agents', icon: Network, shortcut: 'G N' },
+      ],
+    },
+    {
+      label: 'Actions',
+      actions: [
+        { label: 'Start Defend Scan', path: '/scan', icon: Activity, shortcut: 'S S' },
+        { label: 'Authorized Testing', path: '/authorized-testing', icon: LockKeyhole, shortcut: 'S T' },
+        { label: 'Self Audit', path: '/self-audit', icon: Stethoscope, shortcut: 'S A' },
+        { label: 'Last Scan Report', path: lastScan ? `/report/${lastScan.id}` : '/history', icon: FileClock, shortcut: 'S L' },
+      ],
+    },
   ];
-  const filtered = actions.filter((action) => action.label.toLowerCase().includes(query.toLowerCase()));
+
+  const filtered = actionGroups
+    .map((g) => ({
+      ...g,
+      actions: g.actions.filter((a) => a.label.toLowerCase().includes(query.toLowerCase())),
+    }))
+    .filter((g) => g.actions.length > 0);
+
+  useEffect(() => { setActiveIndex(0); }, [query]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const total = filtered.reduce((sum, g) => sum + g.actions.length, 0);
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex((prev) => Math.min(prev + 1, total - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex((prev) => Math.max(prev - 1, 0)); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      let idx = 0;
+      for (const group of filtered) {
+        for (const action of group.actions) {
+          if (idx === activeIndex) { navigate(action.path); onClose(); return; }
+          idx++;
+        }
+      }
+    }
+  };
+
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/70 px-4 pt-[12vh] backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-          <motion.div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#0B1020]/95 shadow-2xl" initial={{ y: 20, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.98 }} transition={{ duration: 0.18 }} onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-4">
-              <Command className="h-5 w-5 text-violet-300" />
-              <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Open a safe PhantomScan action..." className="flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600" />
+        <motion.div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[12vh]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            className="w-full max-w-md overflow-hidden rounded-xl border border-[var(--border-light)] bg-[var(--surface-primary)] shadow-[var(--shadow-float)]"
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 12, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={handleKeyDown}
+            role="combobox"
+            aria-expanded="true"
+            aria-haspopup="listbox"
+          >
+            <div className="flex items-center gap-2.5 border-b border-[var(--border-light)] px-4 py-2.5">
+              <Command className="h-4 w-4 shrink-0 text-[var(--text-subtle)]" />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search pages and actions..."
+                className="flex-1 bg-transparent text-xs text-[var(--text-strong)] outline-none placeholder:text-[var(--text-subtle)]"
+                aria-label="Command search"
+              />
+              <kbd className="hidden rounded border border-[var(--border-light)] px-1.5 py-0.5 text-[10px] text-[var(--text-subtle)] md:inline-block">ESC</kbd>
             </div>
-            <div className="max-h-[420px] overflow-y-auto p-2">
-              {filtered.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <button key={action.label} onClick={() => { navigate(action.path); onClose(); }} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left hover:bg-white/[0.06]">
-                    <Icon className="h-4 w-4 text-violet-300" />
-                    <span className="text-sm font-medium text-slate-100">{action.label}</span>
-                  </button>
-                );
-              })}
+            <div className="max-h-80 overflow-y-auto p-1.5" role="listbox">
+              {filtered.length ? (
+                filtered.map((group, gi) => (
+                  <div key={group.label}>
+                    <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">
+                      {group.label}
+                    </div>
+                    {group.actions.map((action, ai) => {
+                      const globalIdx = filtered.slice(0, gi).reduce((sum, g) => sum + g.actions.length, 0) + ai;
+                      const Icon = action.icon;
+                      const isActive = globalIdx === activeIndex;
+                      return (
+                        <button
+                          key={action.path}
+                          role="option"
+                          aria-selected={isActive}
+                          onClick={() => { navigate(action.path); onClose(); }}
+                          onMouseEnter={() => setActiveIndex(globalIdx)}
+                          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs transition-colors ${
+                            isActive ? 'bg-[var(--surface-selected)] text-[var(--brand)]' : 'text-[var(--text-default)] hover:bg-[var(--surface-hover)]'
+                          }`}
+                        >
+                          <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-[var(--brand)]' : 'text-[var(--text-muted)]'}`} />
+                          <span className="flex-1">{action.label}</span>
+                          {action.shortcut ? (
+                            <kbd className={`rounded border px-1.5 py-0.5 text-[10px] font-mono ${
+                              isActive ? 'border-[var(--brand)]/30 text-[var(--brand)]' : 'border-[var(--border-light)] text-[var(--text-subtle)]'
+                            }`}>{action.shortcut}</kbd>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))
+              ) : (
+                <div className="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
+                  No results for &quot;{query}&quot;
+                </div>
+              )}
             </div>
+            {!query ? (
+              <div className="border-t border-[var(--border-light)] px-4 py-2 text-[10px] text-[var(--text-subtle)]">
+                Use ↑ ↓ to navigate, Enter to select, Esc to close
+              </div>
+            ) : null}
           </motion.div>
         </motion.div>
       ) : null}
@@ -309,26 +483,34 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
+/* ── Notification Drawer ── */
+
 function NotificationDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { findings, logs } = usePhantomData();
   const notices = useMemo(() => deriveNotifications(findings, logs), [findings, logs]);
   return (
     <Drawer title="Notifications" open={open} onClose={onClose}>
-      <div className="space-y-3">
-        {notices.length ? notices.map((notice) => (
-          <div key={notice.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.035] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{notice.type}</div>
-              <div className="text-xs text-slate-500">{relativeTime(notice.timestamp)}</div>
+      <div className="space-y-2">
+        {notices.length ? (
+          notices.map((notice) => (
+            <div key={notice.id} className="rounded-xl border border-[var(--border-light)] p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-semibold text-[var(--text-muted)]">{notice.type}</span>
+                <span className="text-[10px] text-[var(--text-muted)]">{relativeTime(notice.timestamp)}</span>
+              </div>
+              <div className="mt-1.5 text-xs font-medium text-[var(--text-strong)]">{notice.title}</div>
+              <div className="mt-1 text-xs text-[var(--text-muted)] leading-relaxed">{notice.detail}</div>
             </div>
-            <div className="mt-2 font-medium text-slate-100">{notice.title}</div>
-            <div className="mt-1 line-clamp-2 text-sm text-slate-400">{notice.detail}</div>
-          </div>
-        )) : <div className="rounded-2xl border border-white/[0.06] bg-white/[0.035] p-6 text-sm text-slate-500">No notifications have been derived from backend activity yet.</div>}
+          ))
+        ) : (
+          <EmptyState title="No notifications" description="No notifications yet." compact />
+        )}
       </div>
     </Drawer>
   );
 }
+
+/* ── Ask PhantomScan Drawer ── */
 
 function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { scans, artifactsByScanId } = usePhantomData();
@@ -348,108 +530,238 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
     try {
       const response = await askPhantomScan(latestScan.id, question.trim());
       setAnswer(response.answer);
-      setCitations(response.citations.map((item) => ({ label: item.label, title: item.title, endpoint: item.endpoint })));
+      setCitations(response.citations.map((c) => ({ label: c.label, title: c.title, endpoint: c.endpoint })));
     } catch (err) {
       setError(apiErrorMessage(err, 'Ask PhantomScan could not answer from current evidence.'));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <Drawer title="Ask PhantomScan" open={open} onClose={onClose}>
       {latestScan ? (
-        <div className="space-y-5">
-          <div className="rounded-2xl bg-white/[0.035] p-4 text-sm text-slate-400">Answers are grounded in scan {latestScan.id} for {targetName(latestScan.target_url)}. This assistant cannot start active tests.</div>
-          <form onSubmit={submit} className="space-y-3">
-            <textarea value={question} onChange={(event) => setQuestion(event.target.value)} className="min-h-28 w-full rounded-2xl border border-white/[0.08] bg-slate-950/60 p-4 text-sm text-slate-100 outline-none placeholder:text-slate-600" placeholder="Ask about priorities, score, authentication, APIs, changes, or remediation..." />
-            <Button type="submit" disabled={loading || !question.trim()}>{loading ? 'Thinking...' : 'Ask'}</Button>
+        <div className="space-y-4">
+          <div className="rounded-xl bg-[var(--surface-secondary)] p-3.5 text-xs text-[var(--text-muted)]">
+            Answers grounded in scan {latestScan.id} for {targetName(latestScan.target_url)}.
+          </div>
+          <form onSubmit={submit} className="space-y-2">
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              className="min-h-20 w-full rounded-[var(--radius-control)] border border-[var(--border-light)] bg-white p-3 text-xs text-[var(--text-default)] outline-none transition-colors placeholder:text-[var(--text-subtle)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10"
+              placeholder="Ask about priorities, score, or remediation..."
+            />
+            <Button type="submit" disabled={loading || !question.trim()}>
+              {loading ? 'Thinking...' : 'Ask'}
+            </Button>
           </form>
-          {prompts.length ? <div className="space-y-2"><div className="text-xs uppercase tracking-[0.18em] text-slate-600">Suggested Prompts</div><div className="flex flex-wrap gap-2">{prompts.slice(0, 8).map((prompt) => <button key={prompt} onClick={() => setQuestion(prompt)} className="rounded-2xl bg-white/[0.04] px-3 py-2 text-xs text-slate-300 hover:bg-white/[0.08]">{prompt}</button>)}</div></div> : null}
-          {error ? <div className="rounded-2xl border border-red-400/20 bg-red-500/[0.06] p-4 text-sm text-red-100/80">{error}</div> : null}
-          {answer ? <div className="rounded-2xl bg-violet-500/[0.08] p-4 text-sm leading-6 text-violet-50/90">{answer}</div> : null}
-          {citations.length ? <div className="space-y-2"><div className="text-xs uppercase tracking-[0.18em] text-slate-600">Citations</div>{citations.map((citation, index) => <div key={`${citation.label}-${index}`} className="rounded-2xl bg-white/[0.035] p-3 text-sm text-slate-400"><div className="font-medium text-slate-200">{citation.label ?? `Citation ${index + 1}`}</div><div>{citation.title}</div><div className="break-all font-mono text-xs text-slate-500">{citation.endpoint}</div></div>)}</div> : null}
+          {prompts.length ? (
+            <div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">Suggested</div>
+              <div className="flex flex-wrap gap-1.5">
+                {prompts.slice(0, 6).map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => setQuestion(prompt)}
+                    className="rounded-lg bg-[var(--surface-hover)] px-2.5 py-1 text-[10px] text-[var(--text-muted)] hover:bg-[var(--surface-tertiary)]"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {error ? <ErrorState title="Error" description={error} /> : null}
+          {answer ? (
+            <div className="rounded-xl bg-[var(--surface-secondary)] p-3.5 text-xs leading-relaxed text-[var(--text-default)]">{answer}</div>
+          ) : null}
+          {citations.length ? (
+            <div>
+              <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">Citations</div>
+              {citations.map((c, i) => (
+                <div key={`${c.label}-${i}`} className="mb-1 rounded-xl bg-[var(--surface-secondary)] p-3 text-[10px] text-[var(--text-muted)]">
+                  <div className="font-medium text-[var(--text-default)]">{c.label ?? `Citation ${i + 1}`}</div>
+                  <div>{c.title}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
-      ) : <div className="rounded-2xl border border-white/[0.06] bg-white/[0.035] p-6 text-sm text-slate-500">Run a scan before asking evidence-grounded questions.</div>}
+      ) : (
+        <EmptyState title="No scan data" description="Run a scan before asking questions." compact />
+      )}
     </Drawer>
   );
 }
 
+function ErrorState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--danger-soft)] bg-[var(--danger-soft)]/30 p-3.5 text-xs text-[var(--danger)]">
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 shrink-0 font-bold">!</span>
+        <div>
+          <div className="font-semibold">{title}</div>
+          <div className="mt-0.5 text-[var(--text-default)]">{description}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main App Shell ── */
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const { health, realtimeHealthy, realtimeState, refresh, refreshing } = usePhantomData();
+  const { health, realtimeHealthy, realtimeState, refresh, refreshing, executionStatus, executionActive } = usePhantomData();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('phantomscan:sidebar') === 'collapsed');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const { user, logoutUser } = useAuth();
   const details = currentRoute(location.pathname);
 
-  useEffect(() => {
-    localStorage.setItem('phantomscan:sidebar', collapsed ? 'collapsed' : 'expanded');
-  }, [collapsed]);
+  const sidebarWidth = collapsed ? 56 : 232;
+
+  useEffect(() => { localStorage.setItem('phantomscan:sidebar', collapsed ? 'collapsed' : 'expanded'); }, [collapsed]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setCommandOpen(true);
-      }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCommandOpen(true); }
+      if (e.key === 'Escape') { setCommandOpen(false); setNotificationsOpen(false); setAskOpen(false); setStatusOpen(false); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   return (
-    <div className="min-h-screen bg-app text-slate-100">
-      <div className="pointer-events-none fixed inset-0 bg-grid opacity-80" />
-      <div className="pointer-events-none fixed left-1/3 top-0 h-96 w-96 rounded-full bg-violet-500/15 blur-3xl" />
-      {location.pathname.startsWith('/authorized-testing') ? <div className="pointer-events-none fixed right-0 top-1/3 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl" /> : null}
-      <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} onToggleCollapse={() => setCollapsed((value) => !value)} />
-      <div className={cx('relative min-h-screen transition-all duration-200', collapsed ? 'lg:pl-[86px]' : 'lg:pl-[236px]')}>
-        <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#070A12]/70 backdrop-blur-xl">
-          <div className="mx-auto flex h-[76px] max-w-[1600px] items-center gap-4 px-4 sm:px-6 lg:px-8">
-            <button className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2.5 text-slate-300 lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open navigation">
-              <Menu className="h-5 w-5" />
+    <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--text-default)]">
+      <Sidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onCloseMobile={() => setMobileOpen(false)}
+        onToggleCollapse={() => setCollapsed((v) => !v)}
+      />
+
+      <div className={cx('min-h-screen transition-all duration-200', collapsed ? 'lg:pl-14' : 'lg:pl-56')}>
+        {/* Top bar */}
+        <header className="sticky top-0 z-20 border-b border-[var(--border-light)] bg-[var(--topbar-canvas)] backdrop-blur-[8px]">
+          <div className="flex h-[48px] items-center gap-3 px-5">
+            <button
+              className="rounded-[var(--radius-control)] border border-[var(--border-light)] p-2 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] lg:hidden"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation"
+            >
+              <Menu className="h-4 w-4" />
             </button>
+
+            {/* Breadcrumb-style title */}
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-xl font-semibold tracking-tight text-slate-50">{details.title}</h1>
-              <p className="mt-0.5 hidden truncate text-sm text-slate-500 sm:block">{details.description}</p>
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-sm font-semibold text-[var(--text-strong)]">{details.title}</h1>
+              </div>
             </div>
-            <GlobalSearch />
-            <Button variant="ghost" onClick={() => setCommandOpen(true)} className="hidden px-3 md:inline-flex"><Command className="h-4 w-4" />K</Button>
-            <Button variant="ghost" onClick={() => setAskOpen(true)} className="px-3"><Sparkles className="h-4 w-4" /><span className="hidden sm:inline">Ask</span></Button>
-            <Button variant="ghost" onClick={() => setNotificationsOpen(true)} className="h-11 w-11 p-0" aria-label="Notifications"><Bell className="h-4 w-4" /></Button>
+
+            {/* Execution indicator */}
+            {executionActive && executionStatus ? (
+              <Link
+                to={executionStatus.execution_type === 'AUTHORIZED_TEST' ? '/authorized-testing' : '/scan'}
+                className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--warning-soft)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--warning)] hover:bg-[var(--warning-soft)]"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--warning)]" />
+                <span className="hidden sm:inline">
+                  {executionStatus.execution_type === 'AUTHORIZED_TEST' ? 'Active Test' : executionStatus.execution_type === 'DEFEND_SCAN' ? 'Scanning' : 'Running'}
+                </span>
+                <span className="font-mono">{executionStatus.progress_percent}%</span>
+              </Link>
+            ) : null}
+
+            {/* Command palette trigger */}
+            <button
+              onClick={() => setCommandOpen(true)}
+              className="hidden md:inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--border-light)] px-2.5 py-1.5 text-xs text-[var(--text-subtle)] hover:bg-[var(--surface-hover)]"
+            >
+              <Command className="h-3 w-3" />
+              <kbd className="text-[10px] text-[var(--text-subtle)]">K</kbd>
+            </button>
+
+            <button
+              onClick={() => setAskOpen(true)}
+              className="rounded-[var(--radius-control)] p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
+              aria-label="Ask PhantomScan"
+            >
+              <Sparkles className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => setNotificationsOpen(true)}
+              className="rounded-[var(--radius-control)] p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
+              aria-label="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+            </button>
+
             <div className="relative">
-              <button onClick={() => setStatusOpen((value) => !value)} className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.08]">
-                <span className={cx('h-2.5 w-2.5 rounded-full', realtimeHealthy ? 'bg-emerald-400' : 'bg-amber-400')} />
-                <span className="hidden sm:inline">{realtimeHealthy ? 'Systems Online' : 'Connection Issue'}</span>
+              <button
+                onClick={() => setStatusOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-[var(--border-light)] px-2.5 py-1.5 text-xs text-[var(--text-subtle)] hover:bg-[var(--surface-hover)]"
+                aria-label="System status"
+              >
+                <span className={cx('h-2 w-2 rounded-full', realtimeHealthy ? 'bg-[var(--success)]' : 'bg-[var(--warning)]')} />
+                <span className="hidden sm:inline text-[var(--text-muted)]">{realtimeHealthy ? 'Online' : 'Issue'}</span>
               </button>
               <SystemStatusPopover open={statusOpen} onClose={() => setStatusOpen(false)} />
             </div>
-            <Button variant="ghost" onClick={() => void refresh()} className="hidden px-3 xl:inline-flex" disabled={refreshing}>
-              <Sparkles className={cx('h-4 w-4', refreshing && 'animate-spin')} />
-              Refresh
-            </Button>
-            <div className="hidden h-11 items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 md:flex">
-              <UserCircle className="h-5 w-5 text-slate-500" />
-              <span className="text-sm text-slate-300">Local</span>
-            </div>
+
+            {user?.role === 'admin' ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-red-500/40 bg-red-600/20 px-2.5 py-1.5 text-xs font-bold text-red-400">
+                  <UserCircle className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{user.username}</span>
+                </div>
+                <button
+                  onClick={() => { logoutUser(); window.location.reload(); }}
+                  className="rounded-[var(--radius-control)] border border-[var(--border-light)] px-2.5 py-1.5 text-xs text-[var(--text-subtle)] hover:bg-[var(--surface-hover)]"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="ml-2 rounded-[var(--radius-control)] border border-amber-500/40 bg-amber-600/20 px-2.5 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-600/30 transition-all"
+              >
+                🔒 Private Console
+              </button>
+            )}
+
+            <button
+              onClick={() => void refresh()}
+              className="rounded-[var(--radius-control)] p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
+              disabled={refreshing}
+              aria-label="Refresh data"
+            >
+              <Sparkles className={cx('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+            </button>
           </div>
         </header>
-        <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          {health?.status === 'degraded' || realtimeState === 'error' ? (
-            <div className="mb-6 rounded-3xl border border-amber-400/20 bg-amber-500/[0.06] px-5 py-4 text-sm text-amber-100/80">
-              Backend telemetry is degraded. Visible status and metrics are based on the latest reachable data.
-            </div>
-          ) : null}
-          {children}
-        </main>
+
+        {/* Degraded banner */}
+        {health?.status === 'degraded' || realtimeState === 'error' ? (
+          <div className="mx-5 mt-4 rounded-xl border border-[var(--warning-soft)] bg-[var(--warning-soft)]/40 px-4 py-2.5 text-xs text-[var(--warning)]">
+            Backend telemetry is degraded. Data reflects the latest reachable state.
+          </div>
+        ) : null}
+
+        {/* Main content */}
+        <main className="px-5 py-6 lg:px-6">{children}</main>
       </div>
+
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
       <NotificationDrawer open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       <AskPhantomScanDrawer open={askOpen} onClose={() => setAskOpen(false)} />
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </div>
   );
 }

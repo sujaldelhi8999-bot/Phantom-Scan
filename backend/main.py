@@ -1,7 +1,10 @@
 import asyncio
+import logging
 import sys
+
+logger = logging.getLogger("phantomscan")
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -23,7 +26,7 @@ from app.database import (
     initialize_database,
 )
 from app.models import HealthResponse
-from app.routers import active, agents, ai, authorization, findings, lab, logs, scan, self_audit
+from app.routers import active, admin_scope, agents, ai, auth, authorization, dos, execution, findings, intelligence, lab, logs, scan, self_audit
 from app.services.jobs import scan_job_manager
 from app.services.openrouter_client import get_ai_status
 from app.websockets import scan_event_broker
@@ -37,6 +40,42 @@ async def lifespan(application: FastAPI):
     await initialize_database()
     system_scan_id = await get_or_create_system_scan()
     await add_audit_log(system_scan_id, "System", "backend_started", "PhantomScan backend started")
+
+    from app.database import get_connection as _recovery_conn
+    try:
+        async with _recovery_conn() as _conn:
+            _cutoff = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+            _cur = await _conn.execute(
+                "SELECT id, target_url, scan_id FROM authorized_test_jobs WHERE status IN ('QUEUED', 'RUNNING') AND updated_at < ?",
+                (_cutoff,),
+            )
+            _stuck_rows = await _cur.fetchall()
+            for _row in _stuck_rows:
+                _jid = str(_row["id"])
+                try:
+                    await _conn.execute(
+                        "UPDATE authorized_test_jobs SET status = 'FAILED', error_message = ?, error_code = ?, completed_at = ? WHERE id = ?",
+                        ("Backend restart interrupted execution", "BACKEND_RESTART", datetime.now(timezone.utc).isoformat(), _jid),
+                    )
+                    await _conn.commit()
+                    _turl = str(_row["target_url"]) if _row["target_url"] else ""
+                    from app.services.active_gate import ActiveTargetGate
+                    _ilab = ActiveTargetGate.is_builtin_lab_target(_turl) if _turl else False
+                    from app.services.execution_status import update_authorized_test_execution as _recover_exec
+                    await _recover_exec(
+                        job_id=_jid,
+                        lifecycle="FAILED",
+                        target_url=_turl,
+                        scan_id=_row["scan_id"],
+                        is_lab=_ilab,
+                        error_message="Backend restart interrupted execution",
+                        error_code="BACKEND_RESTART",
+                    )
+                    logger.warning("Recovery: marked job %s as FAILED (backend restart)", _jid)
+                except Exception as _exc:
+                    logger.error("Recovery: failed to mark job %s: %s", _jid, _exc)
+    except Exception as _exc:
+        logger.error("Recovery: could not check for stuck jobs: %s", _exc)
 
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(
@@ -70,13 +109,18 @@ app.add_middleware(
 
 app.include_router(scan.router)
 app.include_router(active.router)
+app.include_router(admin_scope.router)
+app.include_router(auth.router)
 app.include_router(ai.router)
 app.include_router(authorization.router)
+app.include_router(dos.router)
 app.include_router(agents.router)
 app.include_router(logs.router)
 app.include_router(findings.router)
 app.include_router(self_audit.router)
 app.include_router(lab.router)
+app.include_router(execution.router)
+app.include_router(intelligence.router)
 
 
 def scheduler_state() -> str:

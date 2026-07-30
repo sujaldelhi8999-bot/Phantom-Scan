@@ -13,6 +13,8 @@ from app.agents.ai_security_analyst import AISecurityAnalystAgent
 from app.agents.analyzer import AnalyzerAgent
 from app.agents.browser_security import BrowserSecurityAgent
 from app.agents.cve_matcher import CVEMatcherAgent
+from app.agents.exploitation.sqli import SQLIExploitationAgent
+from app.agents.exploitation_engine import ExploitationAgent
 from app.agents.fixer import FixerAgent
 from app.agents.hindi_explainer import HindiExplainerAgent
 from app.agents.notifier import NotifierAgent
@@ -61,6 +63,7 @@ class OrchestratorAgent(Agent):
         *,
         verified_target: VerifiedTarget | None = None,
         user_id: str = "local-user",
+        user_role: str = "user",
         authorization_context: dict[str, object] | None = None,
     ) -> dict[str, Any]:
         target = canonicalize_target(scan_request.target_url)
@@ -69,6 +72,7 @@ class OrchestratorAgent(Agent):
             scan_request,
             verified_target,
             user_id,
+            user_role,
             authorization_context,
         )
 
@@ -271,6 +275,24 @@ class OrchestratorAgent(Agent):
             persisted_findings = await self.persist_findings(scan_id, enriched_findings, target.url)
             await self.set_progress(scan_id, 86, "findings_persisted", request_count=request_count)
 
+            exploitation_result = None
+            if scan_request.enable_exploitation:
+                await self.set_progress(scan_id, 87, "exploitation_started", request_count=request_count)
+                exploiter = ExploitationAgent()
+                expl_event = await self.run_agent(
+                    "exploitation",
+                    exploiter.name,
+                    exploiter.run(target.url, scan_id, findings=persisted_findings),
+                    scan_id,
+                )
+                exploitation_result = expl_event.get("result")
+                if exploitation_result and exploitation_result.get("exploitation_results"):
+                    await set_scan_artifacts(scan_id, exploitation_output=exploitation_result)
+                await self.set_progress(scan_id, 89, "exploitation_complete", request_count=request_count)
+
+            if scan_request.enable_exploitation and exploitation_result:
+                await self.run_sqli_exploitation(target.url, scan_id, persisted_findings)
+
             fixer = FixerAgent()
             fixer_event = await self.run_agent(
                 "fixer",
@@ -307,6 +329,10 @@ class OrchestratorAgent(Agent):
             await set_scan_artifacts(scan_id, ai_analyst_output=ai_analyst_output)
             await self.set_progress(scan_id, 95, "ai_analysis_complete", request_count=request_count)
 
+            sqli_exploitation_results = [
+                f.get("exploitation_result") for f in persisted_findings
+                if f.get("exploited") and f.get("exploitation_result")
+            ]
             summary = {
                 "scan_id": scan_id,
                 "target_url": target.url,
@@ -320,6 +346,7 @@ class OrchestratorAgent(Agent):
                 "active_security": active_result,
                 "browser_security": browser_result,
                 "ai_analyst_output": ai_analyst_output,
+                "exploitation_results": sqli_exploitation_results if sqli_exploitation_results else None,
             }
             await self._write_report_files(summary, scan_id, target.url, markdown_report, hindi_findings, scanner_output, shadow_output, active_result)
             notifier = NotifierAgent()
@@ -349,6 +376,69 @@ class OrchestratorAgent(Agent):
             await self.log_action("error", str(exc)[:2000])
             await self.publish(scan_id, "scan_failed", {"status": "error", "error": str(exc)})
             return {"scan_id": scan_id, "status": "error", "error": str(exc)}
+
+    async def run_sqli_exploitation(
+        self,
+        target_url: str,
+        scan_id: int,
+        findings: list[dict[str, Any]],
+    ) -> None:
+        sqli_findings = [
+            f for f in findings
+            if f.get("category", "").lower() in ("sql_injection", "injection")
+        ]
+        if not sqli_findings:
+            return
+
+        await self.publish(scan_id, "sqli_exploitation_started", {
+            "message": f"🔓 Exploiting {len(sqli_findings)} SQL injection vulnerabilities...",
+        })
+
+        for finding in sqli_findings[:3]:
+            target_url = finding.get("endpoint") or finding.get("target", "")
+            param = finding.get("parameter") or "id"
+            payload = finding.get("evidence", "")[:100] or ""
+
+            try:
+                agent = SQLIExploitationAgent(
+                    scan_id=scan_id,
+                    target_url=target_url,
+                    param=param,
+                    payload=payload,
+                )
+                result = await agent.exploit()
+
+                finding["exploitation_result"] = result
+                finding["exploited"] = True
+
+                tables_count = len(result.get("tables", []))
+                data_count = sum(len(d.get("rows", [])) for d in result.get("data", []))
+                await self.publish(scan_id, "sqli_exploitation_result", {
+                    "finding_id": finding.get("id"),
+                    "param": param,
+                    "database_type": result.get("database_type"),
+                    "tables": result.get("tables", []),
+                    "tables_count": tables_count,
+                    "data_count": data_count,
+                    "message": (
+                        f"🔓 Exploited SQL Injection on {param}: "
+                        f"DB={result.get('database_type')}, "
+                        f"{tables_count} tables, {data_count} rows extracted"
+                    ),
+                })
+
+                await add_audit_log(
+                    scan_id,
+                    "SQLIExploitationAgent",
+                    "sqli_exploited",
+                    f"Exploited SQLi on param={param}, DB={result.get('database_type')}, "
+                    f"tables={tables_count}, rows={data_count}",
+                )
+            except Exception as exc:
+                await self.publish(scan_id, "sqli_exploitation_error", {
+                    "message": f"SQLi exploitation failed: {exc}",
+                })
+                traceback.print_exc()
 
     async def run_ai_security_analyst(
         self,
@@ -429,6 +519,7 @@ class OrchestratorAgent(Agent):
         request: ScanRequest,
         verified_target: VerifiedTarget | None,
         user_id: str,
+        user_role: str = "user",
         authorization_context: dict[str, object] | None = None,
     ) -> tuple[VerifiedTarget | None, dict[str, object]]:
         target = canonicalize_target(request.target_url)
@@ -451,7 +542,7 @@ class OrchestratorAgent(Agent):
             raise PermissionError("Pentest execution requires at least one selected test module")
         if request.business_logic_tests and "business_logic" not in request.selected_tests:
             raise PermissionError("Business logic definitions require the business_logic module")
-        decision = await ActiveTargetGate(TargetAuthorizationService()).admit(target.url, user_id, request.authorization_id)
+        decision = await ActiveTargetGate(TargetAuthorizationService()).admit(target.url, user_id, request.authorization_id, user_role=user_role)
         if not decision.allowed:
             raise PermissionError(decision.reason)
         if decision.authorization_status == "VERIFIED" and not request.authorization_confirmed:
@@ -737,6 +828,22 @@ class OrchestratorAgent(Agent):
             lines.append(f"- Evidence: {f.get('evidence', 'N/A')}")
             lines.append(f"- Impact: {f.get('impact', 'N/A')}")
             lines.append(f"- Fix: {f.get('fix', 'N/A')}")
+            if f.get("exploited") and f.get("exploitation_result"):
+                er = f["exploitation_result"]
+                lines.append(f"- **Exploited:** True")
+                lines.append(f"- Database Type: {er.get('database_type', 'Unknown')}")
+                lines.append(f"- Tables ({len(er.get('tables', []))}): {', '.join(er.get('tables', []))}")
+                for td in er.get("data", []):
+                    lines.append(f"  - Table: {td['table']} ({len(td.get('rows', []))} rows)")
+            lines.append("")
+        lines.append("")
+        if any(f.get("exploited") for f in findings):
+            lines.append("## Exploitation Summary")
+            exploited = [f for f in findings if f.get("exploited")]
+            lines.append(f"- Total exploited vulnerabilities: {len(exploited)}")
+            for f in exploited:
+                er = f.get("exploitation_result", {})
+                lines.append(f"- {f.get('title', 'Finding')}: {er.get('database_type', 'Unknown')} - {len(er.get('tables', []))} tables")
             lines.append("")
         if markdown_report:
             lines.append("## Remediation Checklist")

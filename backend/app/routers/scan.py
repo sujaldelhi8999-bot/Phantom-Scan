@@ -114,6 +114,7 @@ async def start_scan(scan_request: ScanRequest) -> ScanResponse:
             admission.verified_target,
             settings.local_user_id,
             admission.authorization_context,
+            user_role=settings.local_user_role,
         )
     except ScanCapacityError as exc:
         if scan_id is not None:

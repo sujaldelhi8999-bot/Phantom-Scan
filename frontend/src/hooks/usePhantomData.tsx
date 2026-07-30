@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 
 import {
   getAgentStatuses,
+  getExecutionStatus,
   getFindings,
   getHealth,
   getLogs,
@@ -14,12 +15,18 @@ import type {
   AgentStatus,
   AuditLog,
   ConnectionState,
+  ExecutionLifecycle,
+  ExecutionStatusResponse,
   Finding,
   HealthResponse,
   ScanArtifactsResponse,
   ScanHistoryItem,
   SelfAuditStatusResponse
 } from '../types';
+
+const EXECUTION_POLL_INTERVAL = 2000;
+const TERMINAL_EXECUTION: ExecutionLifecycle[] = ['COMPLETED', 'FAILED', 'CANCELLED'];
+const ACTIVE_EXECUTION: ExecutionLifecycle[] = ['QUEUED', 'STARTING', 'RUNNING', 'PAUSED'];
 
 interface PhantomDataContextValue {
   health: HealthResponse | null;
@@ -35,6 +42,8 @@ interface PhantomDataContextValue {
   realtimeState: ConnectionState;
   realtimeHealthy: boolean;
   refresh: () => Promise<void>;
+  executionStatus: ExecutionStatusResponse | null;
+  executionActive: boolean;
 }
 
 const PhantomDataContext = createContext<PhantomDataContextValue | null>(null);
@@ -55,7 +64,9 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [realtimeState, setRealtimeState] = useState<ConnectionState>('idle');
+  const [executionStatus, setExecutionStatus] = useState<ExecutionStatusResponse | null>(null);
   const refreshInFlight = useRef(false);
+  const execPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = async () => {
     if (refreshInFlight.current) return;
@@ -148,6 +159,65 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
 
   const realtimeHealthy = realtimeState === 'open' && health?.status === 'ok';
 
+  const execActive = executionStatus ? ACTIVE_EXECUTION.includes(executionStatus.lifecycle) : false;
+
+  const fetchExecutionStatus = async () => {
+    try {
+      const result = await getExecutionStatus();
+      if (result) {
+        setExecutionStatus(result);
+        if (TERMINAL_EXECUTION.includes(result.lifecycle)) {
+          if (execPollingRef.current) {
+            clearInterval(execPollingRef.current);
+            execPollingRef.current = null;
+          }
+        }
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  useEffect(() => {
+    const startPolling = () => {
+      if (execPollingRef.current) {
+        clearInterval(execPollingRef.current);
+        execPollingRef.current = null;
+      }
+      execPollingRef.current = setInterval(() => void fetchExecutionStatus(), EXECUTION_POLL_INTERVAL);
+    };
+
+    fetchExecutionStatus().then(() => {
+      if (execActive && !execPollingRef.current) {
+        startPolling();
+      }
+    });
+
+    return () => {
+      if (execPollingRef.current) {
+        clearInterval(execPollingRef.current);
+        execPollingRef.current = null;
+      }
+    };
+  }, [execActive]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchExecutionStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  // When refresh is called, also refetch execution status
+  const origRefresh = refresh;
+  const superRefresh = async () => {
+    await origRefresh();
+    await fetchExecutionStatus();
+  };
+
   return (
     <PhantomDataContext.Provider
       value={{
@@ -163,7 +233,9 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
         error,
         realtimeState,
         realtimeHealthy,
-        refresh
+        refresh: superRefresh,
+        executionStatus,
+        executionActive: execActive,
       }}
     >
       {children}

@@ -47,13 +47,14 @@ class ScanJobManager:
         verified_target: VerifiedTarget | None,
         user_id: str,
         authorization_context: dict[str, object] | None = None,
+        user_role: str = "user",
     ) -> None:
         async with self._lock:
             if reservation not in self._reservations:
                 raise ScanCapacityError("Scan capacity reservation is invalid or expired")
             self._reservations.remove(reservation)
             task = asyncio.create_task(
-                self._execute(scan_id, request, verified_target, user_id, authorization_context),
+                self._execute(scan_id, request, verified_target, user_id, authorization_context, user_role),
                 name=f"phantomscan-{scan_id}",
             )
             self._tasks[scan_id] = task
@@ -65,6 +66,7 @@ class ScanJobManager:
         verified_target: VerifiedTarget | None,
         user_id: str,
         authorization_context: dict[str, object] | None = None,
+        user_role: str = "user",
     ) -> dict[str, Any]:
         try:
             return await asyncio.wait_for(
@@ -73,6 +75,7 @@ class ScanJobManager:
                     scan_id,
                     verified_target=verified_target,
                     user_id=user_id,
+                    user_role=user_role,
                     authorization_context=authorization_context,
                 ),
                 timeout=self.limits.max_scan_duration + 5,

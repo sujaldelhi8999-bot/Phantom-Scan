@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Finding } from '../../types';
-import { Drawer, EmptyState, SectionHeader, SeverityBadge, StatusBadge, Surface } from '../../components/ui/Primitives';
+import { DataTable, Drawer, EmptyState, Page, PageHeader, Panel, SectionHeader, SeverityBadge, StatusBadge } from '../../components/ui/Primitives';
 import { usePhantomData } from '../../hooks/usePhantomData';
 import { deriveTechnologies, targetName } from '../../utils/derived';
 
@@ -8,15 +8,92 @@ export default function CvePage() {
   const { findings, artifactsByScanId } = usePhantomData();
   const [selected, setSelected] = useState<Finding | null>(null);
   const technologies = useMemo(() => deriveTechnologies(artifactsByScanId), [artifactsByScanId]);
-  const cves = findings.filter((finding) => finding.cve_id);
+  const cves = findings.filter((f) => f.cve_id);
+
+  const columns = [
+    { key: 'severity', label: 'Severity', width: '75px' },
+    { key: 'cve', label: 'CVE ID', width: '130px' },
+    { key: 'technology', label: 'Technology' },
+    { key: 'source', label: 'Source', width: '100px' },
+    { key: 'status', label: 'Status', width: '80px' },
+  ];
+
+  const rows = cves.map((finding) => ({
+    id: finding.id,
+    cells: {
+      severity: <SeverityBadge severity={finding.severity} compact />,
+      cve: <span className="font-mono text-xs text-[var(--brand)]">{finding.cve_id}</span>,
+      technology: <span className="truncate text-xs text-[var(--text-strong)]">{finding.title.replace(/^Known vulnerability in /, '')}</span>,
+      source: <span className="text-xs text-[var(--text-muted)]">{finding.agent || 'Scanner'}</span>,
+      status: <StatusBadge status="Open" />,
+    },
+  }));
+
   return (
-    <div className="space-y-6">
-      <Surface className="p-6"><SectionHeader title="Detected Technologies" description="Technology evidence persisted by Scanner Agent artifacts." />{technologies.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{technologies.map((tech) => <div key={tech.name} className="rounded-2xl bg-white/[0.035] p-4"><div className="font-mono text-sm text-slate-100">{tech.name}</div><div className="mt-2 text-xs text-slate-500">Seen in {tech.scans.length} scan{tech.scans.length === 1 ? '' : 's'}</div></div>)}</div> : <EmptyState title="No technologies detected" description="Run a scan to persist scanner artifacts for CVE correlation." />}</Surface>
-      <Surface className="overflow-hidden"><div className="p-6"><SectionHeader title="Relevant CVEs" description="CVE findings returned by the backend intelligence agent." /></div>{cves.length ? <div className="hidden md:block"><div className="grid grid-cols-[120px_170px_1fr_150px_120px] gap-4 border-y border-white/[0.06] px-5 py-3 text-xs uppercase tracking-[0.18em] text-slate-600"><span>Severity</span><span>CVE</span><span>Technology</span><span>Detected Version</span><span>Status</span></div>{cves.map((finding) => <button key={finding.id} onClick={() => setSelected(finding)} className="grid w-full grid-cols-[120px_170px_1fr_150px_120px] gap-4 border-b border-white/[0.04] px-5 py-4 text-left last:border-b-0 hover:bg-white/[0.04]"><SeverityBadge severity={finding.severity} /><span className="font-mono text-sm text-slate-100">{finding.cve_id}</span><span className="truncate text-sm text-slate-300">{finding.title.replace(/^Known vulnerability in /, '')}</span><span className="text-sm text-slate-500">From scanner data</span><StatusBadge status="Open" /></button>)}</div> : <EmptyState title="No CVE findings" description="No persisted CVE matches are available for the current scan history." />}</Surface>
-      <Surface className="p-6"><SectionHeader title="Recent Intelligence" description="Recent CVE evidence from findings." />{cves.slice(-4).reverse().map((finding) => <button key={finding.id} onClick={() => setSelected(finding)} className="mb-3 w-full rounded-2xl bg-white/[0.035] p-4 text-left hover:bg-white/[0.06]"><div className="flex flex-wrap items-center gap-3"><SeverityBadge severity={finding.severity} /><span className="font-mono text-sm text-slate-100">{finding.cve_id}</span><span className="text-sm text-slate-500">{targetName(finding.target)}</span></div><div className="mt-2 text-sm text-slate-300">{finding.title}</div></button>)}</Surface>
+    <Page>
+      <PageHeader title="CVE Intelligence" description="Correlate detected technologies with known vulnerabilities." />
+
+      <Panel>
+        <SectionHeader title="Technologies" description="Detected by Scanner Agent artifacts." />
+        {technologies.length ? (
+          <div className="p-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {technologies.map((tech) => (
+              <div key={tech.name} className="rounded-lg bg-[var(--surface-secondary)] p-3">
+                <div className="font-mono text-sm text-[var(--text-strong)]">{tech.name}</div>
+                <div className="mt-1 text-xs text-[var(--text-muted)]">Seen in {tech.scans.length} scan{tech.scans.length === 1 ? '' : 's'}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4"><EmptyState title="No technologies" description="Run a scan to populate technology data." /></div>
+        )}
+      </Panel>
+
+      <Panel>
+        <SectionHeader title="Relevant CVEs" description={`${cves.length} matched vulnerabilities.`} />
+        {cves.length ? (
+          <DataTable columns={columns} rows={rows} onRowClick={(id) => { const f = cves.find((fv) => fv.id === id); if (f) setSelected(f); }} />
+        ) : (
+          <div className="p-4"><EmptyState title="No CVE findings" description="No CVE matches for current scan history." /></div>
+        )}
+      </Panel>
+
       <Drawer title={selected?.cve_id ?? 'CVE Details'} open={Boolean(selected)} onClose={() => setSelected(null)}>
-        {selected ? <div className="space-y-5"><div className="flex flex-wrap gap-2"><SeverityBadge severity={selected.severity} /><StatusBadge status={selected.confidence} /></div>{[['CVE ID', selected.cve_id], ['CVSS', selected.cvss_score?.toString() ?? 'Not provided'], ['Affected Technology', selected.title], ['Detected Version', 'Derived from scanner technology string'], ['Source', selected.agent], ['Asset', targetName(selected.target)]].map(([label, value]) => <div key={label} className="rounded-2xl bg-white/[0.035] p-4"><div className="text-xs uppercase tracking-[0.18em] text-slate-600">{label}</div><div className="mt-2 text-sm text-slate-200">{value}</div></div>)}<section><h3 className="mb-2 font-semibold text-slate-100">Description</h3><p className="text-sm leading-6 text-slate-400">{selected.description || selected.evidence}</p></section><section><h3 className="mb-2 font-semibold text-slate-100">Recommendation</h3><p className="text-sm leading-6 text-slate-400">{selected.recommendation || selected.fix}</p></section></div> : null}
+        {selected ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-1.5">
+              <SeverityBadge severity={selected.severity} />
+              <StatusBadge status={selected.confidence} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                ['CVE ID', selected.cve_id],
+                ['CVSS', selected.cvss_score?.toString() ?? 'N/A'],
+                ['Affected', selected.title],
+                ['Source', selected.agent],
+                ['Asset', targetName(selected.target)],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg bg-[var(--surface-secondary)] p-2.5">
+                  <div className="text-[10px] font-semibold text-[var(--text-muted)]">{label}</div>
+                  <div className="mt-1 text-xs text-[var(--text-strong)]">{value}</div>
+                </div>
+              ))}
+            </div>
+            {selected.description || selected.evidence ? (
+              <div>
+                <h3 className="mb-1 text-xs font-semibold text-[var(--text-strong)]">Description</h3>
+                <p className="line-clamp-6 text-xs leading-relaxed text-[var(--text-default)]">{selected.description || selected.evidence}</p>
+              </div>
+            ) : null}
+            {selected.recommendation || selected.fix ? (
+              <div>
+                <h3 className="mb-1 text-xs font-semibold text-[var(--text-strong)]">Recommendation</h3>
+                <p className="text-xs leading-relaxed text-[var(--text-default)]">{selected.recommendation || selected.fix}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </Drawer>
-    </div>
+    </Page>
   );
 }

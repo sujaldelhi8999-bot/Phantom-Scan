@@ -1,34 +1,72 @@
+import { RefreshCw } from 'lucide-react';
 import { usePhantomData } from '../../hooks/usePhantomData';
-import { Button, SectionHeader, StatusBadge, Surface } from '../../components/ui/Primitives';
+import { Button, Page, PageHeader, Panel, SectionHeader, StatusBadge } from '../../components/ui/Primitives';
 
 export default function SystemHealthPage() {
   const { health, realtimeState, realtimeHealthy, refresh, refreshing } = usePhantomData();
-  const rows = [['Backend API', health ? 'Connected' : 'Unavailable'], ['WebSocket', realtimeState], ['Database', health?.database ?? 'unavailable'], ['Agents', health?.agents ?? 'unavailable'], ['Scheduler', health?.scheduler ?? 'unavailable']];
 
-  const aiRows: [string, string][] = [];
-  if (health) {
-    aiRows.push(['AI Provider', health.ai_provider]);
-    aiRows.push(['AI Model', health.ai_model]);
-    aiRows.push(['AI Status', health.ai_status === 'connected' ? 'Connected' : 'Offline']);
-  }
+  const services = [
+    ['Backend API', health ? 'Connected' : 'Unavailable'],
+    ['WebSocket', realtimeState === 'open' ? 'Connected' : realtimeState === 'connecting' ? 'Connecting' : realtimeState === 'error' ? 'Error' : 'Disconnected'],
+    ['Database', health?.database ?? 'unavailable'],
+    ['Agents', health?.agents ?? 'unavailable'],
+    ['Scheduler', health?.scheduler ?? 'unavailable'],
+  ];
 
-  return <div className="space-y-6">
-    <Surface className="p-6">
-      <SectionHeader title="System Health" description="Truthful connectivity state from REST health and realtime status." action={<Button onClick={() => void refresh()} disabled={refreshing}>{refreshing ? 'Refreshing' : 'Refresh'}</Button>} />
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {rows.map(([label, value]) => <div key={label} className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">{label}</div><div className="mt-3"><StatusBadge status={value} /></div></div>)}
-      </div>
-    </Surface>
-    <Surface className="p-6">
-      <SectionHeader title="AI Integration" description="AI analysis is powered by OpenRouter with configurable models." />
-      <div className="grid gap-3 md:grid-cols-3">
-        {aiRows.map(([label, value]) => <div key={label} className="rounded-2xl bg-white/[0.035] p-4"><div className="text-sm text-slate-500">{label}</div><div className="mt-3"><StatusBadge status={value} /></div></div>)}
-      </div>
-    </Surface>
-    <Surface className="p-6">
-      <SectionHeader title="Availability" description="Systems Online requires backend health and realtime connection to be healthy." />
-      <div className="text-3xl font-semibold text-slate-50">{realtimeHealthy ? 'Systems Online' : 'Connection Issue'}</div>
-      <p className="mt-2 text-sm text-slate-500">PhantomScan never displays a green system state unless both REST and WebSocket health are available.</p>
-    </Surface>
-  </div>;
+  const aiInfo = health ? [
+    ['Provider', health.ai_provider],
+    ['Model', health.ai_model],
+    ['Status', health.ai_status === 'connected' ? 'Connected' : 'Offline'],
+  ] : [];
+
+  return (
+    <Page>
+      <PageHeader
+        title="System Health"
+        description="Connectivity from REST health and realtime status."
+        action={<Button onClick={() => void refresh()} disabled={refreshing}><RefreshCw className={refreshing ? 'animate-spin' : ''} />Refresh</Button>}
+      />
+
+      <Panel>
+        <SectionHeader title="Services" />
+        <div className="p-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {services.map(([label, value]) => (
+            <div key={label} className="rounded-lg bg-[var(--surface-secondary)] p-3">
+              <div className="text-xs text-[var(--text-muted)]">{label}</div>
+              <div className="mt-2"><StatusBadge status={value} /></div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {aiInfo.length ? (
+        <Panel>
+          <SectionHeader title="AI Integration" description="OpenRouter with configurable models." />
+          <div className="p-4 grid gap-2 sm:grid-cols-3">
+            {aiInfo.map(([label, value]) => (
+              <div key={label} className="rounded-lg bg-[var(--surface-secondary)] p-3">
+                <div className="text-xs text-[var(--text-muted)]">{label}</div>
+                <div className="mt-2"><StatusBadge status={value} /></div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
+
+      <Panel>
+        <SectionHeader title="Overall Status" />
+        <div className="p-4">
+          <div className="flex items-center gap-3">
+            <span className={realtimeHealthy ? 'h-2.5 w-2.5 rounded-full bg-[var(--success)]' : 'h-2.5 w-2.5 rounded-full bg-[var(--warning)]'} />
+            <span className="text-sm font-semibold text-[var(--text-strong)]">
+              {realtimeHealthy ? 'All Systems Online' : 'Connection Issue Detected'}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            Green state requires both REST API and WebSocket health.
+          </p>
+        </div>
+      </Panel>
+    </Page>
+  );
 }

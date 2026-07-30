@@ -13,6 +13,7 @@ from app.database import (
     add_audit_log, create_scan, get_findings, set_scan_artifacts,
     update_scan_status,
 )
+from app.services.execution_status import update_self_audit_execution
 from app.models import ScanRequest
 from app.services.authorization import canonicalize_target
 
@@ -43,10 +44,11 @@ class SelfAuditAgent(Agent):
         self.scan_id = scan_id
         self.status = "active"
         await self.log_action("started", "Running PhantomScan self-audit")
+        await update_self_audit_execution(lifecycle="running", scan_id=scan_id, target_url=target.url)
 
         request = ScanRequest(target_url=target.url, mode="defend", intensity="low")
         try:
-            result = await OrchestratorAgent().run(request, scan_id, user_id=self.settings.local_user_id)
+            result = await OrchestratorAgent().run(request, scan_id, user_id=self.settings.local_user_id, user_role=self.settings.local_user_role)
 
             if result.get("status") == "error":
                 self.status = "error"
@@ -104,6 +106,10 @@ class SelfAuditAgent(Agent):
                 f"{len(critical_high)} critical/high, "
                 f"{len(new_critical)} new"
             )
+            await update_self_audit_execution(
+                lifecycle="complete", scan_id=scan_id,
+                findings_count=len(findings),
+            )
             return {
                 "scan_id": scan_id, "status": "complete",
                 "findings": findings,
@@ -120,6 +126,10 @@ class SelfAuditAgent(Agent):
             self.status = "error"
             await update_scan_status(scan_id, "error", str(exc)[:1000])
             await self.log_action("error", str(exc)[:2000])
+            await update_self_audit_execution(
+                lifecycle="error", scan_id=scan_id,
+                error_message=str(exc)[:1000],
+            )
             raise
 
     def _load_previous(self) -> list[dict[str, Any]]:

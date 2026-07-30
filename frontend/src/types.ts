@@ -7,6 +7,7 @@ export type Confidence = 'CONFIRMED' | 'HIGH' | 'MEDIUM' | 'LOW' | 'POTENTIAL';
 export type VerificationMethod = 'dns' | 'http';
 export type VerificationStatus = 'PENDING' | 'VERIFIED' | 'EXPIRED' | 'REVOKED';
 export type ConnectionState = 'idle' | 'connecting' | 'open' | 'closed' | 'error';
+export type AuthorizedJobStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export type TestModule =
   | 'input_security'
@@ -54,6 +55,7 @@ export interface ScanRequestPayload {
   authorization_id?: number | null;
   authorization_confirmed?: boolean;
   business_logic_tests?: BusinessLogicTest[];
+  enable_exploitation?: boolean;
 }
 
 export interface Finding {
@@ -82,6 +84,26 @@ export interface Finding {
   remediation_status?: RemediationStatus;
   verification_status?: FindingVerificationStatus;
   risk_status?: RiskStatus;
+  exploited?: boolean;
+  exploitation_result?: ExploitationResult | null;
+}
+
+export interface ExploitationResultRow {
+  cells?: string[];
+  text?: string;
+}
+
+export interface ExploitationResultData {
+  table: string;
+  rows: ExploitationResultRow[];
+}
+
+export interface ExploitationResult {
+  status: string;
+  database_type: string | null;
+  tables: string[];
+  data: ExploitationResultData[];
+  error: string | null;
 }
 
 export interface AICitation {
@@ -169,7 +191,7 @@ export interface ActiveGateContext {
   allowed: boolean;
   target_url: string;
   target_origin: string;
-  authorization_status: 'TRAINING' | 'ALLOWLIST' | 'VERIFIED' | 'BLOCKED' | 'NOT_REQUIRED' | string;
+  authorization_status: 'TRAINING' | 'ALLOWLIST' | 'VERIFIED' | 'BLOCKED' | 'NOT_REQUIRED' | 'ADMIN_OVERRIDE' | string;
   reason: string;
   authorization_id: number | null;
   is_lab: boolean;
@@ -494,6 +516,167 @@ export const DEFEND_CHECKS = [
   'Remediation checklist',
   'Notifications'
 ];
+
+export interface ActiveRunRequest {
+  target_url: string;
+  selected_modules: TestModule[];
+  authorization_id: number | null;
+  authorization_confirmed: boolean;
+}
+
+export interface AuthorizedTestRunResponse {
+  job_id: string;
+  status: AuthorizedJobStatus;
+  message: string;
+}
+
+export interface AuthorizedTestJobError {
+  code: string;
+  message: string;
+}
+
+export interface JobEvent {
+  id: number;
+  job_id: string;
+  sequence_number: number;
+  timestamp: string;
+  module: string | null;
+  event_type: string;
+  message: string | null;
+  status: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+}
+
+export interface JobEventsResponse {
+  job_id: string;
+  events: JobEvent[];
+  latest_sequence: number;
+}
+
+export interface AuthorizedTestJobResponse {
+  job_id: string;
+  status: AuthorizedJobStatus;
+  progress_percent: number;
+  current_phase: string | null;
+  current_module: string | null;
+  surfaces_total: number;
+  surfaces_completed: number;
+  raw_surfaces_discovered: number;
+  testable_surfaces: number;
+  surface_groups: number;
+  findings_count: number;
+  started_at: string | null;
+  updated_at: string | null;
+  completed_at: string | null;
+  error: AuthorizedTestJobError | null;
+  target_url: string;
+  selected_modules: string[];
+  authorization_id: number | null;
+  scan_id: number | null;
+}
+
+export interface AuthorizedTestJobResultsResponse {
+  job_id: string;
+  status: AuthorizedJobStatus;
+  target_url: string;
+  surfaces_total: number;
+  surfaces_completed: number;
+  raw_surfaces_discovered: number;
+  testable_surfaces: number;
+  surface_groups: number;
+  findings_count: number;
+  started_at: string | null;
+  completed_at: string | null;
+  findings: Finding[];
+  result_summary: Record<string, unknown> | null;
+}
+
+export interface StoredActiveTest {
+  job_id: string;
+  target_url: string;
+  authorization_id: number | null;
+  started_at: string;
+  map_result?: ActiveMapResponse;
+}
+
+export type ExecutionType = 'DEFEND_SCAN' | 'AUTHORIZED_TEST' | 'SELF_AUDIT' | 'LAB_OPERATION';
+export type ExecutionLifecycle = 'IDLE' | 'QUEUED' | 'STARTING' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type AgentApplicability = 'IDLE' | 'QUEUED' | 'RUNNING' | 'WAITING' | 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE';
+
+export interface AgentStateDetail {
+  name: string;
+  applicability: AgentApplicability;
+  responsibility: string;
+  current_module: string | null;
+  progress: number;
+  last_updated: string | null;
+  detail: string;
+}
+
+export interface ExecutionStatusResponse {
+  execution_type: ExecutionType | null;
+  lifecycle: ExecutionLifecycle;
+  job_id: string | null;
+  scan_id: number | null;
+  target_url: string;
+  progress_percent: number;
+  current_module: string | null;
+  current_phase: string | null;
+  surfaces_total: number;
+  surfaces_completed: number;
+  findings_count: number;
+  started_at: string | null;
+  updated_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  error_code: string | null;
+  agents: AgentStateDetail[];
+  is_lab: boolean;
+  authorization_status: string;
+}
+
+export const EVENT_TYPES = [
+  'JOB_STARTED',
+  'SURFACE_DISCOVERED',
+  'MODULE_STARTED',
+  'TEST_PREPARED',
+  'TEST_REQUEST_SENT',
+  'RESPONSE_RECEIVED',
+  'SECURITY_CONTROL_EVALUATED',
+  'FINDING_DETECTED',
+  'CONTROL_BLOCKED_TEST',
+  'RETEST_STARTED',
+  'FIX_VERIFIED',
+  'MODULE_COMPLETED',
+  'MODULE_FAILED',
+  'JOB_COMPLETED',
+] as const;
+
+export type EventType = typeof EVENT_TYPES[number];
+
+export interface PrivateScopeEntry {
+  id: number;
+  target_url: string;
+  added_by: string;
+  added_at: string | null;
+  last_used: string | null;
+}
+
+export interface PrivateScopeAddResponse {
+  success: boolean;
+  message: string;
+  target_url: string;
+}
+
+export interface PrivateScopeRemoveResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface UserRoleResponse {
+  role: string;
+}
 
 export const AGENT_NAMES = [
   'Orchestrator Agent',

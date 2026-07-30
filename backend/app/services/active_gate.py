@@ -1,9 +1,17 @@
 import ipaddress
 from dataclasses import dataclass
-from urllib.parse import urlsplit
+from urllib.parse import urlparse, urlsplit
 
 from app.config import get_settings
+from app.database import find_private_scope, update_private_scope_last_used
 from app.services.authorization import TargetAuthorizationService, VerifiedTarget, canonicalize_target
+
+
+def canonicalize_hostname(target_url: str) -> str:
+    parsed = urlparse(target_url if "://" in target_url else f"https://{target_url}")
+    hostname = parsed.hostname or ""
+    hostname = hostname.lower().removeprefix("www.").rstrip(".")
+    return hostname
 
 
 @dataclass(frozen=True)
@@ -38,9 +46,25 @@ class ActiveTargetGate:
         target_url: str,
         user_id: str,
         authorization_id: int | None = None,
+        user_role: str = "user",
     ) -> ActiveTargetDecision:
         target = canonicalize_target(target_url)
         parsed = urlsplit(target.url)
+
+        if user_role == "admin":
+            hostname = canonicalize_hostname(target_url)
+            scope_entry = await find_private_scope(hostname)
+            if scope_entry is not None:
+                await update_private_scope_last_used(hostname)
+                return ActiveTargetDecision(
+                    allowed=True,
+                    target_url=target.url,
+                    target_origin=target.origin,
+                    authorization_status="ADMIN_OVERRIDE",
+                    reason="Admin Private Scope (Bypass Verification)",
+                    is_lab=False,
+                )
+
         if self.is_builtin_lab_target(target.url):
             return ActiveTargetDecision(
                 allowed=True,
@@ -97,6 +121,10 @@ class ActiveTargetGate:
             except ValueError:
                 continue
         return origins
+
+    async def can_run_dos(self, target_url: str, user_role: str = "user") -> dict:
+        result = await self.admit(target_url, "admin", user_role=user_role)
+        return result.to_context()
 
     @classmethod
     def is_builtin_lab_target(cls, target_url: str) -> bool:

@@ -48,7 +48,7 @@ async def verify_finding_fix(finding_id: int, request: Request) -> dict[str, Any
     if module is None and browser_module is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Finding does not map to a supported active module")
     try:
-        decision = await active_gate.admit(str(scan["target_url"]), str(scan.get("user_id") or settings.local_user_id), scan.get("authorization_id"))
+        decision = await active_gate.admit(str(scan["target_url"]), str(scan.get("user_id") or settings.local_user_id), scan.get("authorization_id"), user_role=settings.local_user_role)
     except TargetValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     if not decision.allowed:

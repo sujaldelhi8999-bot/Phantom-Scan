@@ -9,6 +9,7 @@ from typing import Any
 import psutil
 
 from app.agents import Agent
+from app.config import get_settings
 from app.security import redact_sensitive
 from app.services.active_gate import ActiveTargetGate
 from app.services.authorization import canonicalize_target
@@ -32,7 +33,7 @@ class DiagnosticCommandPolicy:
     FORBIDDEN_TOKENS = {"sh", "bash", "powershell", "cmd", "nc", "netcat", "ssh", "scp", "curl|sh", "rm", "del"}
 
     async def authorize(self, target_url: str, user_id: str, authorization_id: int | None = None) -> dict[str, Any]:
-        decision = await ActiveTargetGate().admit(target_url, user_id, authorization_id)
+        decision = await ActiveTargetGate().admit(target_url, user_id, authorization_id, user_role=get_settings().local_user_role)
         if not decision.allowed:
             raise DiagnosticCommandPolicyError(decision.reason)
         return decision.to_context()

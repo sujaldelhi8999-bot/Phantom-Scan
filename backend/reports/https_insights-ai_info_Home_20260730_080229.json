@@ -1,0 +1,3825 @@
+{
+  "scan_id": 59,
+  "target_url": "https://insights-ai.info/Home",
+  "mode": "defend",
+  "intensity": "high",
+  "scanner": {
+    "subdomains": [
+      "insights-ai.info",
+      "www.insights-ai.info"
+    ],
+    "open_ports": [
+      53,
+      80,
+      443,
+      8443
+    ],
+    "tech_stack": {
+      "technologies": [
+        "cloudflare"
+      ],
+      "headers": {
+        "date": "Thu, 30 Jul 2026 08:01:55 GMT",
+        "content-type": "text/html; charset=utf-8",
+        "transfer-encoding": "chunked",
+        "connection": "keep-alive",
+        "cf-cache-status": "DYNAMIC",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "rndr-id": "61c7ac94-dadc-4488",
+        "server": "cloudflare",
+        "strict-transport-security": "max-age=31536000",
+        "vary": "Accept-Encoding",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "x-render-origin-server": "uvicorn",
+        "content-encoding": "gzip",
+        "cf-ray": "a232d691e9d5550c-DEL",
+        "alt-svc": "h3=\":443\"; ma=86400"
+      },
+      "server": "cloudflare",
+      "x_powered_by": "",
+      "framework": "unknown"
+    },
+    "dns_records": {
+      "A": [
+        "216.24.57.1"
+      ],
+      "AAAA": [],
+      "MX": [
+        "10 mx00.ionos.com.",
+        "10 mx01.ionos.com."
+      ],
+      "TXT": [
+        "\"v=spf1 include:_spf-us.ionos.com ~all\""
+      ],
+      "CNAME": [],
+      "NS": [
+        "ns1082.ui-dns.de.",
+        "ns1043.ui-dns.biz.",
+        "ns1118.ui-dns.org.",
+        "ns1105.ui-dns.com."
+      ],
+      "SOA": [
+        "ns1118.ui-dns.org. hostmaster.1und1.com. 2017060113 28800 7200 604800 600"
+      ]
+    },
+    "dangling_cnames": [],
+    "waf_detected": "cloudflare"
+  },
+  "shadow_recon": {
+    "whois": {
+      "registrar": "",
+      "creation_date": "",
+      "expiration_date": "",
+      "name_servers": "",
+      "registrant_org": "",
+      "raw": {}
+    },
+    "dork_urls": [
+      "site:insights-ai.info ext:env OR ext:sql OR ext:log OR ext:bak",
+      "site:insights-ai.info inurl:admin OR inurl:login OR inurl:dashboard",
+      "site:insights-ai.info \"index of /\" OR \"parent directory\"",
+      "\"insights-ai.info\" filetype:pdf OR filetype:xlsx OR filetype:docx",
+      "site:insights-ai.info intitle:\"phpinfo\" OR intitle:\"phpmyadmin\"",
+      "site:insights-ai.info inurl:api OR inurl:rest OR inurl:graphql"
+    ],
+    "disallowed_paths": [],
+    "sitemap_urls": [],
+    "exposed_files": [
+      {
+        "path": "/.env",
+        "url": "https://insights-ai.info/Home/.env",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/robots.txt",
+        "url": "https://insights-ai.info/Home/robots.txt",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/.DS_Store",
+        "url": "https://insights-ai.info/Home/.DS_Store",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/config.php",
+        "url": "https://insights-ai.info/Home/config.php",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/.git/HEAD",
+        "url": "https://insights-ai.info/Home/.git/HEAD",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/wp-config.php",
+        "url": "https://insights-ai.info/Home/wp-config.php",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/sitemap.xml",
+        "url": "https://insights-ai.info/Home/sitemap.xml",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      },
+      {
+        "path": "/database.yml",
+        "url": "https://insights-ai.info/Home/database.yml",
+        "status_code": 200,
+        "snippet": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef"
+      }
+    ],
+    "leaked_emails": [],
+    "js_sourcemaps": [],
+    "robots_txt": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef_WhatsAppImage2025-11-17at160032.jpg\" rel=\"icon\" type=\"image/jpeg\"/>\n  <meta content=\"width=device-width, initial-scale=1.0\" name=\"viewport\"/>\n  <link href=\"/manifest.json\" rel=\"manifest\"/>\n  <title>\n   Home | iNSIGHTS: Your AI Life OS\n  </title>\n  <meta content=\"Home on iNSIGHTS: Your AI Life OS. iNSIGHTS by Thore Network: The AI Do-Engine that moves beyond information to act.\" name=\"description\"/>\n  <meta content=\"iNSIGHTS: Your AI Life OS\" property=\"og:site_name\"/>\n  <meta content=\"Home | iNSIGHTS: Your AI Life OS\" property=\"og:title\"/>\n  <meta content=\"Home on iNSIGHTS: Your AI Life OS. iNSIGHTS by Thore Network: The AI Do-Engine that moves beyond information to act.\" property=\"og:description\"/>\n  <meta content=\"website\" property=\"og:type\"/>\n  <meta content=\"https://media.base44.com/images/public/6960af55d740f6d891a60e24/84fffef6c_IMG_38751.JPG/v1/fill/w_1200,h_630/84fffef6c_IMG_38751.JPG\" property=\"og:image\"/>\n  <meta content=\"summary_large_image\" name=\"twitter:card\"/>\n  <meta content=\"Home | iNSIGHTS: Your AI Life OS\" name=\"twitter:title\"/>\n  <meta content=\"Home on iNSIGHTS: Your AI Life OS. iNSIGHTS by Thore Network: The AI Do-Engine that moves beyond information to act.\" name=\"twitter:description\"/>\n  <script crossorigin=\"\" src=\"/assets/index-aQVHwaMs.js\" type=\"module\">\n  </script>\n  <link crossorigin=\"\" href=\"/assets/index-HXWhjEQ2.css\" rel=\"stylesheet\"/>\n  <meta content=\"https://insights-ai.info/Home/robots.txt\" property=\"og:url\"/>\n  <meta content=\"https://media.base44.com/images/public/6960af55d740f6d891a60e24/84fffef6c_IMG_38751.JPG/v1/fill/w_1200,h_630/84fffef6c_IMG_38751.JPG\" name=\"twitter:image\"/>\n  <meta content=\"https://insights-ai.info/Home/robots.txt\" name=\"twitter:url\"/>\n  <meta content=\"yes\" name=\"mobile-web-app-capable\"/>\n  <meta content=\"black\" na",
+    "sitemap_xml": "<!DOCTYPE html>\n<html lang=\"en\">\n <head>\n  <meta charset=\"utf-8\"/>\n  <link href=\"https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6960af55d740f6d891a60e24/adee16aef_WhatsAppImage2025-11-17at160032.jpg\" rel=\"icon\" type=\"image/jpeg\"/>\n  <meta content=\"width=device-width, initial-scale=1.0\" name=\"viewport\"/>\n  <link href=\"/manifest.json\" rel=\"manifest\"/>\n  <title>\n   Home | iNSIGHTS: Your AI Life OS\n  </title>\n  <meta content=\"Home on iNSIGHTS: Your AI Life OS. iNSIGHTS by Thore Network: The AI Do-Engine that moves beyond information to act.\" name=\"description\"/>\n  <meta content=\"iNSIGHTS: Your AI Life OS\" property=\"og:site_name\"/>\n  <meta content=\"Home | iNSIGHTS: Your AI Life OS\" property=\"og:title\"/>\n  <meta content=\"Home on iNSIGHTS: Your AI Life OS. iNSIGHTS by Thore Network: The AI Do-Engine that moves beyond information to act.\" property=\"og:description\"/>\n  <meta content=\"website\" property=\"og:type\"/>\n  <meta content=\"https://media.base44.com/images/public/6960af55d740f6d891a60e24/84fffef6c_IMG_38751.JPG/v1/fill/w_1200,h_630/84fffef6c_IMG_38751.JPG\" property=\"og:image\"/>\n  <meta content=\"summary_large_image\" name=\"twitter:card\"/>\n  <meta content=\"Home | iNSIGHTS: Your AI Life OS\" name=\"twitter:title\"/>\n  <meta content=\"Home on iNSIGHTS: Your AI Life OS. iNSIGHTS by Thore Network: The AI Do-Engine that moves beyond information to act.\" name=\"twitter:description\"/>\n  <script crossorigin=\"\" src=\"/assets/index-aQVHwaMs.js\" type=\"module\">\n  </script>\n  <link crossorigin=\"\" href=\"/assets/index-HXWhjEQ2.css\" rel=\"stylesheet\"/>\n  <meta content=\"https://insights-ai.info/Home/sitemap.xml\" property=\"og:url\"/>\n  <meta content=\"https://media.base44.com/images/public/6960af55d740f6d891a60e24/84fffef6c_IMG_38751.JPG/v1/fill/w_1200,h_630/84fffef6c_IMG_38751.JPG\" name=\"twitter:image\"/>\n  <meta content=\"https://insights-ai.info/Home/sitemap.xml\" name=\"twitter:url\"/>\n  <meta content=\"yes\" name=\"mobile-web-app-capable\"/>\n  <meta content=\"black\" ",
+    "internal_ips": [],
+    "html_comments": []
+  },
+  "findings": [
+    {
+      "id": 408,
+      "scan_id": 59,
+      "title": "Missing Content Security Policy",
+      "category": "Security Headers",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "No CSP header found",
+      "impact": "XSS and data injection attacks are easier without CSP",
+      "recommendation": "Add: Content-Security-Policy: default-src 'self'",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-30T08:02:08.478608Z",
+      "description": "No CSP header found",
+      "how_exploited": "XSS and data injection attacks are easier without CSP",
+      "fix": "Add: Content-Security-Policy: default-src 'self'",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Content-Security-Policy: default-src 'self'",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 409,
+      "scan_id": 59,
+      "title": "HSTS missing preload directive",
+      "category": "Security Headers",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "No preload flag in HSTS",
+      "impact": "Browser won't preload HSTS",
+      "recommendation": "Add 'preload' to HSTS header and submit to hstspreload.org",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-30T08:02:08.483610Z",
+      "description": "No preload flag in HSTS",
+      "how_exploited": "Browser won't preload HSTS",
+      "fix": "Add 'preload' to HSTS header and submit to hstspreload.org",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add 'preload' to HSTS header and submit to hstspreload.org",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 410,
+      "scan_id": 59,
+      "title": "Missing Permissions-Policy",
+      "category": "Security Headers",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "No Permissions-Policy header",
+      "impact": "Browser features (camera, mic, etc.) unrestricted",
+      "recommendation": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-30T08:02:08.491609Z",
+      "description": "No Permissions-Policy header",
+      "how_exploited": "Browser features (camera, mic, etc.) unrestricted",
+      "fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 411,
+      "scan_id": 59,
+      "title": "Wildcard CORS allowed",
+      "category": "CORS",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "Access-Control-Allow-Origin: *",
+      "impact": "Any origin can read responses",
+      "recommendation": "Restrict to specific trusted origins",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-30T08:02:08.500611Z",
+      "description": "Access-Control-Allow-Origin: *",
+      "how_exploited": "Any origin can read responses",
+      "fix": "Restrict to specific trusted origins",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Restrict to specific trusted origins",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 412,
+      "scan_id": 59,
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "MEDIUM",
+      "confidence": "MEDIUM",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "Failed to connect to insights-ai.info:443",
+      "impact": "TLS may not be available",
+      "recommendation": "Ensure HTTPS is properly configured",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-30T08:02:08.509614Z",
+      "description": "Failed to connect to insights-ai.info:443",
+      "how_exploited": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Ensure HTTPS is properly configured",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 413,
+      "scan_id": 59,
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "LOW",
+      "confidence": "MEDIUM",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "Header 'server: cloudflare'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "recommendation": "Remove or obfuscate the 'server' header in server config",
+      "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+      "agent": "Analyzer Agent",
+      "timestamp": "2026-07-30T08:02:08.523608Z",
+      "description": "Header 'server: cloudflare'",
+      "how_exploited": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Remove or obfuscate the 'server' header in server config",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "id": 414,
+      "scan_id": 59,
+      "title": "Missing Content Security Policy",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "No Content-Security-Policy header was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "agent": "Infrastructure Agent",
+      "timestamp": "2026-07-30T08:01:57.137483Z",
+      "description": "No Content-Security-Policy header was captured.",
+      "how_exploited": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "fix": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "hindi_findings": [
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Content Security Policy",
+      "category": "Security Headers",
+      "severity": "medium",
+      "evidence": "No CSP header found",
+      "impact": "XSS and data injection attacks are easier without CSP",
+      "fix": "Add: Content-Security-Policy: default-src 'self'",
+      "endpoint": "https://insights-ai.info/Home",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "HSTS missing preload directive",
+      "category": "Security Headers",
+      "severity": "low",
+      "evidence": "No preload flag in HSTS",
+      "impact": "Browser won't preload HSTS",
+      "fix": "Add 'preload' to HSTS header and submit to hstspreload.org",
+      "endpoint": "https://insights-ai.info/Home",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Missing Permissions-Policy",
+      "category": "Security Headers",
+      "severity": "low",
+      "evidence": "No Permissions-Policy header",
+      "impact": "Browser features (camera, mic, etc.) unrestricted",
+      "fix": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+      "endpoint": "https://insights-ai.info/Home",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Wildcard CORS allowed",
+      "category": "CORS",
+      "severity": "medium",
+      "evidence": "Access-Control-Allow-Origin: *",
+      "impact": "Any origin can read responses",
+      "fix": "Restrict to specific trusted origins",
+      "endpoint": "https://insights-ai.info/Home",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Could not establish TLS connection",
+      "category": "TLS",
+      "severity": "medium",
+      "evidence": "Failed to connect to insights-ai.info:443",
+      "impact": "TLS may not be available",
+      "fix": "Ensure HTTPS is properly configured",
+      "endpoint": "https://insights-ai.info/Home",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Analyzer Agent",
+      "title": "Server version disclosure",
+      "category": "Information Disclosure",
+      "severity": "low",
+      "evidence": "Header 'server: cloudflare'",
+      "impact": "Attackers fingerprint stack for targeted exploits",
+      "fix": "Remove or obfuscate the 'server' header in server config",
+      "endpoint": "",
+      "cve_id": null,
+      "cvss_score": null
+    },
+    {
+      "agent": "Browser Security Agent",
+      "title": "CSP missing or weak with browser-observed script surfaces",
+      "category": "CSP",
+      "severity": "LOW",
+      "confidence": "HIGH",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 31, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 0, \"javascript_sinks\": [\"DOM insertion\", \"HTML rendering\", \"URL assignment\", \"navigation\"], \"previous_related_findings\": 0}",
+      "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+      "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+      "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+      "timestamp": "2026-07-30T08:02:08.2_*7001+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": "csp_analysis",
+      "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Browser Security Agent",
+      "title": "Potential Client Security Surface",
+      "category": "Client-Side Dataflow",
+      "severity": "INFO",
+      "confidence": "POTENTIAL",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "Statically observed JavaScript sink categories: DOM insertion, HTML rendering, URL assignment, navigation. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 31, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 0, \"javascript_sinks\": [\"DOM insertion\", \"HTML rendering\", \"URL assignment\", \"navigation\"], \"previous_related_findings\": 0}",
+      "impact": "These patterns are not vulnerabilities by themselves but should be prioritized for output encoding and navigation review.",
+      "recommendation": "Review the identified client-side sinks and ensure user-controlled data is encoded or validated before use.",
+      "verification": "Review the affected JavaScript and rerun static browser analysis after changes.",
+      "timestamp": "2026-07-30T08:02:08.2_*7001+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": "client_dataflow",
+      "recommended_fix": "Add tests around client rendering/navigation sinks and enforce safe wrappers.",
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    },
+    {
+      "agent": "Infrastructure Agent",
+      "title": "Missing Content Security Policy",
+      "category": "Infrastructure Security",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "target": "https://insights-ai.info/Home",
+      "endpoint": "https://insights-ai.info/Home",
+      "evidence": "No Content-Security-Policy header was captured.",
+      "impact": "Missing browser defense-in-depth controls can increase the impact of a separate content injection or UI-redress weakness.",
+      "recommendation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+      "timestamp": "2026-07-30T08:01:57.137483+00:00",
+      "cve_id": null,
+      "cvss_score": null,
+      "parameter": null,
+      "module": null,
+      "recommended_fix": null,
+      "remediation_status": "OPEN",
+      "verification_status": "NOT_VERIFIED",
+      "risk_status": "ACTIVE"
+    }
+  ],
+  "markdown_report": "# PhantomScan Remediation Checklist\n\n## MEDIUM\n\n- [ ] **[MEDIUM]** Missing Content Security Policy\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Add: Content-Security-Policy: default-src 'self'`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Wildcard CORS allowed\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Restrict to specific trusted origins`\n  - Owner: backend\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Could not establish TLS connection\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Ensure HTTPS is properly configured`\n  - Owner: devops\n  - ETA: 1d\n\n- [ ] **[MEDIUM]** Missing Content Security Policy\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Deploy a restrictive, application-specific Content-Security-Policy.`\n  - Owner: backend\n  - ETA: 1d\n\n## LOW\n\n- [ ] **[LOW]** HSTS missing preload directive\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Add 'preload' to HSTS header and submit to hstspreload.org`\n  - Owner: devops\n  - ETA: 1w\n\n- [ ] **[LOW]** Missing Permissions-Policy\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Add: Permissions-Policy: geolocation=(), microphone=(), camera=()`\n  - Owner: backend\n  - ETA: 1w\n\n- [ ] **[LOW]** Server version disclosure\n  - Affected: https://insights-ai.info/Home\n  - Fix: `Remove or obfuscate the 'server' header in server config`\n  - Owner: devops\n  - ETA: 1w\n\n\n# Browser Observation Report\nEngine: http_fallback\nPages visited: 8\nNetwork events: 16\nAPIs discovered: 0\nConsole events: 0\nWebSockets: 0\nSafety pause: none\n- [LOW/HIGH] CSP missing or weak with browser-observed script surfaces\n- [INFO/POTENTIAL] Potential Client Security Surface",
+  "active_security": null,
+  "browser_security": {
+    "status": "complete",
+    "target_url": "https://insights-ai.info/Home",
+    "browser_engine": "http_fallback",
+    "session": "[REDACTED]",
+    "pages": [
+      {
+        "url": "https://insights-ai.info/Home",
+        "title": "iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/AIAssistant",
+        "title": "iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/AICourses",
+        "title": "AICourses | iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/APIDocumentation",
+        "title": "APIDocumentation | iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/Analytics",
+        "title": "Analytics | iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/AnalyticsDashboard",
+        "title": "Analytics Dashboard | iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/AstroSIP",
+        "title": "Astro SIP | iNSIGHTS: Your AI Life OS",
+        "status": 200
+      },
+      {
+        "url": "https://insights-ai.info/AstrologerOnboarding",
+        "title": "Astrologer Onboarding | iNSIGHTS: Your AI Life OS",
+        "status": 200
+      }
+    ],
+    "routes": [
+      {
+        "route": "https://insights-ai.info/Home",
+        "source": "browser_navigation"
+      },
+      {
+        "route": "https://insights-ai.info/AIAssistant",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/AICourses",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/APIDocumentation",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Analytics",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/AnalyticsDashboard",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/AstroSIP",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/AstrologerOnboarding",
+        "source": "browser_navigation"
+      },
+      {
+        "route": "https://insights-ai.info/BotDetail",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/CareerCoach",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/CareerPathNavigator",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Collaborations",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ContentAnalytics",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ContentCalendar",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/CreateMarket",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/CustomDashboard",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Dashboard",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/DeepSearch",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Discover",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ExpertConnect",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/FeedbackAdmin",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/FinancialPlanner",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Forum",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Gamification",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Horoscope",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/InsightsGrant",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Integrations",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Learning",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/MarketModeration",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/MediaStudio",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/PostGenerator",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/PredictX",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/PredictXCommunity",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/PredictXLeaderboard",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/PredictXMarket",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/PredictXPortfolio",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ProjectHub",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ReelAdCreator",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Referrals",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ResearchJournal",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/ResumeBuilder",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Scheduler",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/SkillAssessment",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/SoulSync",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Teams",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/TradingBots",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/TravelPlanner",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/AIStudyBuddy",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/LearningAnalytics",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/Skill2Earn",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/LearningPath",
+        "source": "dom_link"
+      },
+      {
+        "route": "https://insights-ai.info/",
+        "source": "dom_link"
+      }
+    ],
+    "dom": [
+      {
+        "page": "https://insights-ai.info/Home",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/Home",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Home",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Home",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Home",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 3,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/AIAssistant",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/AIAssistant",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AIAssistant",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AIAssistant",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AIAssistant",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AIAssistant",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/AIAssistant\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/AICourses",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/AICourses",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AICourses",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AICourses",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AICourses",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AICourses",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"AICourses | iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/AICourses\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/APIDocumentation",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/APIDocumentation",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/APIDocumentation",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/APIDocumentation",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/APIDocumentation",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/APIDocumentation",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"APIDocumentation | iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/APIDocumentation\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/Analytics",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/Analytics",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Analytics",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Analytics",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Analytics",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/Analytics",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"Analytics | iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/Analytics\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/AnalyticsDashboard",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/AnalyticsDashboard",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AnalyticsDashboard",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AnalyticsDashboard",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AnalyticsDashboard",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AnalyticsDashboard",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"Analytics Dashboard | iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/AnalyticsDashboard\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/AstroSIP",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/AstroSIP",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstroSIP",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstroSIP",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstroSIP",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstroSIP",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstrologerOnboarding",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"Astro SIP | iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/AstroSIP\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      },
+      {
+        "page": "https://insights-ai.info/AstrologerOnboarding",
+        "forms": [],
+        "inputs": [],
+        "hidden_inputs": [],
+        "iframes": [],
+        "scripts": [
+          {
+            "page": "https://insights-ai.info/AstrologerOnboarding",
+            "src": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+            "inline": false,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstrologerOnboarding",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstrologerOnboarding",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstrologerOnboarding",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          },
+          {
+            "page": "https://insights-ai.info/AstrologerOnboarding",
+            "src": null,
+            "inline": true,
+            "integrity": null,
+            "crossorigin": null
+          }
+        ],
+        "links": [
+          "https://insights-ai.info/",
+          "https://insights-ai.info/AIAssistant",
+          "https://insights-ai.info/AICourses",
+          "https://insights-ai.info/APIDocumentation",
+          "https://insights-ai.info/Analytics",
+          "https://insights-ai.info/AnalyticsDashboard",
+          "https://insights-ai.info/AstroSIP",
+          "https://insights-ai.info/BotDetail",
+          "https://insights-ai.info/CareerCoach",
+          "https://insights-ai.info/CareerPathNavigator",
+          "https://insights-ai.info/Collaborations",
+          "https://insights-ai.info/ContentAnalytics",
+          "https://insights-ai.info/ContentCalendar",
+          "https://insights-ai.info/CreateMarket",
+          "https://insights-ai.info/CustomDashboard",
+          "https://insights-ai.info/Dashboard",
+          "https://insights-ai.info/DeepSearch",
+          "https://insights-ai.info/Discover",
+          "https://insights-ai.info/ExpertConnect",
+          "https://insights-ai.info/FeedbackAdmin",
+          "https://insights-ai.info/FinancialPlanner",
+          "https://insights-ai.info/Forum",
+          "https://insights-ai.info/Gamification",
+          "https://insights-ai.info/Horoscope",
+          "https://insights-ai.info/InsightsGrant",
+          "https://insights-ai.info/Integrations",
+          "https://insights-ai.info/Learning",
+          "https://insights-ai.info/MarketModeration",
+          "https://insights-ai.info/MediaStudio",
+          "https://insights-ai.info/PostGenerator",
+          "https://insights-ai.info/PredictX",
+          "https://insights-ai.info/PredictXCommunity",
+          "https://insights-ai.info/PredictXLeaderboard",
+          "https://insights-ai.info/PredictXMarket",
+          "https://insights-ai.info/PredictXPortfolio",
+          "https://insights-ai.info/ProjectHub",
+          "https://insights-ai.info/ReelAdCreator",
+          "https://insights-ai.info/Referrals",
+          "https://insights-ai.info/ResearchJournal",
+          "https://insights-ai.info/ResumeBuilder",
+          "https://insights-ai.info/Scheduler",
+          "https://insights-ai.info/SkillAssessment",
+          "https://insights-ai.info/SoulSync",
+          "https://insights-ai.info/Teams",
+          "https://insights-ai.info/TradingBots",
+          "https://insights-ai.info/TravelPlanner",
+          "https://insights-ai.info/AIStudyBuddy",
+          "https://insights-ai.info/LearningAnalytics",
+          "https://insights-ai.info/Skill2Earn",
+          "https://insights-ai.info/LearningPath",
+          "https://insights-ai.info/UsageInsights",
+          "https://insights-ai.info/GrantTracker",
+          "https://insights-ai.info/GrantAdminDashboard",
+          "https://insights-ai.info/HackathonServices",
+          "https://insights-ai.info/AstroRemediesShop",
+          "https://insights-ai.info/Layer2",
+          "https://insights-ai.info/CampusGallery",
+          "https://insights-ai.info/ResearchProjects",
+          "https://insights-ai.info/CampusAmbassador",
+          "https://insights-ai.info/AmbassadorPortal",
+          "https://insights-ai.info/THActivityLog",
+          "https://insights-ai.info/AmbassadorMonthlyReport"
+        ],
+        "event_handlers": [],
+        "inline_script_count": 4,
+        "inline_scripts": [
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"@context\": \"https://schema.org\", \"@type\": \"WebSite\", \"url\": \"https://insights-ai.info\"}",
+          "{\"name\": \"iNSIGHTS: Your AI Life OS\", \"logo\": \"https://media.base44.com/images/public/6960af55d740f6d891a60e24/050d26151_pomelli-image1.png\", \"@context\": \"https://schema.org\", \"@type\": \"Organization\", \"url\": \"https://insights-ai.info\"}",
+          "{\"@context\": \"https://schema.org\", \"@type\": \"BreadcrumbList\", \"itemListElement\": [{\"@type\": \"ListItem\", \"position\": 1, \"name\": \"Home\", \"item\": \"https://insights-ai.info/\"}, {\"@type\": \"ListItem\", \"position\": 2, \"name\": \"Astrologer Onboarding | iNSIGHTS: Your AI Life OS\", \"item\": \"https://insights-ai.info/AstrologerOnboarding\"}]}",
+          "(function(){var SAMPLING_RATE=1.0;var sid=(crypto.randomUUID&&crypto.randomUUID())||(Date.now()+'-'+Math.random().toString(36).slice(2));function samplingValue(v){var h=2166_**6261;for(var i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0)/4294_**7296;}var _sampledOut=samplingValue(sid)>=SAMPLING_RATE;window.Base44=window.Base44||{};if(_sampledOut){var _noop=function(){};window.Base44.recordings=Object.freeze({version:'1',setUserID:_noop,setUserAnonymousID:_noop,setMetadata:_noop,event:_noop,issue:_noop,start:_noop,stop:_noop,isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_noop});try{console.debug('[base44 recordings] session sampled out');}catch(_){}return;}var s=document.createElement('script');window.Base44.__preQ=window.Base44.__preQ||[];if(!window.Base44.recordings){var _pre=function(m){return function(){if(window.Base44.__preQ.length<100)window.Base44.__preQ.push([m,Array.prototype.slice.call(arguments)]);};};window.Base44.recordings={version:'1',setUserID:_pre('setUserID'),setUserAnonymousID:_pre('setUserAnonymousID'),setMetadata:_pre('setMetadata'),event:_pre('event'),issue:_pre('issue'),start:_pre('start'),stop:_pre('stop'),isActive:function(){return false;},getSessionID:func_***********turn null;},getSessionURL:function(){return null;},forceFlushBatch:_pre('forceFlushBatch')};}s.src='https://unpkg.com/rrweb@2.0.0-alpha.20/dist/rrweb.umd.cjs';s.integrity='sha384"
+        ],
+        "websocket_urls": [],
+        "auth_forms": [],
+        "file_uploads": []
+      }
+    ],
+    "network_events": [
+      {
+        "url": "https://insights-ai.info/Home",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 578.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 1
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 1031.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 2
+      },
+      {
+        "url": "https://insights-ai.info/AIAssistant",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 484.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 3
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 296.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 4
+      },
+      {
+        "url": "https://insights-ai.info/AICourses",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 407.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 5
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 313.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 6
+      },
+      {
+        "url": "https://insights-ai.info/APIDocumentation",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 438.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 7
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 265.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 8
+      },
+      {
+        "url": "https://insights-ai.info/Analytics",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 407.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 9
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 328.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 10
+      },
+      {
+        "url": "https://insights-ai.info/AnalyticsDashboard",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 469.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 11
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 297.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 12
+      },
+      {
+        "url": "https://insights-ai.info/AstroSIP",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 500.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 13
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 344.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 14
+      },
+      {
+        "url": "https://insights-ai.info/AstrologerOnboarding",
+        "method": "GET",
+        "resource_type": "document",
+        "classification": "DOCUMENT",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "duration_ms": 437.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "text/html; charset=utf-8",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 15
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "method": "GET",
+        "resource_type": "script",
+        "classification": "SCRIPT",
+        "status": 200,
+        "content_type": "application/javascript",
+        "duration_ms": 344.0,
+        "initiator": "browser_observer",
+        "redirect_chain": [],
+        "request_headers_summary": {
+          "user-agent": "PhantomScan-BrowserObservation/1.0"
+        },
+        "response_headers_summary": {
+          "content-type": "application/javascript",
+          "cache-control": "public, max-age=604800",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "strict-transport-security": "max-age=31536000"
+        },
+        "authentication_state": "unknown",
+        "response_schema": null,
+        "request_count": 16
+      }
+    ],
+    "console_events": [],
+    "api_inventory": [],
+    "storage": {
+      "localStorage": {},
+      "sessionStorage": {},
+      "indexedDB": {
+        "metadata_observed": false
+      },
+      "sensitive_client_storage": []
+    },
+    "cookies": [],
+    "csp": [
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      },
+      {
+        "status": "missing",
+        "directives": {},
+        "report_only": false,
+        "weaknesses": [
+          "CSP header missing"
+        ]
+      }
+    ],
+    "csp_violations": [],
+    "javascript": [
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      },
+      {
+        "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "api_endpoints": [],
+        "routes": [],
+        "websocket_urls": [],
+        "graphql_endpoints": [],
+        "environment_identifiers": [],
+        "feature_flags": [],
+        "third_party_domains": [
+          "reactjs.org",
+          "www.w3.org"
+        ],
+        "storage_keys": [],
+        "auth_references": [
+          "password"
+        ],
+        "debug_references": [
+          "console.error"
+        ],
+        "source_map_references": [],
+        "sink_classifications": [
+          "HTML rendering",
+          "URL assignment",
+          "DOM insertion",
+          "navigation"
+        ]
+      }
+    ],
+    "source_maps": [],
+    "auth_flow": {
+      "steps": [],
+      "session_created": false,
+      "logout_observed": false,
+      "session_lifecycle": {
+        "creation": "not_observed",
+        "refresh": "not_observed",
+        "logout_invalidation": "not_observed"
+      }
+    },
+    "websockets": [],
+    "service_workers": [],
+    "cache": [],
+    "third_party": [
+      {
+        "domain": "reactjs.org",
+        "resource": "javascript_reference",
+        "page": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "purpose": "unknown"
+      },
+      {
+        "domain": "www.w3.org",
+        "resource": "javascript_reference",
+        "page": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+        "purpose": "unknown"
+      }
+    ],
+    "dataflow": {
+      "input_to_api": [],
+      "api_to_dom": [],
+      "sink_classifications": [
+        "DOM insertion",
+        "HTML rendering",
+        "URL assignment",
+        "navigation"
+      ]
+    },
+    "screenshots": [],
+    "safety": {
+      "target_origin": "https://insights-ai.info",
+      "max_pages": 8,
+      "page_count": 8,
+      "safety_paused": false,
+      "pause_reason": null,
+      "repeated_server_errors": 0,
+      "latency_spikes": 0,
+      "events": [
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/Home",
+          "status": 200,
+          "duration_ms": 578.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 1031.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/AIAssistant",
+          "status": 200,
+          "duration_ms": 484.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 296.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/AICourses",
+          "status": 200,
+          "duration_ms": 407.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 313.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/APIDocumentation",
+          "status": 200,
+          "duration_ms": 438.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 265.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/Analytics",
+          "status": 200,
+          "duration_ms": 407.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 328.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/AnalyticsDashboard",
+          "status": 200,
+          "duration_ms": 469.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 297.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/AstroSIP",
+          "status": 200,
+          "duration_ms": 500.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 344.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/AstrologerOnboarding",
+          "status": 200,
+          "duration_ms": 437.0
+        },
+        {
+          "event": "response_observed",
+          "url": "https://insights-ai.info/assets/index-aQVHwaMs.js",
+          "status": 200,
+          "duration_ms": 344.0
+        }
+      ]
+    },
+    "request_count": 16,
+    "findings": [
+      {
+        "title": "CSP missing or weak with browser-observed script surfaces",
+        "category": "CSP",
+        "severity": "LOW",
+        "confidence": "HIGH",
+        "target": "https://insights-ai.info/Home",
+        "endpoint": "https://insights-ai.info/Home",
+        "evidence": "CSP status: missing. Weaknesses: CSP header missing. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 31, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 0, \"javascript_sinks\": [\"DOM insertion\", \"HTML rendering\", \"URL assignment\", \"navigation\"], \"previous_related_findings\": 0}",
+        "impact": "Weak CSP increases the impact of client-side injection and third-party script compromise.",
+        "recommendation": "Deploy a restrictive CSP including script-src, object-src 'none', base-uri, frame-ancestors, and form-action.",
+        "verification": "Rerun Browser observation and confirm CSP parses as strong with no violation events.",
+        "agent": "Browser Security Agent",
+        "timestamp": "2026-07-30T08:02:08.2_*7001+00:00",
+        "cve_id": null,
+        "cvss_score": null,
+        "parameter": null,
+        "module": "csp_analysis",
+        "recommended_fix": "Define and enforce a restrictive Content-Security-Policy.",
+        "remediation_status": "OPEN",
+        "verification_status": "NOT_VERIFIED",
+        "risk_status": "ACTIVE"
+      },
+      {
+        "title": "Potential Client Security Surface",
+        "category": "Client-Side Dataflow",
+        "severity": "INFO",
+        "confidence": "POTENTIAL",
+        "target": "https://insights-ai.info/Home",
+        "endpoint": "https://insights-ai.info/Home",
+        "evidence": "Statically observed JavaScript sink categories: DOM insertion, HTML rendering, URL assignment, navigation. Related observations: {\"external_script_origins\": [], \"inline_script_blocks\": 31, \"user_controlled_inputs\": 0, \"api_calls\": 0, \"console_errors\": 0, \"javascript_sinks\": [\"DOM insertion\", \"HTML rendering\", \"URL assignment\", \"navigation\"], \"previous_related_findings\": 0}",
+        "impact": "These patterns are not vulnerabilities by themselves but should be prioritized for output encoding and navigation review.",
+        "recommendation": "Review the identified client-side sinks and ensure user-controlled data is encoded or validated before use.",
+        "verification": "Review the affected JavaScript and rerun static browser analysis after changes.",
+        "agent": "Browser Security Agent",
+        "timestamp": "2026-07-30T08:02:08.2_*7001+00:00",
+        "cve_id": null,
+        "cvss_score": null,
+        "parameter": null,
+        "module": "client_dataflow",
+        "recommended_fix": "Add tests around client rendering/navigation sinks and enforce safe wrappers.",
+        "remediation_status": "OPEN",
+        "verification_status": "NOT_VERIFIED",
+        "risk_status": "ACTIVE"
+      }
+    ],
+    "browser_fallback_reason": "",
+    "correlation": {
+      "related_observations": {
+        "external_script_origins": [],
+        "inline_script_blocks": 31,
+        "user_controlled_inputs": 0,
+        "api_calls": 0,
+        "console_errors": 0,
+        "javascript_sinks": [
+          "DOM insertion",
+          "HTML rendering",
+          "URL assignment",
+          "navigation"
+        ],
+        "previous_related_findings": 0
+      },
+      "independent_signal_count": 2,
+      "confidence_hint": "MEDIUM"
+    }
+  },
+  "ai_analyst_output": {
+    "generated_at": "2026-07-30T08:02:29.334402+00:00",
+    "ai_available": false,
+    "ai_status": "AI Analysis Unavailable - deterministic analysis shown",
+    "safety": {
+      "grounded_in_scan_evidence": true,
+      "can_start_active_test": false,
+      "active_tests": "recommend_only"
+    },
+    "security_summary": {
+      "overall_security_posture": "Moderate Risk",
+      "most_important_risks": [
+        "Missing Content Security Policy",
+        "Missing Content Security Policy"
+      ],
+      "what_changed": "6 new finding(s), 52 new route(s)",
+      "immediate_attention": "2 priority items need immediate attention.",
+      "can_wait": [
+        "Wildcard CORS allowed",
+        "Could not establish TLS connection",
+        "HSTS missing preload directive",
+        "Missing Permissions-Policy",
+        "Server version disclosure"
+      ],
+      "positive_security_controls": [
+        "HSTS enabled",
+        "No high-risk CVEs detected"
+      ],
+      "recommended_next_action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+      "authentication_focus": "No high-confidence authentication findings in active risk set."
+    },
+    "ai_narrative": "",
+    "priorities": [
+      {
+        "priority": 1,
+        "finding_id": 414,
+        "title": "Missing Content Security Policy",
+        "score": 53.0,
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "recommended_action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=HIGH",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 414,
+          "label": "Finding #414",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 2,
+        "finding_id": 408,
+        "title": "Missing Content Security Policy",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Content-Security-Policy: default-src 'self'",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 408,
+          "label": "Finding #408",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 3,
+        "finding_id": 411,
+        "title": "Wildcard CORS allowed",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Restrict to specific trusted origins",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 411,
+          "label": "Finding #411",
+          "title": "Wildcard CORS allowed",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 4,
+        "finding_id": 412,
+        "title": "Could not establish TLS connection",
+        "score": 41.75,
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "Ensure HTTPS is properly configured",
+        "factors": [
+          "severity=MEDIUM",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 412,
+          "label": "Finding #412",
+          "title": "Could not establish TLS connection",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 5,
+        "finding_id": 409,
+        "title": "HSTS missing preload directive",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add 'preload' to HSTS header and submit to hstspreload.org",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 409,
+          "label": "Finding #409",
+          "title": "HSTS missing preload directive",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 6,
+        "finding_id": 410,
+        "title": "Missing Permissions-Policy",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 410,
+          "label": "Finding #410",
+          "title": "Missing Permissions-Policy",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      },
+      {
+        "priority": 7,
+        "finding_id": 413,
+        "title": "Server version disclosure",
+        "score": 23.0,
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "recommended_action": "Remove or obfuscate the 'server' header in server config",
+        "factors": [
+          "severity=LOW",
+          "confidence=MEDIUM",
+          "internet or browser-reachable endpoint"
+        ],
+        "citation": {
+          "type": "finding",
+          "id": 413,
+          "label": "Finding #413",
+          "title": "Server version disclosure",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        }
+      }
+    ],
+    "related_security_chains": [
+      {
+        "title": "Related Security Chain: Missing Content Security Policy",
+        "primary": {
+          "type": "finding",
+          "id": 408,
+          "label": "Finding #408",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 413,
+            "label": "Finding #413",
+            "title": "Server version disclosure",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: HSTS missing preload directive",
+        "primary": {
+          "type": "finding",
+          "id": 409,
+          "label": "Finding #409",
+          "title": "HSTS missing preload directive",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 413,
+            "label": "Finding #413",
+            "title": "Server version disclosure",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Permissions-Policy",
+        "primary": {
+          "type": "finding",
+          "id": 410,
+          "label": "Finding #410",
+          "title": "Missing Permissions-Policy",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 413,
+            "label": "Finding #413",
+            "title": "Server version disclosure",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Wildcard CORS allowed",
+        "primary": {
+          "type": "finding",
+          "id": 411,
+          "label": "Finding #411",
+          "title": "Wildcard CORS allowed",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 413,
+            "label": "Finding #413",
+            "title": "Server version disclosure",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Could not establish TLS connection",
+        "primary": {
+          "type": "finding",
+          "id": 412,
+          "label": "Finding #412",
+          "title": "Could not establish TLS connection",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 413,
+            "label": "Finding #413",
+            "title": "Server version disclosure",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Server version disclosure",
+        "primary": {
+          "type": "finding",
+          "id": 413,
+          "label": "Finding #413",
+          "title": "Server version disclosure",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      },
+      {
+        "title": "Related Security Chain: Missing Content Security Policy",
+        "primary": {
+          "type": "finding",
+          "id": 414,
+          "label": "Finding #414",
+          "title": "Missing Content Security Policy",
+          "endpoint": "https://insights-ai.info/Home",
+          "source": "Finding"
+        },
+        "related": [
+          {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          },
+          {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Related finding"
+          }
+        ],
+        "explanation": "These observations share an endpoint, category/module, or CVE context. PhantomScan does not label this an exploit chain without direct proof."
+      }
+    ],
+    "root_causes": [
+      {
+        "name": "Browser Security Policy",
+        "finding_count": 4,
+        "highest_severity": "MEDIUM",
+        "finding_ids": [
+          408,
+          409,
+          410,
+          411
+        ],
+        "summary": "4 related findings appear to share this root area."
+      },
+      {
+        "name": "Application Security",
+        "finding_count": 2,
+        "highest_severity": "MEDIUM",
+        "finding_ids": [
+          412,
+          414
+        ],
+        "summary": "2 related findings appear to share this root area."
+      },
+      {
+        "name": "Dependency and CVE",
+        "finding_count": 1,
+        "highest_severity": "LOW",
+        "finding_ids": [
+          413
+        ],
+        "summary": "1 related finding appear to share this root area."
+      }
+    ],
+    "remediation_plan": {
+      "IMMEDIATE": [
+        {
+          "priority": 1,
+          "finding_id": 414,
+          "title": "Missing Content Security Policy",
+          "action": "Deploy a restrictive, application-specific Content-Security-Policy.",
+          "citation": {
+            "type": "finding",
+            "id": 414,
+            "label": "Finding #414",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 2,
+          "finding_id": 408,
+          "title": "Missing Content Security Policy",
+          "action": "Add: Content-Security-Policy: default-src 'self'",
+          "citation": {
+            "type": "finding",
+            "id": 408,
+            "label": "Finding #408",
+            "title": "Missing Content Security Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        }
+      ],
+      "TODAY": [],
+      "THIS_WEEK": [
+        {
+          "priority": 3,
+          "finding_id": 411,
+          "title": "Wildcard CORS allowed",
+          "action": "Restrict to specific trusted origins",
+          "citation": {
+            "type": "finding",
+            "id": 411,
+            "label": "Finding #411",
+            "title": "Wildcard CORS allowed",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 4,
+          "finding_id": 412,
+          "title": "Could not establish TLS connection",
+          "action": "Ensure HTTPS is properly configured",
+          "citation": {
+            "type": "finding",
+            "id": 412,
+            "label": "Finding #412",
+            "title": "Could not establish TLS connection",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 5,
+          "finding_id": 409,
+          "title": "HSTS missing preload directive",
+          "action": "Add 'preload' to HSTS header and submit to hstspreload.org",
+          "citation": {
+            "type": "finding",
+            "id": 409,
+            "label": "Finding #409",
+            "title": "HSTS missing preload directive",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 6,
+          "finding_id": 410,
+          "title": "Missing Permissions-Policy",
+          "action": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+          "citation": {
+            "type": "finding",
+            "id": 410,
+            "label": "Finding #410",
+            "title": "Missing Permissions-Policy",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        },
+        {
+          "priority": 7,
+          "finding_id": 413,
+          "title": "Server version disclosure",
+          "action": "Remove or obfuscate the 'server' header in server config",
+          "citation": {
+            "type": "finding",
+            "id": 413,
+            "label": "Finding #413",
+            "title": "Server version disclosure",
+            "endpoint": "https://insights-ai.info/Home",
+            "source": "Finding"
+          }
+        }
+      ]
+    },
+    "score_explanation": {
+      "score": 70,
+      "deductions": [
+        {
+          "label": "4 Medium severity findings",
+          "points": -28
+        },
+        {
+          "label": "3 Low severity findings",
+          "points": -6
+        }
+      ],
+      "credits": [
+        {
+          "label": "2 positive security controls",
+          "points": 4
+        }
+      ]
+    },
+    "positive_controls": [
+      {
+        "title": "HSTS enabled",
+        "evidence": "Browser network evidence includes Strict-Transport-Security."
+      },
+      {
+        "title": "No high-risk CVEs detected",
+        "evidence": "Persisted findings contain no high or critical CVE result."
+      }
+    ],
+    "scan_comparison": {
+      "previous_scan_id": null,
+      "new_findings": [
+        "Could not establish TLS connection",
+        "HSTS missing preload directive",
+        "Missing Content Security Policy",
+        "Missing Permissions-Policy",
+        "Server version disclosure",
+        "Wildcard CORS allowed"
+      ],
+      "resolved_findings": [],
+      "worsened_findings": [],
+      "new_routes": [
+        "https://insights-ai.info/",
+        "https://insights-ai.info/AIAssistant",
+        "https://insights-ai.info/AICourses",
+        "https://insights-ai.info/AIStudyBuddy",
+        "https://insights-ai.info/APIDocumentation",
+        "https://insights-ai.info/Analytics",
+        "https://insights-ai.info/AnalyticsDashboard",
+        "https://insights-ai.info/AstroSIP",
+        "https://insights-ai.info/AstrologerOnboarding",
+        "https://insights-ai.info/BotDetail",
+        "https://insights-ai.info/CareerCoach",
+        "https://insights-ai.info/CareerPathNavigator",
+        "https://insights-ai.info/Collaborations",
+        "https://insights-ai.info/ContentAnalytics",
+        "https://insights-ai.info/ContentCalendar",
+        "https://insights-ai.info/CreateMarket",
+        "https://insights-ai.info/CustomDashboard",
+        "https://insights-ai.info/Dashboard",
+        "https://insights-ai.info/DeepSearch",
+        "https://insights-ai.info/Discover",
+        "https://insights-ai.info/ExpertConnect",
+        "https://insights-ai.info/FeedbackAdmin",
+        "https://insights-ai.info/FinancialPlanner",
+        "https://insights-ai.info/Forum",
+        "https://insights-ai.info/Gamification",
+        "https://insights-ai.info/Home",
+        "https://insights-ai.info/Horoscope",
+        "https://insights-ai.info/InsightsGrant",
+        "https://insights-ai.info/Integrations",
+        "https://insights-ai.info/Learning",
+        "https://insights-ai.info/LearningAnalytics",
+        "https://insights-ai.info/LearningPath",
+        "https://insights-ai.info/MarketModeration",
+        "https://insights-ai.info/MediaStudio",
+        "https://insights-ai.info/PostGenerator",
+        "https://insights-ai.info/PredictX",
+        "https://insights-ai.info/PredictXCommunity",
+        "https://insights-ai.info/PredictXLeaderboard",
+        "https://insights-ai.info/PredictXMarket",
+        "https://insights-ai.info/PredictXPortfolio",
+        "https://insights-ai.info/ProjectHub",
+        "https://insights-ai.info/ReelAdCreator",
+        "https://insights-ai.info/Referrals",
+        "https://insights-ai.info/ResearchJournal",
+        "https://insights-ai.info/ResumeBuilder",
+        "https://insights-ai.info/Scheduler",
+        "https://insights-ai.info/Skill2Earn",
+        "https://insights-ai.info/SkillAssessment",
+        "https://insights-ai.info/SoulSync",
+        "https://insights-ai.info/Teams",
+        "https://insights-ai.info/TradingBots",
+        "https://insights-ai.info/TravelPlanner"
+      ],
+      "new_apis": [],
+      "new_technologies": [],
+      "new_third_parties": [
+        "reactjs.org",
+        "www.w3.org"
+      ],
+      "new_authentication_surfaces": [],
+      "removed_exposure": []
+    },
+    "security_timeline": [
+      {
+        "timestamp": "2026-07-30 08:01:48",
+        "title": "scan created",
+        "detail": "Created defend scan for https://insights-ai.info/Home with high intensity and modules: none",
+        "source": "System"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:48",
+        "title": "started",
+        "detail": "Orchestrating defend scan for https://insights-ai.info/Home",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:48",
+        "title": "started",
+        "detail": "Scanning https://insights-ai.info/Home",
+        "source": "Scanner Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Access Control Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Session Security Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Injection Analysis Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "WebSocket Security Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Threat Intelligence Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "skipped",
+        "detail": "NVD_API_KEY not configured",
+        "source": "CVE Matcher Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:56",
+        "title": "browser observation started",
+        "detail": "Starting browser observation for https://insights-ai.info/Home",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:57",
+        "title": "completed",
+        "detail": "Completed pure analysis with 1 findings",
+        "source": "Infrastructure Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:57",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Authentication Security Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:57",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "API Security Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:57",
+        "title": "completed",
+        "detail": "Completed pure analysis with 0 findings",
+        "source": "Dependency Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:01:57",
+        "title": "completed",
+        "detail": "Generated 6 findings",
+        "source": "Analyzer Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "browser observation completed",
+        "detail": "Browser observation completed with 16 network events, 0 APIs, and 2 findings",
+        "source": "Browser Security Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "started",
+        "detail": "Enriching 9 findings with AI",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "started",
+        "detail": "Creating Hindi explanations for 9 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "completed",
+        "detail": "Hindi explanation added to 0 findings",
+        "source": "Hindi Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "completed",
+        "detail": "Enriched 0 critical/high findings",
+        "source": "AI Explainer Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "finding skipped",
+        "detail": "1 validation error for FindingCreate\ntimestamp\n  Input should be a valid datetime or date, unexpected extra characters at the end of the input [type=datetime_from_date_parsing, input_value='2026-07-30T08:02:08.2_*7001+00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:08",
+        "title": "finding skipped",
+        "detail": "1 validation error for FindingCreate\ntimestamp\n  Input should be a valid datetime or date, unexpected extra characters at the end of the input [type=datetime_from_date_parsing, input_value='2026-07-30T08:02:08.2_*7001+00:00', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/datetime_from_date_parsing",
+        "source": "Orchestrator Agent"
+      },
+      {
+        "timestamp": "2026-07-30 08:02:09",
+        "title": "started",
+        "detail": "Generating remediation checklist for 7 findings",
+        "source": "Fixer Agent"
+      },
+      {
+        "timestamp": "2026-07-30T08:01:57.137483Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Content Security Policy",
+        "source": "Finding",
+        "finding_id": 414
+      },
+      {
+        "timestamp": "2026-07-30T08:02:08.478608Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Missing Content Security Policy",
+        "source": "Finding",
+        "finding_id": 408
+      },
+      {
+        "timestamp": "2026-07-30T08:02:08.483610Z",
+        "title": "LOW finding detected",
+        "detail": "HSTS missing preload directive",
+        "source": "Finding",
+        "finding_id": 409
+      },
+      {
+        "timestamp": "2026-07-30T08:02:08.491609Z",
+        "title": "LOW finding detected",
+        "detail": "Missing Permissions-Policy",
+        "source": "Finding",
+        "finding_id": 410
+      },
+      {
+        "timestamp": "2026-07-30T08:02:08.500611Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Wildcard CORS allowed",
+        "source": "Finding",
+        "finding_id": 411
+      },
+      {
+        "timestamp": "2026-07-30T08:02:08.509614Z",
+        "title": "MEDIUM finding detected",
+        "detail": "Could not establish TLS connection",
+        "source": "Finding",
+        "finding_id": 412
+      },
+      {
+        "timestamp": "2026-07-30T08:02:08.523608Z",
+        "title": "LOW finding detected",
+        "detail": "Server version disclosure",
+        "source": "Finding",
+        "finding_id": 413
+      }
+    ],
+    "executive_report": {
+      "Overall Posture": "Moderate Risk",
+      "Major Risks": [
+        "Missing Content Security Policy",
+        "Missing Content Security Policy",
+        "Wildcard CORS allowed"
+      ],
+      "Improvements": [],
+      "New Exposure": [
+        "https://insights-ai.info/",
+        "https://insights-ai.info/AIAssistant",
+        "https://insights-ai.info/AICourses",
+        "https://insights-ai.info/AIStudyBuddy",
+        "https://insights-ai.info/APIDocumentation",
+        "https://insights-ai.info/Analytics",
+        "https://insights-ai.info/AnalyticsDashboard",
+        "https://insights-ai.info/AstroSIP",
+        "https://insights-ai.info/AstrologerOnboarding",
+        "https://insights-ai.info/BotDetail",
+        "https://insights-ai.info/CareerCoach",
+        "https://insights-ai.info/CareerPathNavigator",
+        "https://insights-ai.info/Collaborations",
+        "https://insights-ai.info/ContentAnalytics",
+        "https://insights-ai.info/ContentCalendar",
+        "https://insights-ai.info/CreateMarket",
+        "https://insights-ai.info/CustomDashboard",
+        "https://insights-ai.info/Dashboard",
+        "https://insights-ai.info/DeepSearch",
+        "https://insights-ai.info/Discover",
+        "https://insights-ai.info/ExpertConnect",
+        "https://insights-ai.info/FeedbackAdmin",
+        "https://insights-ai.info/FinancialPlanner",
+        "https://insights-ai.info/Forum",
+        "https://insights-ai.info/Gamification",
+        "https://insights-ai.info/Home",
+        "https://insights-ai.info/Horoscope",
+        "https://insights-ai.info/InsightsGrant",
+        "https://insights-ai.info/Integrations",
+        "https://insights-ai.info/Learning",
+        "https://insights-ai.info/LearningAnalytics",
+        "https://insights-ai.info/LearningPath",
+        "https://insights-ai.info/MarketModeration",
+        "https://insights-ai.info/MediaStudio",
+        "https://insights-ai.info/PostGenerator",
+        "https://insights-ai.info/PredictX",
+        "https://insights-ai.info/PredictXCommunity",
+        "https://insights-ai.info/PredictXLeaderboard",
+        "https://insights-ai.info/PredictXMarket",
+        "https://insights-ai.info/PredictXPortfolio",
+        "https://insights-ai.info/ProjectHub",
+        "https://insights-ai.info/ReelAdCreator",
+        "https://insights-ai.info/Referrals",
+        "https://insights-ai.info/ResearchJournal",
+        "https://insights-ai.info/ResumeBuilder",
+        "https://insights-ai.info/Scheduler",
+        "https://insights-ai.info/Skill2Earn",
+        "https://insights-ai.info/SkillAssessment",
+        "https://insights-ai.info/SoulSync",
+        "https://insights-ai.info/Teams",
+        "https://insights-ai.info/TradingBots",
+        "https://insights-ai.info/TravelPlanner",
+        "reactjs.org",
+        "www.w3.org"
+      ],
+      "Recommended Priorities": [
+        "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "Add: Content-Security-Policy: default-src 'self'",
+        "Restrict to specific trusted origins"
+      ],
+      "Verification Status": "2 priority items need immediate attention.",
+      "What's Already Secure": [
+        "HSTS enabled",
+        "No high-risk CVEs detected"
+      ]
+    },
+    "developer_report": [
+      {
+        "finding_id": 408,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "No CSP header found",
+        "observed_behavior": "No CSP header found",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Content Security Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Content-Security-Policy: default-src 'self'",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 2
+      },
+      {
+        "finding_id": 409,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "No preload flag in HSTS",
+        "observed_behavior": "No preload flag in HSTS",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: HSTS missing preload directive"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add 'preload' to HSTS header and submit to hstspreload.org",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 5
+      },
+      {
+        "finding_id": 410,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "No Permissions-Policy header",
+        "observed_behavior": "No Permissions-Policy header",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Missing Permissions-Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 6
+      },
+      {
+        "finding_id": 411,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "Access-Control-Allow-Origin: *",
+        "observed_behavior": "Access-Control-Allow-Origin: *",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Wildcard CORS allowed"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Restrict to specific trusted origins",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 3
+      },
+      {
+        "finding_id": 412,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "Failed to connect to insights-ai.info:443",
+        "observed_behavior": "Failed to connect to insights-ai.info:443",
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Could not establish TLS connection"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Ensure HTTPS is properly configured",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 4
+      },
+      {
+        "finding_id": 413,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "Header 'server: cloudflare'",
+        "observed_behavior": "Header 'server: cloudflare'",
+        "severity": "LOW",
+        "confidence": "MEDIUM",
+        "related_findings": [
+          "Related Security Chain: Server version disclosure"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Remove or obfuscate the 'server' header in server config",
+        "verification": "Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
+        "recommended_priority": 7
+      },
+      {
+        "finding_id": 414,
+        "affected_endpoint": "https://insights-ai.info/Home",
+        "evidence": "No Content-Security-Policy header was captured.",
+        "observed_behavior": "No Content-Security-Policy header was captured.",
+        "severity": "MEDIUM",
+        "confidence": "HIGH",
+        "related_findings": [
+          "Related Security Chain: Missing Content Security Policy"
+        ],
+        "technology": "derived from scan artifacts when available",
+        "remediation": "Deploy a restrictive, application-specific Content-Security-Policy.",
+        "verification": "Capture the remediated response and confirm the header is present with the intended policy.",
+        "recommended_priority": 1
+      }
+    ],
+    "suggested_prompts": [
+      "What should I fix first?",
+      "Why is my security score this value?",
+      "Which findings affect authentication?",
+      "Which APIs are highest priority?",
+      "What changed since my previous scan?",
+      "Which findings are confirmed?",
+      "Explain this issue in Hindi.",
+      "Give me a remediation checklist.",
+      "Which issues were resolved?",
+      "Which attack surfaces are new?"
+    ],
+    "citations": [
+      {
+        "type": "finding",
+        "id": 414,
+        "label": "Finding #414",
+        "title": "Missing Content Security Policy",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 408,
+        "label": "Finding #408",
+        "title": "Missing Content Security Policy",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 411,
+        "label": "Finding #411",
+        "title": "Wildcard CORS allowed",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 412,
+        "label": "Finding #412",
+        "title": "Could not establish TLS connection",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 409,
+        "label": "Finding #409",
+        "title": "HSTS missing preload directive",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 410,
+        "label": "Finding #410",
+        "title": "Missing Permissions-Policy",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      },
+      {
+        "type": "finding",
+        "id": 413,
+        "label": "Finding #413",
+        "title": "Server version disclosure",
+        "endpoint": "https://insights-ai.info/Home",
+        "source": "Finding"
+      }
+    ],
+    "grounding": {
+      "source": "scanner-generated evidence only",
+      "evidence_hash": "9e4f93a6592286933275ad6e0f16efab654322114c29c7f5bffc76226151f945"
+    }
+  },
+  "exploitation_results": null
+}

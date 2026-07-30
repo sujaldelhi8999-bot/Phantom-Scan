@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 
+from app.config import get_settings
 from app.models import ScanRequest
 from app.services.active_gate import ActiveTargetGate
 from app.services.authorization import TargetAuthorizationService, VerifiedTarget, canonicalize_target
+
+settings = get_settings()
 
 
 class ScanPolicyError(ValueError):
@@ -59,7 +62,7 @@ class ScanPolicy:
                 "Business logic definitions require the business_logic module to be selected.",
                 "BUSINESS_LOGIC_SCOPE_MISMATCH",
             )
-        decision = await self.active_gate.admit(target.url, user_id, request.authorization_id)
+        decision = await self.active_gate.admit(target.url, user_id, request.authorization_id, user_role=settings.local_user_role)
         if not decision.allowed:
             raise ScanPolicyError(decision.reason, "TARGET_NOT_VERIFIED", 403)
         if decision.authorization_status == "VERIFIED" and not request.authorization_confirmed:

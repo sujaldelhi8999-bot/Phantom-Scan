@@ -1,0 +1,126 @@
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from app.agents.dos import DoSAgent
+from app.database import get_connection
+from app.routers.admin_scope import admin_required
+from app.services.active_gate import ActiveTargetGate, canonicalize_hostname
+
+logger = logging.getLogger("phantomscan.dos")
+
+router = APIRouter(prefix="/api/admin/dos", tags=["Denial of Service"])
+
+
+class DoSStartRequest(BaseModel):
+    target_url: str = Field(min_length=4, max_length=2048)
+    intensity: str = "low"
+    duration: int = 30
+
+
+INTENSITY_RULES = {
+    "low": {"max_duration": 300, "allowed_outside_lab": True},
+    "medium": {"max_duration": 120, "allowed_outside_lab": True},
+    "high": {"max_duration": 30, "allowed_outside_lab": True},
+    "critical": {"max_duration": 10, "allowed_outside_lab": False},
+}
+
+
+def _is_lab_target(url: str) -> bool:
+    lower = url.lower()
+    return "phantombank" in lower or "localhost" in lower or "127.0.0.1" in lower
+
+
+@router.post("/start")
+async def start_dos(
+    req: DoSStartRequest,
+    _admin: dict = Depends(admin_required),
+):
+    if not req.target_url.startswith(("http://", "https://")):
+        req.target_url = "https://" + req.target_url
+
+    if req.intensity not in INTENSITY_RULES:
+        req.intensity = "low"
+
+    rules = INTENSITY_RULES[req.intensity]
+    if req.duration > rules["max_duration"]:
+        req.duration = rules["max_duration"]
+
+    if not rules["allowed_outside_lab"] and not _is_lab_target(req.target_url):
+        req.intensity = "high"
+        rules = INTENSITY_RULES["high"]
+        if req.duration > rules["max_duration"]:
+            req.duration = rules["max_duration"]
+
+    gate = ActiveTargetGate()
+    hostname = canonicalize_hostname(req.target_url)
+    decision = await gate.admit(
+        target_url=req.target_url,
+        user_id="admin",
+        authorization_id=None,
+        user_role="admin",
+    )
+
+    if not decision.allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Target not authorized for DoS testing: {decision.reason}",
+        )
+
+    agent = DoSAgent(req.target_url, req.intensity, req.duration)
+    result = await agent.start()
+    return result
+
+
+@router.post("/stop/{job_id}")
+async def stop_dos(
+    job_id: str,
+    _admin: dict = Depends(admin_required),
+):
+    async with get_connection() as conn:
+        cursor = await conn.execute(
+            "SELECT target_url, intensity FROM dos_jobs WHERE job_id = ? AND status = 'running'",
+            (job_id,),
+        )
+        row = await cursor.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found or not running")
+
+    agent = DoSAgent(row["target_url"], row["intensity"])
+    agent.job_id = job_id
+    result = await agent.stop()
+    return result
+
+
+@router.get("/status/{job_id}")
+async def get_dos_status(
+    job_id: str,
+    _admin: dict = Depends(admin_required),
+):
+    async with get_connection() as conn:
+        cursor = await conn.execute("SELECT * FROM dos_jobs WHERE job_id = ?", (job_id,))
+        row = await cursor.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return dict(row)
+
+
+@router.get("/history")
+async def get_dos_history(
+    _admin: dict = Depends(admin_required),
+):
+    async with get_connection() as conn:
+        cursor = await conn.execute(
+            """
+            SELECT job_id, target_url, intensity, status,
+                   requests_sent, responses_received, errors,
+                   started_at, stopped_at
+            FROM dos_jobs
+            ORDER BY started_at DESC
+            LIMIT 50
+            """
+        )
+        return [dict(row) for row in await cursor.fetchall()]

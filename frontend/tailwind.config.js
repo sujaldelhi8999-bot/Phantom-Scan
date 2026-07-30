@@ -4,23 +4,36 @@ export default {
   theme: {
     extend: {
       colors: {
-        ops: {
-          navy: '#070A12',
-          panel: '#0B1020',
-          purple: '#8B5CF6',
-          lavender: '#A78BFA',
-          amber: '#F59E0B'
-        }
-      },
-      boxShadow: {
-        soft: '0 20px 60px rgba(0, 0, 0, 0.22)',
-        violet: '0 14px 34px rgba(139, 92, 246, 0.25)'
+        surface: {
+          DEFAULT: '#FFFFFF',
+          secondary: '#F9FAFB',
+          tertiary: '#F1F4F8',
+          hover: '#F1F5F9',
+          selected: '#EAF1FF',
+        },
+        brand: {
+          DEFAULT: '#2563D9',
+          hover: '#1D4FC4',
+          soft: '#E8F0FF',
+        },
+        critical: '#B42318',
+        high: '#A75A05',
+        medium: '#D97706',
+        low: '#2563D9',
+        info: '#245FC4',
+        success: '#137A45',
+        warning: '#A75A05',
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
-      }
-    }
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      },
+      borderRadius: {
+        sm: '7px',
+        md: '9px',
+        lg: '12px',
+      },
+    },
   },
-  plugins: []
+  plugins: [],
 };

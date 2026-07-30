@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -52,6 +53,14 @@ class ShadowReconAgent(Agent):
 
         exposed_files = await self._check_sensitive_paths(base)
 
+        self.discovered_emails = leaked_emails
+        self.internal_ips = internal_ips
+        self.js_source_maps = js_sourcemaps
+        self.html_comments = comments
+        self.sensitive_files_found = {f["path"]: True for f in exposed_files} if exposed_files else {}
+        self.robots_txt_content = robots.get("body", "")
+        self.sitemap_urls = [u["url"] for u in sitemap_urls] if sitemap_urls else []
+
         self.status = "complete"
         await self.log_action(
             "completed",
@@ -63,7 +72,8 @@ class ShadowReconAgent(Agent):
             f"Sourcemaps: {len(js_sourcemaps)}, "
             f"Exposed: {len(exposed_files)}"
         )
-        return {
+
+        result = {
             "whois": whois_data,
             "dork_urls": dork_urls,
             "disallowed_paths": disallowed,
@@ -76,6 +86,52 @@ class ShadowReconAgent(Agent):
             "internal_ips": internal_ips,
             "html_comments": comments,
         }
+
+        await self._save_artifacts(result)
+        await self.save_shadow_recon_results()
+
+        return result
+
+    async def _save_artifacts(self, result: dict[str, Any]) -> None:
+        try:
+            from app.database import set_scan_artifacts
+            await set_scan_artifacts(self.scan_id, shadow_recon_output=result)
+        except Exception as exc:
+            await self.log_action("save_error", f"Failed to save shadow recon artifacts: {exc}")
+
+    async def save_shadow_recon_results(self) -> None:
+        try:
+            from app.database import get_connection
+            async with get_connection() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO shadow_recon_results (
+                        scan_id, emails, internal_ips, js_source_maps,
+                        html_comments, sensitive_files, robots_txt_content, sitemap_urls
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(scan_id) DO UPDATE SET
+                        emails = excluded.emails,
+                        internal_ips = excluded.internal_ips,
+                        js_source_maps = excluded.js_source_maps,
+                        html_comments = excluded.html_comments,
+                        sensitive_files = excluded.sensitive_files,
+                        robots_txt_content = excluded.robots_txt_content,
+                        sitemap_urls = excluded.sitemap_urls
+                    """,
+                    (
+                        self.scan_id,
+                        json.dumps(self.discovered_emails or []) if hasattr(self, 'discovered_emails') else None,
+                        json.dumps(self.internal_ips or []) if hasattr(self, 'internal_ips') else None,
+                        json.dumps(self.js_source_maps or []) if hasattr(self, 'js_source_maps') else None,
+                        json.dumps(self.html_comments or []) if hasattr(self, 'html_comments') else None,
+                        json.dumps(self.sensitive_files_found or {}) if hasattr(self, 'sensitive_files_found') else None,
+                        self.robots_txt_content if hasattr(self, 'robots_txt_content') else None,
+                        json.dumps(self.sitemap_urls or []) if hasattr(self, 'sitemap_urls') else None,
+                    ),
+                )
+                await conn.commit()
+        except Exception as exc:
+            await self.log_action("save_error", f"Failed to save shadow recon results: {exc}")
 
     def _extract_domain(self, target_url: str) -> str:
         parsed = urlparse(target_url if "://" in target_url else f"https://{target_url}")
