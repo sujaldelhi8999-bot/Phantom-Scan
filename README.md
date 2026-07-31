@@ -102,7 +102,7 @@ cp .env.example .env
 ```
 Edit `backend/.env` with your API keys and configuration:
 ```dotenv
-ANTHROPIC_API_KEY=your_anthropic_api_key
+OPENROUTER_API_KEY= your openrouter api key
 GROQ_API_KEY=your_groq_api_key
 NVD_API_KEY=your_nvd_api_key
 DATABASE_URL=sqlite:///./phantomscan.db
