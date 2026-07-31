@@ -50,6 +50,10 @@ class Settings:
     max_response_size = env_int("MAX_RESPONSE_SIZE", 1_048_576)
     browser_page_limit = env_int("BROWSER_PAGE_LIMIT", 8)
     active_target_allowlist = os.getenv("ACTIVE_TARGET_ALLOWLIST", "")
+    deep_port_scan_enabled = os.getenv("DEEP_PORT_SCAN", "1") not in ("0", "false", "False")
+    port_scan_concurrency = env_int("PORT_SCAN_CONCURRENCY", 64)
+    port_scan_max_ports = env_int("PORT_SCAN_MAX_PORTS", 1024)
+    port_scan_sweep_timeout = env_float("PORT_SCAN_SWEEP_TIMEOUT", 75.0)
 
 
 @lru_cache

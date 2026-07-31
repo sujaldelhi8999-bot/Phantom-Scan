@@ -1,7 +1,10 @@
 import asyncio
 import json
+import random
+import re
 import socket
 import ssl
+import string
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -9,36 +12,306 @@ from urllib.parse import urlparse
 
 import dns.asyncresolver
 import dns.query
+import dns.rdatatype
 import dns.zone
 import httpx
 
 from app.agents import Agent
-
+from app.config import get_settings
 
 SUBDOOM_WORDLIST = [
     "admin", "dev", "staging", "api", "mail", "vpn", "portal", "dashboard",
     "internal", "beta", "test", "old", "backup", "cdn", "auth", "login",
     "app", "shop", "cms", "blog", "git", "jenkins", "jira", "grafana",
     "kibana", "redis", "db", "mysql", "mongo", "ftp", "smtp", "pop",
-    "imap", "ns1", "ns2", "mx", "support", "status", "docs", "www"
+    "imap", "ns1", "ns2", "mx", "support", "status", "docs", "www",
+    "v2", "v3", "new", "live", "preview", "demo", "stage", "qa", "uat",
+    "secure", "pay", "payment", "gateway", "billing", "account", "accounts",
+    "user", "users", "customer", "customers", "adminpanel", "cpanel", "webmail",
+    "owa", "exchange", "remote", "rdp", "ssh", "gitlab", "bitbucket", "github",
+    "confluence", "wiki", "redmine", "moodle", "lms", "vpn", "vpn2", "openvpn",
+    "proxy", "squid", "ftp2", "sftp", "uploads", "download", "files", "static",
+    "assets", "media", "img", "images", "css", "js", "fonts", "m", "mobile",
+    "api2", "api-internal", "internal-api", "private", "intranet", "office",
+    "hr", "erp", "crm", "analytics", "metrics", "monitor", "monitoring",
+    "prometheus", "graphite", "stats", "logs", "log", "sentry", "jenkins2",
+    "ci", "cd", "build", "deploy", "docker", "k8s", "kube", "registry",
 ]
 
 COMMON_PORTS = [
-    21, 22, 23, 25, 53, 80, 443, 3000, 3306, 5432, 6379, 8080, 8443,
-    8888, 9200, 9300, 27017
+    21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 993, 995,
+    1723, 3306, 3389, 5900, 8080, 8443,
+]
+
+WEB_ALT_PORTS = [
+    8000, 8001, 8008, 8010, 8081, 8082, 8083, 8085, 8088, 8090, 8180,
+    8200, 8280, 8444, 8445, 8648, 8800, 8880, 8881, 8888, 9000, 9001,
+    9043, 9080, 9090, 9091, 9100, 9200, 9300, 9443, 9999, 10000, 10443,
+    11080, 11443, 18080, 19000, 28080,
+]
+
+SERVICE_ALT_PORTS = {
+    22: [2222, 22022],
+    25: [2525, 465, 587],
+    3306: [3307, 13306, 33060],
+    5432: [5433, 5434, 15432],
+    6379: [6380, 16379, 26379],
+    27017: [27018, 27019, 28017],
+    9200: [9201, 9202, 9400],
+    80: WEB_ALT_PORTS,
+    443: [8443, 9443, 4443],
+}
+
+PORT_SERVICES = {
+    20: "ftp-data", 21: "ftp", 22: "ssh", 23: "telnet", 25: "smtp",
+    53: "dns", 67: "dhcp", 68: "dhcp", 69: "tftp", 80: "http", 110: "pop3",
+    111: "rpcbind", 123: "ntp", 135: "msrpc", 137: "netbios", 139: "netbios-ssn",
+    143: "imap", 161: "snmp", 179: "bgp", 194: "irc", 389: "ldap", 443: "https",
+    445: "smb", 465: "smtps", 514: "syslog", 515: "printer", 587: "smtp-submission",
+    636: "ldaps", 873: "rsync", 993: "imaps", 995: "pop3s", 1080: "socks",
+    1099: "rmi", 1194: "openvpn", 1433: "mssql", 1521: "oracle", 1723: "pptp",
+    1812: "radius", 2049: "nfs", 2222: "ssh-alt", 2375: "docker", 2376: "docker-tls",
+    3000: "http-alt", 3128: "squid", 3306: "mysql", 3389: "rdp", 4369: "erlang",
+    5000: "http-alt", 5432: "postgresql", 5672: "amqp", 5900: "vnc", 5984: "couchdb",
+    5985: "winrm", 6379: "redis", 6443: "kubernetes", 7001: "weblogic", 8000: "http-alt",
+    8009: "ajp", 8080: "http-proxy", 8081: "http-alt", 8082: "http-alt",
+    8083: "http-alt", 8088: "http-alt", 8180: "http-alt", 8443: "https-alt",
+    8500: "consul", 8600: "dns-alt", 8888: "http-alt", 9000: "http-alt",
+    9001: "supervisord", 9090: "prometheus", 9092: "kafka", 9200: "elasticsearch",
+    9300: "elasticsearch", 9418: "git", 9443: "https-alt", 9999: "http-alt",
+    10000: "webmin", 11211: "memcached", 15672: "rabbitmq", 27017: "mongodb",
+    28017: "mongodb-http", 50000: "sap",
+}
+
+BANNER_SERVICE_HINTS = [
+    ("ssh", re.compile(r"^SSH-", re.I)),
+    ("ftp", re.compile(r"^220[- ]", re.I)),
+    ("smtp", re.compile(r"^220 .*?(ESMTP|SMTP)", re.I)),
+    ("pop3", re.compile(r"^\+OK ", re.I)),
+    ("imap", re.compile(r"^\* OK", re.I)),
+    ("http", re.compile(r"^HTTP/", re.I)),
+    ("https", re.compile(r"^HTTP/", re.I)),
+    ("telnet", re.compile(r"login:", re.I)),
+    ("mysql", re.compile(r"mysql", re.I)),
+    ("redis", re.compile(r"^-ERR|^\+OK", re.I)),
+    ("mongodb", re.compile(r"^HELLO|^machine", re.I)),
+]
+
+TECHNOLOGY_SIGNATURES: dict[str, dict[str, dict[str, Any]]] = {
+    "web_servers": {
+        "nginx": {"headers": [("server", "nginx")], "version": {"pattern": r"nginx/([\d.]+)", "source": "headers"}},
+        "openresty": {"headers": [("server", "openresty")], "version": {"pattern": r"openresty/([\d.]+)", "source": "headers"}},
+        "apache": {"headers": [("server", "apache")], "version": {"pattern": r"Apache/([\d.]+)", "source": "headers"}},
+        "iis": {"headers": [("server", "microsoft-iis")], "version": {"pattern": r"Microsoft-IIS/([\d.]+)", "source": "headers"}},
+        "caddy": {"headers": [("server", "caddy")], "version": {"pattern": r"Caddy/([\d.]+)", "source": "headers"}},
+        "traefik": {"headers": [("server", "traefik")], "version": {"pattern": r"Traefik/([\d.]+)", "source": "headers"}},
+        "lighttpd": {"headers": [("server", "lighttpd")], "version": {"pattern": r"lighttpd/([\d.]+)", "source": "headers"}},
+        "tomcat": {"headers": [("server", "coyote")], "body": ["tomcat"], "version": {"pattern": r"Apache[-\s]?Tomcat/([\d.]+)", "source": "headers"}},
+        "gunicorn": {"headers": [("server", "gunicorn")], "version": {"pattern": r"gunicorn/([\d.]+)", "source": "headers"}},
+        "uvicorn": {"headers": [("server", "uvicorn")], "version": {"pattern": r"uvicorn", "source": "headers"}},
+        "jetty": {"headers": [("server", "jetty")], "version": {"pattern": r"Jetty\(([\d.]+)", "source": "headers"}},
+        "kestrel": {"headers": [("server", "kestrel")], "version": {"pattern": r"Kestrel/([\d.]+)", "source": "headers"}},
+        "apache-coyote": {"headers": [("server", "coyote")]},
+        "litespeed": {"headers": [("server", "litespeed")], "version": {"pattern": r"LiteSpeed/([\d.]+)", "source": "headers"}},
+    },
+    "frameworks": {
+        "react": {"body": ["react", "react-dom", "__REACT_DEVTOOLS_GLOBAL_HOOK__", "reactjs", "_reactRootContainer", "react-root", "reactroot"]},
+        "angular": {"body": ["ng-version", "ng-app", "angular.js", "angularjs", "ngrx"]},
+        "vue": {"body": ["__VUE__", "vue.js", "v-bind", "vue.runtime", "data-v-"]},
+        "nextjs": {"body": ["__NEXT_DATA__", "_next/static", "next/dist", "next/script"]},
+        "nuxt": {"body": ["__NUXT__", "nuxt", "_nuxt/"]},
+        "gatsby": {"body": ["gatsby", "__gatsby", "gatsby-link"]},
+        "remix": {"body": ["remix-run", "__remixContext"]},
+        "svelte": {"body": ["__sveltekit", "svelte", "data-svelte-"]},
+        "astro": {"body": ["astro", "is:astro", "astro-static"]},
+        "laravel": {"headers": [("x-powered-by", "laravel")], "body": ["laravel_session", "csrf-token"]},
+        "django": {"headers": [("x-powered-by", "django")], "body": ["csrftoken", "django"], "path": ["/__debug__"]},
+        "flask": {"body": ["flask", "werkzeug"], "version": {"pattern": r"Werkzeug/([\d.]+)", "source": "headers"}},
+        "fastapi": {"body": ["fastapi", "swagger-ui"], "path": ["/docs", "/redoc", "/openapi.json"]},
+        "rails": {"headers": [("x-runtime", ""), ("x-rails", "")], "body": ["csrf-param", "data-remote"]},
+        "spring": {"headers": [("x-application-context", "")], "body": ["whitelabel error page"]},
+        "aspnet": {"headers": [("x-aspnet-version", ""), ("x-aspnetmvc-version", "")], "body": ["__VIEWSTATE", "__EVENTVALIDATION"]},
+        "express": {"body": ["x-powered-by"], "headers": [("x-powered-by", "express")]},
+        "symfony": {"body": ["symfony", "sf_"], "headers": [("x-powered-by", "symfony")]},
+        "codeigniter": {"body": ["codeigniter", "ci_session"]},
+        "cakephp": {"body": ["cakephp", "cake"], "headers": [("x-powered-by", "cake")]},
+        "drupal": {"body": ["drupal", "drupal.js"], "path": ["/user/login", "/sites/all"]},
+        "joomla": {"body": ["joomla", "com_content"], "path": ["/administrator"]},
+        "wordpress": {"body": ["wp-content", "wp-includes", "wp-json", "wp-cron"], "path": ["/wp-login.php", "/wp-admin"]},
+    },
+    "cms": {
+        "wordpress": {"body": ["wp-content", "wp-includes", "wp-json", "wp-cron"], "version": {"pattern": r'content="WordPress ([\d.]+)"', "source": "body"}},
+        "joomla": {"body": ["joomla", "com_content"], "version": {"pattern": r'content="Joomla! ([\d.]+)"', "source": "body"}},
+        "drupal": {"body": ["drupal", "drupal.js"], "version": {"pattern": r'content="Drupal ([\d.]+)', "source": "body"}},
+        "shopify": {"headers": [("x-shopify-stage", ""), ("x-shopid", "")], "body": ["shopify"]},
+        "magento": {"body": ["magento", "skin/frontend", "mage/cookies"], "headers": [("x-magento-cache-debug", "")]},
+        "wix": {"headers": [("x-wix-request-id", ""), ("x-wix-*", "")], "body": ["wix.com", "wix-static"]},
+        "squarespace": {"headers": [("x-squarespace-*", "")], "body": ["squarespace"]},
+        "ghost": {"body": ["ghost", "ghost_url"], "headers": [("x-powered-by", "ghost")]},
+        "typo3": {"body": ["typo3", "fe_typo_user"]},
+        "prestashop": {"body": ["prestashop", "ps_"]},
+        "webflow": {"body": ["webflow", "wfx"]},
+        "contentful": {"body": ["contentful", "ctfassets"]},
+    },
+    "analytics": {
+        "google_analytics": {"body": ["google-analytics", "gtag", "ga(", "ga.js", "g4a-"]},
+        "facebook_pixel": {"body": ["fbq(", "facebook-pixel", "connect.facebook.net"]},
+        "hotjar": {"body": ["hotjar", "static.hotjar.com"]},
+        "clarity": {"body": ["clarity.ms", "clarity(", "microsoft clarity"]},
+        "matomo": {"body": ["matomo", "piwik"]},
+        "mixpanel": {"body": ["mixpanel"]},
+        "segment": {"body": ["segment.com", "analytics.js", "cdn.segment"]},
+        "amplitude": {"body": ["amplitude", "cdn.amplitude"]},
+        "posthog": {"body": ["posthog", "us-assets.i.posthog"]},
+        "fullstory": {"body": ["fullstory", "fullstory.com"]},
+        "yandex_metrika": {"body": ["mc.yandex.ru", "metrika", "yandex_metrika"]},
+        "linkedin_insight": {"body": ["snap.licdn.com", "li-tracker"]},
+    },
+    "advertising": {
+        "google_ads": {"body": ["google_ads", "googletag", "googleadservices", "adsbygoogle"]},
+        "facebook_ads": {"body": ["facebook_ads", "fbq('track', 'lead'", "adform"]},
+        "adroll": {"body": ["adroll", "a.adsymptotic"]},
+        "taboola": {"body": ["taboola", "cdn.taboola"]},
+        "outbrain": {"body": ["outbrain", "odb.outbrain"]},
+        "criteo": {"body": ["criteo", "static.criteo"]},
+        "doubleclick": {"body": ["doubleclick.net", "googlesyndication"]},
+    },
+    "cloud_providers": {
+        "aws": {"headers": [("x-amz", "")], "body": ["amazonaws.com", "aws"], "path": ["/.well-known"]},
+        "gcp": {"headers": [("x-goog-*", "")], "body": ["googlecloudplatform", "googleapis.com", "appspot.com"]},
+        "azure": {"headers": [("x-azure-*", ""), ("x-ms-*", "")], "body": ["azurewebsites.net", "windows.net"]},
+        "cloudflare": {"headers": [("cf-ray", ""), ("cf-cache-status", ""), ("cf-*", "")], "body": ["cloudflare"]},
+        "vercel": {"headers": [("x-vercel-*", ""), ("x-vercel-id", "")], "body": ["vercel"]},
+        "netlify": {"headers": [("server", "netlify")], "body": ["netlify"]},
+        "heroku": {"headers": [("x-heroku-*", ""), ("via", "heroku")]},
+        "github_pages": {"headers": [("server", "github.com"), ("x-github-*", "")]},
+        "digitalocean": {"body": ["digitalocean", "droplet"]},
+        "firebase": {"headers": [("x-firebase-*", "")], "body": ["firebaseapp.com", "firebaseio"]},
+    },
+    "payment": {
+        "stripe": {"body": ["stripe.com", "js.stripe", "pk_live_", "pk_test_"]},
+        "paypal": {"body": ["paypal.com", "paypalobjects", "paypal"]},
+        "braintree": {"body": ["braintree", "js.braintreegateway"]},
+        "square": {"body": ["squareup.com", "square.js"]},
+        "razorpay": {"body": ["razorpay", "razorpay.com"]},
+        "cashfree": {"body": ["cashfree"]},
+        "paytm": {"body": ["paytm", "paytm.com"]},
+        "klarna": {"body": ["klarna", "klarnasdk"]},
+        "payu": {"body": ["payu", "secure.payu"]},
+        "adyen": {"body": ["adyen", "adyen.com"]},
+    },
+    "cdn": {
+        "cloudflare": {"headers": [("cf-ray", ""), ("cf-cache-status", "")]},
+        "cloudfront": {"headers": [("x-amz-cf-id", ""), ("x-cache", ""), ("x-amz-cf-pop", "")]},
+        "fastly": {"headers": [("x-served-by", ""), ("x-cache-hits", ""), ("x-fastly-*", "")]},
+        "akamai": {"headers": [("x-akamai-*", ""), ("x-akamai-transformed", ""), ("server", "akamaighost")]},
+        "stackpath": {"headers": [("x-stackpath-*", "")]},
+        "keycdn": {"headers": [("x-keycdn-*", "")]},
+        "azure_cdn": {"headers": [("x-azure-ref", "")]},
+        "bunny": {"headers": [("x-bunny-*", "")]},
+        "jsdelivr": {"body": ["cdn.jsdelivr.net"]},
+        "unpkg": {"body": ["unpkg.com"]},
+        "bootstrapcdn": {"body": ["bootstrapcdn.com", "cdnjs.cloudflare.com"]},
+    },
+    "waf": {
+        "cloudflare": {"headers": [("cf-ray", ""), ("cf-mitigated", ""), ("__cf_bm", "")], "body": ["cloudflare", "cf-request-id"]},
+        "modsecurity": {"headers": [("x-modsecurity", "")], "body": ["mod_security"]},
+        "aws_waf": {"headers": [("x-amzn-requestid", "")], "body": ["awswaf"]},
+        "akamai": {"headers": [("x-akamai-*", ""), ("akamai", "")], "body": ["akamai"]},
+        "imperva": {"headers": [("x-iinfo", ""), ("x-cdn", "incapsula")], "body": ["incapsula", "imperva"]},
+        "f5": {"headers": [("x-f5-*", ""), ("x-cnection", ""), ("bigip", "")]},
+        "barracuda": {"headers": [("x-waf-*", ""), ("barracuda", "")]},
+        "sucuri": {"headers": [("x-sucuri-*", ""), ("x-cache", "sucuri")], "body": ["sucuri"]},
+        "fortinet": {"headers": [("x-forti-*", "")]},
+        "radware": {"headers": [("x-radware-*", "")]},
+        "citrix": {"headers": [("x-citrix-*", "")]},
+        "comodo": {"headers": [("x-comodo-*", "")]},
+        "incapsula": {"headers": [("x-iinfo", ""), ("incap_ses", "")]},
+    },
+    "languages": {
+        "php": {"headers": [("x-powered-by", "php")], "body": ["php", ".php", "php_session"], "version": {"pattern": r"PHP/([\d.]+)", "source": "headers"}},
+        "python": {"body": ["python", "flask", "django", "fastapi"], "version": {"pattern": r"Python/([\d.]+)", "source": "headers"}},
+        "javascript": {"body": ["<script", ".js", "modulepreload", "type=\"module\""]},
+        "typescript": {"body": ["tsconfig", "typescript", ".tsx"]},
+        "java": {"headers": [("x-powered-by", "java"), ("server", "coyote")], "body": ["java", ".jsp"]},
+        "go": {"headers": [("server", "go")], "body": ["golang", "go1."], "version": {"pattern": r"Go-http-server/([\d.]+)", "source": "headers"}},
+        "ruby": {"headers": [("x-powered-by", "phusion"), ("x-runtime", "")], "body": ["ruby on rails"]},
+        "csharp": {"headers": [("x-aspnet-version", "")], "body": [".aspx", "__VIEWSTATE"]},
+        "rust": {"headers": [("server", "actix"), ("server", "warp"), ("server", "axum")]},
+        "nodejs": {"headers": [("x-powered-by", "express")], "body": ["nodejs", "node.js"], "version": {"pattern": r"node[/v]([\d.]+)", "source": "headers"}},
+        "perl": {"headers": [("x-powered-by", "perl")], "body": [".pl", "cgi-bin"]},
+    },
+    "databases": {
+        "mysql": {"body": ["mysql", "mysqli"], "path": ["/phpmyadmin"]},
+        "postgresql": {"body": ["postgres", "pgsql"], "path": ["/pgadmin"]},
+        "mongodb": {"body": ["mongodb", "mongo"]},
+        "redis": {"body": ["redis"], "path": ["/redis"]},
+        "sqlite": {"body": ["sqlite", "sqlite3"]},
+        "mssql": {"body": ["sql server", "mssql", ".aspx"]},
+        "oracle": {"body": ["oracle", "v$version"]},
+        "elasticsearch": {"body": ["elasticsearch", "kibana"]},
+        "couchdb": {"body": ["couchdb"]},
+        "firebase": {"body": ["firebaseio", "firebaseapp"]},
+    },
+    "operating_systems": {
+        "linux": {"headers": [("server", "ubuntu"), ("server", "debian"), ("server", "centos")], "body": ["linux"]},
+        "ubuntu": {"headers": [("server", "ubuntu")], "body": ["ubuntu"]},
+        "debian": {"headers": [("server", "debian")], "body": ["debian"]},
+        "centos": {"headers": [("server", "centos")], "body": ["centos"]},
+        "windows": {"headers": [("server", "microsoft-iis")], "body": ["windows", ".aspx", "iis"]},
+        "freebsd": {"headers": [("server", "freebsd")], "body": ["freebsd"]},
+        "macos": {"headers": [("server", "darwin")], "body": ["macos"]},
+    },
+}
+
+CIPHER_PROBES = [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_AES_128_GCM_SHA256",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "ECDHE-ECDSA-AES256-GCM-SHA384",
+    "ECDHE-ECDSA-AES128-GCM-SHA256",
+    "ECDHE-RSA-AES256-GCM-SHA384",
+    "ECDHE-RSA-AES128-GCM-SHA256",
+    "ECDHE-RSA-CHACHA20-POLY1305",
+    "ECDHE-ECDSA-CHACHA20-POLY1305",
+    "DHE-RSA-AES256-GCM-SHA384",
+    "DHE-RSA-AES128-GCM-SHA256",
+    "DHE-RSA-CHACHA20-POLY1305",
+    "AES256-GCM-SHA384",
+    "AES128-GCM-SHA256",
+    "ECDHE-RSA-AES128-SHA",
+    "ECDHE-RSA-AES256-SHA",
+    "AES128-SHA",
+    "AES256-SHA",
+    "DHE-RSA-AES128-SHA",
+    "DHE-RSA-AES256-SHA",
+    "RC4-SHA",
+    "RC4-MD5",
+    "DES-CBC3-SHA",
 ]
 
 WAF_SIGNATURES = {
-    "cloudflare": ["cloudflare", "__cfduid", "cf-ray"],
-    "akamai": ["akamai", "akamaighost"],
+    "cloudflare": ["cloudflare", "__cfduid", "cf-ray", "__cf_bm"],
+    "akamai": ["akamai", "akamaighost", "akamai-x-"],
     "sucuri": ["sucuri", "x-sucuri-"],
-    "imperva": ["imperva", "incapsula", "_incap_"],
+    "imperva": ["imperva", "incapsula", "_incap_", "x-iinfo"],
+    "aws_waf": ["awswaf", "x-amzn-requestid", "x-amzn-waf-"],
+    "f5": ["x-cnection", "bigip", "x-f5-"],
+    "modsecurity": ["mod_security", "x-modsecurity"],
+    "barracuda": ["barracuda", "x-waf-"],
+    "fortinet": ["x-forti-"],
+    "radware": ["x-radware-", "radware"],
+    "citrix": ["x-citrix-"],
+    "comodo": ["x-comodo-"],
+    "fastly": ["x-fastly-", "x-served-by"],
+    "incapsula": ["incap_ses", "x-iinfo"],
 }
 
 
 class ScannerAgent(Agent):
     def __init__(self) -> None:
         super().__init__("Scanner Agent")
+        self.settings = get_settings()
 
     async def run(self, target_url: str, scan_id: int) -> dict[str, Any]:
         self.scan_id = scan_id
@@ -47,30 +320,47 @@ class ScannerAgent(Agent):
 
         hostname = self._extract_hostname(target_url)
 
-        subdomains, dns_records, dangling_cnames = await self._dns_enum(hostname)
-        open_ports = await self._port_scan(hostname)
-        tech_stack, waf_detected = await self._fingerprint(target_url)
+        subdomains, dns_records, dangling_cnames, wildcard, dnssec, zone_transfer = await self._dns_enum(hostname)
+        port_scan = await self.scan_all_ports(hostname)
+        fingerprint = await self._fingerprint(target_url)
+        tls_analysis = await self._tls_analysis(hostname, port_scan["open_ports"])
 
+        open_ports = [p["number"] for p in port_scan["details"]]
         self.open_ports = open_ports
         self.dns_records = dns_records
-        self.tech_stack = tech_stack
-        self.waf_detected = waf_detected
-        self.cdn_detected = None
-        self.tls_version = None
-        self.tls_cipher = None
-        self.tls_expiry = None
-        self.tls_valid = None
+        self.tech_stack = fingerprint["tech_stack"]
+        self.waf_detected = fingerprint["waf_detected"]
+        self.cdn_detected = fingerprint["cdn_detected"]
+        self.tls_version = tls_analysis.get("negotiated_version")
+        self.tls_cipher = tls_analysis.get("negotiated_cipher")
+        self.tls_expiry = tls_analysis.get("certificate", {}).get("not_after")
+        self.tls_valid = tls_analysis.get("certificate", {}).get("valid")
 
         self.status = "complete"
-        await self.log_action("completed", f"Found {len(subdomains)} subdomains, {len(open_ports)} open ports, {len(dangling_cnames)} dangling CNAMEs")
+        await self.log_action(
+            "completed",
+            f"Found {len(subdomains)} subdomains, {len(open_ports)} open ports, "
+            f"{len(dangling_cnames)} dangling CNAMEs, "
+            f"{len(fingerprint['technologies_detailed'])} technologies, "
+            f"WAF: {fingerprint['waf_detected'] or 'none'}"
+        )
 
         result = {
             "subdomains": subdomains,
             "open_ports": open_ports,
-            "tech_stack": tech_stack,
+            "ports": port_scan,
+            "tech_stack": fingerprint["tech_stack"],
+            "technologies_detailed": fingerprint["technologies_detailed"],
             "dns_records": dns_records,
             "dangling_cnames": dangling_cnames,
-            "waf_detected": waf_detected,
+            "wildcard": wildcard,
+            "dnssec": dnssec,
+            "zone_transfer": zone_transfer,
+            "waf_detected": fingerprint["waf_detected"],
+            "waf_details": fingerprint["waf_details"],
+            "cdn_detected": fingerprint["cdn_detected"],
+            "tls_details": tls_analysis,
+            "http_headers": fingerprint["headers"],
         }
 
         await self._save_artifacts(result)
@@ -130,18 +420,49 @@ class ScannerAgent(Agent):
         parsed = urlparse(target_url if "://" in target_url else f"https://{target_url}")
         return parsed.hostname or target_url
 
-    async def _dns_enum(self, hostname: str) -> tuple[list[str], dict[str, Any], list[str]]:
+    async def _dns_enum(
+        self, hostname: str
+    ) -> tuple[list[str], dict[str, Any], list[str], bool, bool, str]:
         resolver = dns.asyncresolver.Resolver()
         resolver.lifetime = 3.0
         resolver.timeout = 2.0
 
         records: dict[str, Any] = {}
-        for rtype in ("A", "AAAA", "MX", "TXT", "CNAME", "NS", "SOA"):
+        for rtype in ("A", "AAAA", "MX", "TXT", "CNAME", "NS", "SOA", "PTR", "SRV", "CAA"):
             try:
                 answers = await resolver.resolve(hostname, rtype)
                 records[rtype] = [str(r) for r in answers]
             except Exception:
                 records[rtype] = []
+
+        wildcard = await self._check_wildcard(hostname, resolver)
+
+        dnssec = False
+        try:
+            dnskeys = await resolver.resolve(hostname, "DNSKEY")
+            dnssec = len(dnskeys) > 0
+        except Exception:
+            dnssec = False
+
+        zone_transfer = "not_attempted"
+        try:
+            zone = await asyncio.to_thread(
+                dns.zone.from_xfr, dns.query.xfr(hostname, hostname, lifetime=5)
+            )
+            zone_names = [str(name) for name in zone.nodes]
+            if zone_names:
+                zone_transfer = "success"
+                for name in zone_names[:50]:
+                    subdomains_add = f"{name}.{hostname}"
+                    records.setdefault("AXFR", [])
+                    records["AXFR"].append(subdomains_add)
+            else:
+                zone_transfer = "empty_zone"
+        except Exception as exc:
+            if "XFR" in str(exc) or "refused" in str(exc).lower() or "denied" in str(exc).lower():
+                zone_transfer = "refused"
+            else:
+                zone_transfer = "failed"
 
         candidates = [f"{prefix}.{hostname}" for prefix in SUBDOOM_WORDLIST]
         if hostname not in candidates:
@@ -174,69 +495,521 @@ class ScannerAgent(Agent):
             elif cname_target:
                 dangling_cnames.append(f"{sub} -> {cname_target}")
 
+        return sorted(set(subdomains)), records, dangling_cnames, wildcard, dnssec, zone_transfer
+
+    async def _check_wildcard(self, hostname: str, resolver: dns.asyncresolver.Resolver) -> bool:
+        random_sub = f"{''.join(random.choices(string.ascii_lowercase, k=12))}.{hostname}"
         try:
-            zone = await asyncio.to_thread(
-                dns.zone.from_xfr, dns.query.xfr(hostname, hostname, lifetime=5)
-            )
-            for name in zone.nodes:
-                subdomains.append(f"{name}.{hostname}")
+            await resolver.resolve(random_sub, "A")
+            return True
         except Exception:
-            pass
+            return False
 
-        return sorted(set(subdomains)), records, dangling_cnames
+    async def scan_all_ports(self, target_host: str, max_ports: int = 0) -> dict[str, Any]:
+        if max_ports <= 0:
+            max_ports = self.settings.port_scan_max_ports
+        concurrency = self.settings.port_scan_concurrency
+        sweep_timeout = self.settings.port_scan_sweep_timeout
 
-    async def _port_scan(self, hostname: str) -> list[int]:
+        tier1 = await self._quick_scan(target_host, COMMON_PORTS, timeout=1.5)
+        open_set = set(tier1)
+
+        tier2: list[int] = []
+        if any(p in open_set for p in (80, 443, 8080, 8443, 3000)):
+            tier2 = await self._quick_scan(target_host, WEB_ALT_PORTS, timeout=1.2)
+            open_set.update(tier2)
+
+        tier3: list[int] = []
+        for base in list(open_set):
+            for alt in SERVICE_ALT_PORTS.get(base, []):
+                if alt not in open_set and alt not in SERVICE_ALT_PORTS.get(80, []):
+                    tier3.append(alt)
+        tier3 = list(dict.fromkeys(tier3))
+        if tier3:
+            found_t3 = await self._quick_scan(target_host, tier3, timeout=1.2)
+            open_set.update(found_t3)
+
+        truncated = False
+        if self.settings.deep_port_scan_enabled and max_ports > 1024:
+            remaining = [p for p in range(1, max_ports + 1) if p not in open_set]
+            extra, truncated = await self._sweep_ports(target_host, remaining, concurrency, sweep_timeout)
+            open_set.update(extra)
+
+        open_ports = sorted(open_set)
+        banners = await self._grab_banners(target_host, open_ports)
+
+        detailed = []
+        for port in open_ports:
+            banner = banners.get(port)
+            service = self._identify_service(port, banner)
+            detailed.append({
+                "number": port,
+                "service": service,
+                "banner": banner,
+                "tls": port in (443, 8443, 9443, 4443) or "https" in service,
+            })
+
+        return {
+            "open_ports": open_ports,
+            "details": detailed,
+            "truncated": truncated,
+            "tier1_count": len(tier1),
+            "tier2_count": len(tier2),
+            "tier3_count": len(tier3),
+            "total_scanned": min(max_ports, 65535),
+        }
+
+    async def _quick_scan(self, host: str, ports: list[int], timeout: float) -> list[int]:
+        sem = asyncio.Semaphore(32)
+
         async def check(port: int) -> int | None:
-            try:
-                r, w = await asyncio.wait_for(
-                    asyncio.open_connection(hostname, port), timeout=2.0
-                )
-                w.close()
-                await w.wait_closed()
-                return port
-            except Exception:
-                return None
+            async with sem:
+                try:
+                    r, w = await asyncio.wait_for(
+                        asyncio.open_connection(host, port), timeout=timeout
+                    )
+                    w.close()
+                    try:
+                        await w.wait_closed()
+                    except Exception:
+                        pass
+                    return port
+                except Exception:
+                    return None
 
-        results = await asyncio.gather(*[check(p) for p in COMMON_PORTS])
+        results = await asyncio.gather(*[check(p) for p in ports])
         return sorted([p for p in results if p is not None])
 
-    async def _fingerprint(self, target_url: str) -> tuple[dict[str, Any], str]:
+    async def _sweep_ports(
+        self, host: str, ports: list[int], concurrency: int, time_cap: float
+    ) -> tuple[list[int], bool]:
+        if not ports:
+            return [], False
+
+        found: list[int] = []
+        sem = asyncio.Semaphore(min(concurrency, 64))
+        started = asyncio.get_running_loop().time()
+        truncated = False
+
+        async def check(port: int) -> None:
+            async with sem:
+                if asyncio.get_running_loop().time() - started >= time_cap:
+                    return
+                try:
+                    r, w = await asyncio.wait_for(
+                        asyncio.open_connection(host, port), timeout=0.8
+                    )
+                    found.append(port)
+                    w.close()
+                    try:
+                        await w.wait_closed()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+        batch_size = max(concurrency * 4, 256)
+        if batch_size > 512:
+            batch_size = 512
+        empty_batches = 0
+        for i in range(0, len(ports), batch_size):
+            if asyncio.get_running_loop().time() - started >= time_cap:
+                truncated = True
+                break
+            batch = ports[i:i + batch_size]
+            before = len(found)
+            await asyncio.gather(*[check(p) for p in batch])
+            if len(found) == before:
+                empty_batches += 1
+                if empty_batches >= 6:
+                    truncated = True
+                    break
+            else:
+                empty_batches = 0
+            if asyncio.get_running_loop().time() - started >= time_cap:
+                truncated = True
+
+        return sorted(found), truncated
+
+    async def _grab_banners(self, host: str, ports: list[int]) -> dict[int, str]:
+        banners: dict[int, str] = {}
+        if not ports:
+            return banners
+
+        sem = asyncio.Semaphore(10)
+
+        async def grab(port: int) -> None:
+            async with sem:
+                try:
+                    r, w = await asyncio.wait_for(
+                        asyncio.open_connection(host, port), timeout=2.0
+                    )
+                    banner = b""
+                    try:
+                        banner = await asyncio.wait_for(r.read(2048), timeout=1.5)
+                    except asyncio.TimeoutError:
+                        pass
+
+                    if not banner and port in (25, 110, 143, 21, 23, 79, 220):
+                        try:
+                            w.write(b"\r\n")
+                            await w.drain()
+                            banner = await asyncio.wait_for(r.read(2048), timeout=1.5)
+                        except Exception:
+                            pass
+
+                    if port in (80, 8080, 8000, 8888, 3000, 9000, 9090, 9200, 28017, 10000):
+                        if not banner or b"HTTP/" not in banner[:64]:
+                            try:
+                                w.write(
+                                    b"HEAD / HTTP/1.1\r\nHost: " + host.encode() +
+                                    b"\r\nUser-Agent: PhantomScan/1.0\r\nConnection: close\r\n\r\n"
+                                )
+                                await w.drain()
+                                banner = await asyncio.wait_for(r.read(4096), timeout=2.5)
+                            except Exception:
+                                pass
+
+                    w.close()
+                    try:
+                        await w.wait_closed()
+                    except Exception:
+                        pass
+
+                    if banner:
+                        text = banner.decode("utf-8", errors="replace").strip()
+                        banners[port] = text[:500]
+                except Exception:
+                    pass
+
+        await asyncio.gather(*[grab(p) for p in ports])
+        return banners
+
+    def _identify_service(self, port: int, banner: str | None) -> str:
+        known = PORT_SERVICES.get(port)
+        if banner:
+            lowered = banner.lower()
+            for name, pattern in BANNER_SERVICE_HINTS:
+                if pattern.search(lowered):
+                    if name in ("http", "https"):
+                        if port in (443, 8443, 9443, 4443):
+                            return "https"
+                        return "http"
+                    return name
+            if "server:" in lowered:
+                match = re.search(r"server:\s*([a-z0-9/\-_.]+)", lowered)
+                if match:
+                    return match.group(1).lower()
+        return known or "unknown"
+
+    async def _fingerprint(self, target_url: str) -> dict[str, Any]:
         url = target_url if "://" in target_url else f"https://{target_url}"
         headers: dict[str, str] = {}
         body = ""
-        waf_detected = "none"
+        waf_detected: str | None = None
+        waf_evidence: dict[str, list[str]] = {}
 
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
             try:
                 resp = await client.get(url, headers={"User-Agent": "PhantomScan/1.0"})
                 headers = {k.lower(): v for k, v in resp.headers.items()}
-                body = resp.text[:5000]
+                body = resp.text[:50000]
 
                 raw = str(resp.headers).lower()
+                body_lower = body.lower()
                 for waf_name, sigs in WAF_SIGNATURES.items():
-                    if any(s in raw or s in body.lower() for s in sigs):
+                    if any(s in raw or s in body_lower for s in sigs):
                         waf_detected = waf_name
+                        waf_evidence[waf_name] = [s for s in sigs if s in raw or s in body_lower]
                         break
 
                 await self._save_evidence(url, "GET", f"Status: {resp.status_code}, Server: {headers.get('server', 'unknown')}, Body length: {len(resp.text)}")
             except Exception as exc:
                 await self._save_evidence(url, "GET", f"Error: {exc}")
-                pass
+
+        detailed = self._detect_technologies(headers, body)
+
+        tech_names: list[str] = []
+        for tech in detailed:
+            label = tech["name"]
+            if tech.get("version"):
+                label = f"{label} {tech['version']}"
+            tech_names.append(label)
+
+        legacy_headers_tech = []
+        for h in ("server", "x-powered-by", "x-generator", "via", "x-aspnet-version"):
+            v = headers.get(h)
+            if v:
+                for part in str(v).split(","):
+                    part = part.strip()
+                    if part and part not in legacy_headers_tech:
+                        legacy_headers_tech.append(part)
 
         tech_stack: dict[str, Any] = {
-            "technologies": [],
+            "technologies": tech_names,
             "headers": headers,
             "server": headers.get("server", ""),
             "x_powered_by": headers.get("x-powered-by", ""),
             "framework": self._detect_framework(headers, body),
+            "detailed": detailed,
         }
 
-        for h in ("server", "x-powered-by", "x-generator", "via", "x-aspnet-version"):
-            v = headers.get(h)
-            if v and v not in tech_stack["technologies"]:
-                tech_stack["technologies"].append(v)
+        return {
+            "tech_stack": tech_stack,
+            "technologies_detailed": detailed,
+            "waf_detected": waf_detected,
+            "waf_details": {"provider": waf_detected, "evidence": waf_evidence} if waf_detected else {"provider": None, "evidence": {}},
+            "cdn_detected": self._detect_cdn(headers, detailed),
+            "headers": headers,
+        }
 
-        return tech_stack, waf_detected
+    def _detect_technologies(self, headers: dict[str, str], body: str) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        all_header_text = "\n".join(f"{k}: {v}" for k, v in headers.items())
+        body_lower = body.lower()
+
+        for category, techs in TECHNOLOGY_SIGNATURES.items():
+            for tech_name, sig in techs.items():
+                score = 0
+                evidence: list[str] = []
+
+                for header_name, header_sub in sig.get("headers", []):
+                    hkey = header_name.rstrip("*").lower()
+                    for h, v in headers.items():
+                        hl = h.lower()
+                        if (header_name.endswith("*") and hl.startswith(hkey)) or hl == hkey:
+                            if header_sub:
+                                if header_sub in v.lower():
+                                    score += 2
+                                    evidence.append(f"header {h}: {v[:120]}")
+                            else:
+                                score += 2
+                                evidence.append(f"header {h}: {v[:120]}")
+                            break
+
+                for body_pattern in sig.get("body", []):
+                    if body_pattern.lower() in body_lower:
+                        score += 1
+                        evidence.append(f'body contains "{body_pattern}"')
+
+                for path in sig.get("path", []):
+                    if path in body:
+                        score += 1
+                        evidence.append(f'body contains path "{path}"')
+
+                version: str | None = None
+                version_rule = sig.get("version")
+                if version_rule:
+                    pattern = version_rule["pattern"]
+                    if version_rule.get("source") == "headers":
+                        match = re.search(pattern, all_header_text, re.IGNORECASE)
+                    else:
+                        match = re.search(pattern, body, re.IGNORECASE)
+                    if match:
+                        version = match.group(1) if match.lastindex else match.group(0).strip()
+                        score += 3
+                        evidence.append(f"version match: {match.group(0)}")
+
+                if score >= 2:
+                    results.append({
+                        "category": category,
+                        "name": tech_name,
+                        "version": version,
+                        "confidence": min(100, score * 20),
+                        "evidence": list(dict.fromkeys(evidence))[:5],
+                    })
+
+        return sorted(results, key=lambda t: t["confidence"], reverse=True)
+
+    def _detect_cdn(self, headers: dict[str, str], detailed: list[dict[str, Any]]) -> str | None:
+        for tech in detailed:
+            if tech["category"] == "cdn" and tech["confidence"] >= 40:
+                return tech["name"]
+        via = headers.get("via", "")
+        server = headers.get("server", "").lower()
+        if "cloudfront" in via or "amazon" in via:
+            return "cloudfront"
+        if "cloudflare" in server:
+            return "cloudflare"
+        if "akamai" in via:
+            return "akamai"
+        return None
+
+    async def _tls_analysis(self, hostname: str, open_ports: list[int]) -> dict[str, Any]:
+        candidates = [p for p in (443, 8443, 9443, 4443) if p in open_ports]
+        if not candidates and open_ports:
+            for p in open_ports:
+                if p in (8080, 8000, 8888, 3000, 9000, 9443):
+                    candidates.append(p)
+        if not candidates:
+            return {
+                "negotiated_version": None,
+                "negotiated_cipher": None,
+                "certificate": {"valid": None},
+                "protocols": {},
+                "ciphers": [],
+                "vulnerabilities": [],
+                "port": None,
+            }
+
+        port = candidates[0]
+        result: dict[str, Any] = {
+            "port": port,
+            "negotiated_version": None,
+            "negotiated_cipher": None,
+            "certificate": {},
+            "protocols": {},
+            "ciphers": [],
+            "vulnerabilities": [],
+        }
+
+        try:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(hostname, port, ssl=context, server_hostname=hostname),
+                timeout=6.0,
+            )
+            ssl_object = writer.get_extra_info("ssl_object")
+            if ssl_object:
+                negotiated_version = ssl_object.version()
+                negotiated_cipher = ssl_object.cipher()
+                cert_dict = ssl_object.getpeercert()
+                result["negotiated_version"] = negotiated_version
+                result["negotiated_cipher"] = (negotiated_cipher[0] + " " + str(negotiated_cipher[1]) + " bits") if negotiated_cipher else None
+                result["certificate"] = self._parse_certificate(cert_dict)
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+        except Exception as exc:
+            result["certificate"] = {"valid": None}
+            result["errors"] = str(exc)[:200]
+
+        protocol_versions = [
+            ("tlsv1.0", ssl.TLSVersion.TLSv1),
+            ("tlsv1.1", ssl.TLSVersion.TLSv1_1),
+            ("tlsv1.2", ssl.TLSVersion.TLSv1_2),
+            ("tlsv1.3", ssl.TLSVersion.TLSv1_3),
+        ]
+        for label, version in protocol_versions:
+            result["protocols"][label] = await self._probe_protocol(hostname, port, version)
+
+        if result["protocols"].get("tlsv1.2"):
+            result["ciphers"] = await self._probe_ciphers(hostname, port)
+
+        if result["protocols"].get("tlsv1.0"):
+            result["vulnerabilities"].append("POODLE: TLS 1.0 enabled")
+            result["vulnerabilities"].append("BEAST: TLS 1.0 CBC ciphers enabled")
+        if result["protocols"].get("tlsv1.1"):
+            result["vulnerabilities"].append("BEAST: TLS 1.1 CBC ciphers enabled")
+        cipher_names = [c for c in result["ciphers"]]
+        if any("RC4" in c for c in cipher_names):
+            result["vulnerabilities"].append("RC4: weak stream cipher supported")
+        if any("3DES" in c or "CBC3" in c for c in cipher_names):
+            result["vulnerabilities"].append("Sweet32: 3DES cipher supported")
+        if not result["protocols"].get("tlsv1.3"):
+            result["vulnerabilities"].append("INFO: TLS 1.3 not supported")
+
+        cert = result["certificate"]
+        if cert.get("not_after"):
+            try:
+                expiry = datetime.strptime(cert["not_after"], "%b %d %H:%M:%S %Y GMT")
+                days_left = (expiry - datetime.utcnow()).days
+                cert["days_remaining"] = days_left
+                cert["valid"] = days_left > 0
+                if days_left < 30 and days_left >= 0:
+                    result["vulnerabilities"].append(f"Certificate expires soon ({days_left} days)")
+                if days_left < 0:
+                    result["vulnerabilities"].append(f"Certificate EXPIRED {-days_left} days ago")
+            except Exception:
+                pass
+
+        return result
+
+    def _parse_certificate(self, cert_dict: dict[str, Any] | None) -> dict[str, Any]:
+        if not cert_dict:
+            return {"valid": None}
+        return {
+            "subject": self._rfc2253(cert_dict.get("subject")),
+            "issuer": self._rfc2253(cert_dict.get("issuer")),
+            "not_before": cert_dict.get("notBefore"),
+            "not_after": cert_dict.get("notAfter"),
+            "serial": cert_dict.get("serialNumber"),
+            "version": cert_dict.get("version"),
+            "san": [item[1] for item in cert_dict.get("subjectAltName", [])],
+            "algorithm": cert_dict.get("signatureAlgorithm"),
+            "valid": None,
+        }
+
+    @staticmethod
+    def _rfc2253(name: Any) -> str:
+        if not name:
+            return ""
+        parts = []
+        for rdn in name:
+            for attr, value in rdn:
+                parts.append(f"{attr}={value}")
+        return ", ".join(parts)
+
+    async def _probe_protocol(self, hostname: str, port: int, version: ssl.TLSVersion) -> bool:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        try:
+            context.minimum_version = version
+            context.maximum_version = version
+        except Exception:
+            return False
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(hostname, port, ssl=context, server_hostname=hostname),
+                timeout=3.0,
+            )
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+            return True
+        except Exception:
+            return False
+
+    async def _probe_ciphers(self, hostname: str, port: int) -> list[str]:
+        supported: list[str] = []
+        sem = asyncio.Semaphore(8)
+
+        async def probe(cipher: str) -> None:
+            async with sem:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                try:
+                    context.minimum_version = ssl.TLSVersion.TLSv1_2
+                    context.maximum_version = ssl.TLSVersion.TLSv1_2
+                    context.set_ciphers(cipher)
+                except Exception:
+                    return
+                try:
+                    reader, writer = await asyncio.wait_for(
+                        asyncio.open_connection(hostname, port, ssl=context, server_hostname=hostname),
+                        timeout=1.5,
+                    )
+                    supported.append(cipher)
+                    writer.close()
+                    try:
+                        await writer.wait_closed()
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+
+        await asyncio.gather(*[probe(c) for c in CIPHER_PROBES])
+        return sorted(supported)
 
     async def _save_evidence(self, request_url: str, method: str, summary: str) -> None:
         try:

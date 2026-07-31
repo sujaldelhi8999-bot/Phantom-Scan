@@ -1096,8 +1096,9 @@ class ThreatIntelligenceAgent(_AssessmentAgent):
             ))
 
         robots = context.shadow_output.get("robots_txt")
-        if isinstance(robots, dict) and _as_status(robots.get("status_code")) == 200:
-            paths = re.findall(r"(?im)^\s*(?:allow|disallow)\s*:\s*(\S+)", str(robots.get("body", "")))
+        robots_body = str(robots.get("body", "")) if isinstance(robots, dict) else (robots if isinstance(robots, str) else "")
+        if isinstance(robots, dict) and _as_status(robots.get("status_code")) == 200 or (isinstance(robots, str) and robots.strip()):
+            paths = re.findall(r"(?im)^\s*(?:allow|disallow)\s*:\s*(\S+)", robots_body)
             sensitive_paths = [path for path in paths if self._SENSITIVE_PATH.search(path)]
             if sensitive_paths:
                 evidence_paths = ", ".join(_safe_url(path) for path in sensitive_paths[:10])

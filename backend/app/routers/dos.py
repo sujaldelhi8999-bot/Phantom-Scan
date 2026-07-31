@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.agents.dos import DoSAgent
+from app.agents.dos import DoSAgent, request_dos_stop
 from app.database import get_connection
 from app.routers.admin_scope import admin_required
 from app.services.active_gate import ActiveTargetGate, canonicalize_hostname
@@ -24,6 +24,7 @@ INTENSITY_RULES = {
     "medium": {"max_duration": 120, "allowed_outside_lab": True},
     "high": {"max_duration": 30, "allowed_outside_lab": True},
     "critical": {"max_duration": 10, "allowed_outside_lab": False},
+    "nuclear": {"max_duration": 5, "allowed_outside_lab": False},
 }
 
 
@@ -43,15 +44,15 @@ async def start_dos(
     if req.intensity not in INTENSITY_RULES:
         req.intensity = "low"
 
+    requested_intensity = req.intensity
     rules = INTENSITY_RULES[req.intensity]
-    if req.duration > rules["max_duration"]:
-        req.duration = rules["max_duration"]
 
     if not rules["allowed_outside_lab"] and not _is_lab_target(req.target_url):
         req.intensity = "high"
         rules = INTENSITY_RULES["high"]
-        if req.duration > rules["max_duration"]:
-            req.duration = rules["max_duration"]
+
+    if req.duration > rules["max_duration"]:
+        req.duration = rules["max_duration"]
 
     gate = ActiveTargetGate()
     hostname = canonicalize_hostname(req.target_url)
@@ -70,6 +71,11 @@ async def start_dos(
 
     agent = DoSAgent(req.target_url, req.intensity, req.duration)
     result = await agent.start()
+    if requested_intensity != req.intensity:
+        result["warning"] = (
+            f"Intensity '{requested_intensity}' is lab-only and was auto-downgraded to "
+            f"'high' (50 req/s, max {rules['max_duration']}s) for target {req.target_url}."
+        )
     return result
 
 
@@ -78,20 +84,10 @@ async def stop_dos(
     job_id: str,
     _admin: dict = Depends(admin_required),
 ):
-    async with get_connection() as conn:
-        cursor = await conn.execute(
-            "SELECT target_url, intensity FROM dos_jobs WHERE job_id = ? AND status = 'running'",
-            (job_id,),
-        )
-        row = await cursor.fetchone()
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Job not found or not running")
-
-    agent = DoSAgent(row["target_url"], row["intensity"])
-    agent.job_id = job_id
-    result = await agent.stop()
-    return result
+    try:
+        return await request_dos_stop(job_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Job not found")
 
 
 @router.get("/status/{job_id}")
@@ -117,6 +113,12 @@ async def get_dos_history(
             """
             SELECT job_id, target_url, intensity, status,
                    requests_sent, responses_received, errors,
+                   baseline_latency, peak_latency, avg_latency_during, recovery_latency,
+                   impact_score, effective, website_status, health_score,
+                   p95_latency, p99_latency, jitter_ms, error_rate, throughput_mbps,
+                   total_requests, status_2xx, status_3xx, status_4xx, status_5xx,
+                   total_data_mb, avg_dns_ms, avg_tcp_ms, avg_tls_ms, avg_ttfb_ms,
+                   packet_loss, recovery_ratio, recovered,
                    started_at, stopped_at
             FROM dos_jobs
             ORDER BY started_at DESC

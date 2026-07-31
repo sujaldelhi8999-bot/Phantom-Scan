@@ -72,12 +72,39 @@ interface IntelligenceData {
       txt_records: string[];
       cname_records: string[];
       ns_records: string[];
+      soa_records: string[];
+      ptr_records: string[];
+      srv_records: string[];
+      caa_records: string[];
       zone_transfer: string | null;
+      wildcard: boolean | null;
+      dnssec: boolean | null;
     };
-    ports: { open: number[]; closed: number[]; filtered: number[] };
-    technologies: { frameworks: string[]; servers: string[]; waf: string | null; cdn: string | null };
+    ports: {
+      open: number[];
+      closed: number[];
+      filtered: number[];
+      details: { number: number; protocol?: string; state?: string; service?: string; banner?: string }[];
+    };
+    technologies: {
+      frameworks: string[];
+      servers: string[];
+      waf: string | null;
+      cdn: string | null;
+      detailed: { name: string; category?: string; version?: string; confidence?: number; evidence?: string[] }[];
+      waf_evidence: string[];
+    };
     headers: Record<string, string>;
-    tls: { version: string | null; cipher: string | null; expiry: string | null; valid: boolean | null };
+    tls: {
+      version: string | null;
+      cipher: string | null;
+      expiry: string | null;
+      valid: boolean | null;
+      protocols: Record<string, boolean>;
+      ciphers: string[];
+      vulnerabilities: string[];
+      port: number | null;
+    };
   };
   exposed: {
     robots_txt: string | null;
@@ -87,6 +114,9 @@ interface IntelligenceData {
     comments: string[];
     sensitive_files: SensitiveFiles;
     js_source_maps: string[];
+    phones: string[];
+    social_profiles: { network: string; url: string }[];
+    discovered_files: { path: string; url?: string; status_code?: number }[];
   };
   entry_points: {
     url_parameters: string[];
@@ -348,6 +378,20 @@ export default function AttackIntelligence() {
                   <div className="font-mono text-[var(--text-default)]">
                     {data.recon.ports.open?.length ? data.recon.ports.open.join(', ') : 'None'}
                   </div>
+                  {data.recon.ports.details?.length ? (
+                    <div className="mt-2 space-y-1">
+                      {data.recon.ports.details.map((p) => (
+                        <div key={p.number} className="border border-[var(--border-light)] rounded-md px-2 py-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[var(--text-strong)]">{p.number}</span>
+                            <span className="text-[var(--text-muted)]">{p.protocol || 'tcp'}</span>
+                            <Tag color="green">{p.service || 'unknown'}</Tag>
+                          </div>
+                          {p.banner ? <div className="truncate text-[10px] text-[var(--text-subtle)]">{p.banner}</div> : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div>
                   <div className="font-medium text-[var(--text-muted)] mb-1">Frameworks</div>
@@ -409,6 +453,70 @@ export default function AttackIntelligence() {
                     <div className="font-mono text-[var(--text-default)]">{data.recon.dns.ns_records.join(', ')}</div>
                   </div>
                 ) : null}
+                {data.recon.dns.soa_records?.length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">SOA Records</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.soa_records.join(', ')}</div>
+                  </div>
+                ) : null}
+                {data.recon.dns.ptr_records?.length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">PTR Records</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.ptr_records.join(', ')}</div>
+                  </div>
+                ) : null}
+                {data.recon.dns.srv_records?.length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">SRV Records</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.srv_records.join(', ')}</div>
+                  </div>
+                ) : null}
+                {data.recon.dns.caa_records?.length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">CAA Records</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.caa_records.join(', ')}</div>
+                  </div>
+                ) : null}
+                {data.recon.dns.wildcard !== null ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">Wildcard DNS</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.wildcard ? 'Enabled' : 'Disabled'}</div>
+                  </div>
+                ) : null}
+                {data.recon.dns.dnssec !== null ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">DNSSEC</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.dnssec ? 'Enabled' : 'Disabled'}</div>
+                  </div>
+                ) : null}
+                {data.recon.dns.zone_transfer ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">Zone Transfer</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.dns.zone_transfer}</div>
+                  </div>
+                ) : null}
+                {data.recon.technologies.detailed?.length ? (
+                  <div className="sm:col-span-3">
+                    <div className="font-medium text-[var(--text-muted)] mb-1">Detected Technologies</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {data.recon.technologies.detailed.map((t, i) => (
+                        <div key={i} className="flex items-center gap-2 border border-[var(--border-light)] rounded-md px-2 py-1">
+                          <span className="font-mono text-[var(--text-strong)]">{t.name}{t.version ? ` ${t.version}` : ''}</span>
+                          {t.category ? <Tag color="blue">{t.category}</Tag> : null}
+                          {t.confidence !== undefined ? (
+                            <span className="ml-auto text-[10px] text-[var(--text-subtle)]">{t.confidence}%</span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {data.recon.technologies.waf_evidence?.length ? (
+                  <div className="sm:col-span-3">
+                    <div className="font-medium text-[var(--text-muted)] mb-1">WAF Evidence</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.technologies.waf_evidence.join(', ')}</div>
+                  </div>
+                ) : null}
                 {data.recon.tls.version ? (
                   <div>
                     <div className="font-medium text-[var(--text-muted)] mb-1">TLS Version</div>
@@ -431,6 +539,31 @@ export default function AttackIntelligence() {
                   <div>
                     <div className="font-medium text-[var(--text-muted)] mb-1">TLS Valid</div>
                     <div className="font-mono text-[var(--text-default)]">{data.recon.tls.valid ? 'Yes' : 'No'}</div>
+                  </div>
+                ) : null}
+                {Object.keys(data.recon.tls.protocols || {}).length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">TLS Protocols</div>
+                    <div className="font-mono text-[var(--text-default)] space-y-0.5">
+                      {Object.entries(data.recon.tls.protocols).map(([proto, enabled]) => (
+                        <div key={proto}>
+                          <span className={enabled ? 'text-red-500' : 'text-[var(--text-subtle)]'}>{proto}</span>
+                          <span className="text-[var(--text-muted)]">: {enabled ? 'supported' : 'disabled'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {data.recon.tls.ciphers?.length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">TLS Ciphers</div>
+                    <div className="font-mono text-[var(--text-default)]">{data.recon.tls.ciphers.join(', ')}</div>
+                  </div>
+                ) : null}
+                {data.recon.tls.vulnerabilities?.length ? (
+                  <div>
+                    <div className="font-medium text-[var(--text-muted)] mb-1">TLS Vulnerabilities</div>
+                    <div className="font-mono text-red-500">{data.recon.tls.vulnerabilities.join('; ')}</div>
                   </div>
                 ) : null}
                 {Object.keys(data.recon.headers).length > 0 ? (
@@ -472,6 +605,32 @@ export default function AttackIntelligence() {
                 </Value>
                 <Value label="Internal IPs">
                   {data.exposed.internal_ips?.length ? data.exposed.internal_ips.join(', ') : 'None'}
+                </Value>
+                <Value label="Phone Numbers">
+                  {data.exposed.phones?.length ? data.exposed.phones.map((p, i) => <div key={i} className="font-mono">{p}</div>) : 'None'}
+                </Value>
+                <Value label="Social Profiles">
+                  {data.exposed.social_profiles?.length
+                    ? data.exposed.social_profiles.map((s, i) => (
+                        <div key={i}>
+                          <span className="font-medium">{s.network}:</span>{' '}
+                          <a href={s.url} target="_blank" rel="noreferrer" className="text-[var(--brand)] underline truncate">{s.url}</a>
+                        </div>
+                      ))
+                    : 'None'}
+                </Value>
+                <Value label="Discovered Files">
+                  {data.exposed.discovered_files?.length
+                    ? data.exposed.discovered_files.slice(0, 10).map((f, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="truncate font-mono">{f.path}</span>
+                          {f.status_code ? <Tag color={f.status_code < 400 ? 'red' : 'default'}>{f.status_code}</Tag> : null}
+                        </div>
+                      ))
+                    : 'None'}
+                  {data.exposed.discovered_files?.length > 10 ? (
+                    <div className="text-[var(--text-subtle)]">... and {data.exposed.discovered_files.length - 10} more</div>
+                  ) : null}
                 </Value>
                 <Value label="HTML Comments">
                   {data.exposed.comments?.length ? data.exposed.comments.slice(0, 5).map((c, i) => <div key={i} className="truncate font-mono">{c}</div>) : 'None'}

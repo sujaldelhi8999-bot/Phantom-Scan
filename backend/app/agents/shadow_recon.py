@@ -9,7 +9,6 @@ import whois
 
 from app.agents import Agent
 
-
 SENSITIVE_PATHS = [
     "/.git/HEAD", "/.env", "/config.php", "/wp-config.php",
     "/database.yml", "/.DS_Store", "/robots.txt", "/sitemap.xml",
@@ -23,6 +22,130 @@ DORK_QUERIES = [
     'site:{domain} intitle:"phpinfo" OR intitle:"phpmyadmin"',
     'site:{domain} inurl:api OR inurl:rest OR inurl:graphql',
 ]
+
+DIRECTORY_WORDLIST = [
+    "/admin", "/login", "/signin", "/dashboard", "/home", "/index",
+    "/api", "/v1", "/v2", "/v3", "/v4", "/api/v1", "/api/v2", "/api/v3",
+    "/uploads", "/upload", "/files", "/file", "/assets", "/static",
+    "/public", "/private", "/secret", "/internal", "/confidential",
+    "/config", "/configuration", "/configs", "/setup", "/install",
+    "/update", "/updates", "/backup", "/backups", "/temp", "/tmp",
+    "/cache", "/logs", "/log", "/debug", "/test", "/tests", "/testing",
+    "/dev", "/development", "/stage", "/staging", "/beta", "/alpha",
+    "/prod", "/production", "/internal", "/intranet", "/portal",
+    "/gateway", "/proxy", "/auth", "/authenticate", "/oauth", "/oauth2",
+    "/sso", "/saml", "/graphql", "/graphiql", "/playground", "/explorer",
+    "/swagger", "/swagger-ui", "/swagger.json", "/swagger.yaml", "/swagger.yml",
+    "/api-docs", "/docs", "/documentation", "/doc", "/reference",
+    "/openapi.json", "/openapi.yaml", "/redoc",
+    "/health", "/healthz", "/ready", "/status", "/ping", "/heartbeat",
+    "/metrics", "/prometheus", "/grafana", "/kibana", "/elasticsearch",
+    "/redis", "/rabbitmq", "/kafka", "/zookeeper", "/memcached",
+    "/jenkins", "/sonarqube", "/jira", "/confluence", "/bamboo",
+    "/git", "/svn", "/hg", "/cvs", "/repo", "/repositories",
+    "/.git", "/.git/", "/.git/config", "/.git/HEAD", "/.gitignore",
+    "/.git/config", "/.svn", "/.hg", "/.cvs", "/.env", "/.env.local",
+    "/.env.production", "/.env.staging", "/.env.development", "/.env.test",
+    "/.env.backup", "/.env.example", "/.config", "/.aws", "/.azure",
+    "/.gcp", "/.kube", "/.docker", "/.github", "/.gitlab", "/.bitbucket",
+    "/.circleci", "/.travis", "/.jenkins", "/.dockerignore",
+    "/composer.json", "/composer.lock", "/package.json", "/yarn.lock",
+    "/package-lock.json", "/npm-shrinkwrap.json", "/Gemfile", "/Gemfile.lock",
+    "/requirements.txt", "/Pipfile", "/Pipfile.lock", "/poetry.lock",
+    "/Cargo.toml", "/Cargo.lock", "/go.mod", "/go.sum", "/pubspec.yaml",
+    "/.htaccess", "/.htpasswd", "/web.config", "/.well-known",
+    "/robots.txt", "/sitemap.xml", "/sitemap_index.xml", "/sitemap1.xml",
+    "/favicon.ico", "/apple-touch-icon.png", "/manifest.json",
+    "/crossdomain.xml", "/clientaccesspolicy.xml",
+    "/phpinfo.php", "/info.php", "/php.ini", "/.user.ini", "/info",
+    "/wp-config.php", "/wp-config-sample.php", "/wp-login.php",
+    "/xmlrpc.php", "/wp-json", "/wp-content", "/wp-includes", "/wp-admin",
+    "/wp-cron.php", "/wp-settings.php", "/wp-blog-header.php",
+    "/config.php", "/configuration.php", "/settings.php", "/config.php.bak",
+    "/database.php", "/db.php", "/connection.php", "/db.sql", "/dump.sql",
+    "/backup.sql", "/backup.zip", "/backup.tar.gz", "/backup.tar",
+    "/data.sql", "/database.sql", "/schema.sql", "/users.sql",
+    "/Dockerfile", "/docker-compose.yml", "/docker-compose.yaml",
+    "/docker-compose.override.yml", "/k8s", "/kubernetes", "/helm",
+    "/charts", "/terraform", "/ansible", "/chef", "/puppet",
+    "/.vscode", "/.idea", "/.eclipse", "/.netbeans",
+    "/.DS_Store", "/Thumbs.db", "/desktop.ini",
+    "/server-status", "/server-info", "/status.html", "/whm-server-status",
+    "/cgi-bin", "/cgi-bin/", "/cgi-bin/test.cgi", "/phpmyadmin",
+    "/pma", "/myadmin", "/mysql-admin", "/adminer", "/adminer.php",
+    "/webmin", "/cpanel", "/plesk", "/user", "/user/login", "/register",
+    "/signup", "/forgot-password", "/reset-password", "/password-reset",
+    "/verify", "/verification", "/confirm", "/invite", "/referral",
+    "/search", "/search.php", "/index.php", "/index.html", "/default.aspx",
+    "/default.php", "/home.php", "/main.php", "/page.php", "/view.php",
+    "/download", "/downloads", "/media", "/images", "/img", "/css",
+    "/js", "/scripts", "/lib", "/libs", "/vendor", "/node_modules",
+    "/src", "/source", "/build", "/dist", "/out", "/target", "/bin",
+    "/war", "/classes", "/servlet", "/ws", "/wsdl", "/soap", "/rest",
+    "/rest/v1", "/rest/v2", "/services", "/service", "/webapi",
+    "/odata", "/entities", "/data", "/datasource", "/db2", "/mssql",
+    "/oracle", "/sqlite", "/data.sqlite", "/test.php", "/test.html",
+    "/debug.log", "/error.log", "/access.log", "/nginx.log", "/apache.log",
+    "/syslog", "/messages", "/auth.log", "/tmp/", "/var", "/proc",
+    "/server-status.php", "/shell", "/shell.php", "/cmd.php", "/exec.php",
+    "/eval.php", "/upload.php", "/c99.php", "/r57.php",
+    "/1.php", "/1.txt", "/a.php", "/x.php", "/hack.php",
+    "/.well-known/security.txt", "/.well-known/acme-challenge",
+    "/security.txt", "/humans.txt", "/ads.txt", "/app-ads.txt",
+    "/license.txt", "/changelog.txt", "/CHANGELOG", "/README",
+    "/README.md", "/LICENSE", "/COPYRIGHT", "/VERSION", "/release-notes",
+    "/api/swagger.json", "/api/docs", "/api/openapi.json", "/api/graphql",
+    "/api/health", "/api/status", "/api/users", "/api/admin",
+    "/api/config", "/api/v1/docs", "/api/v1/health", "/graphql/console",
+]
+
+API_PATTERNS = [
+    "/api", "/api/v1", "/api/v2", "/api/v3",
+    "/rest", "/rest/v1", "/rest/v2",
+    "/api/rest", "/api/rest/v1",
+    "/service", "/services",
+    "/webapi", "/webapi/v1",
+    "/odata", "/odata/v1",
+    "/graphql", "/graphiql", "/api/graphql",
+    "/swagger", "/swagger-ui", "/swagger.json", "/swagger.yaml",
+    "/api-docs", "/docs", "/documentation", "/redoc", "/openapi.json",
+    "/api/openapi.json", "/api/swagger.json", "/api/docs",
+]
+
+GRAPHQL_INTROSPECTION = """
+query IntrospectionQuery {
+  __schema {
+    queryType { name }
+    mutationType { name }
+    subscriptionType { name }
+    types { kind name }
+  }
+}
+"""
+
+PHONE_PATTERNS = [
+    r"\b\+?\d{1,3}[-.\s]?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b",
+    r"tel:\+?[\d\-()\s]+",
+    r"\+?1[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}",
+    r"\+?91[-.\s]?\d{5}[-.\s]?\d{5}",
+]
+
+SOCIAL_PATTERNS = {
+    "twitter": r"(?:https?://)?(?:www\.)?(?:twitter\.com|x\.com)/[A-Za-z0-9_]{1,30}/?",
+    "facebook": r"(?:https?://)?(?:www\.)?facebook\.com/[A-Za-z0-9._\-]{3,}/?",
+    "linkedin": r"(?:https?://)?(?:www\.)?linkedin\.com/(?:company|in|school)/[A-Za-z0-9\-_%]{2,}/?",
+    "instagram": r"(?:https?://)?(?:www\.)?instagram\.com/[A-Za-z0-9_.]{2,}/?",
+    "youtube": r"(?:https?://)?(?:www\.)?youtube\.com/(?:@|c/|channel/|user/)[A-Za-z0-9_\-]{2,}/?",
+    "github": r"(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9_-]{2,}/?",
+    "telegram": r"(?:https?://)?t\.me/[A-Za-z0-9_]{3,}/?",
+    "discord": r"(?:https?://)?discord\.(?:gg|com)/(?:invite/)?[A-Za-z0-9_\-]{2,}/?",
+    "whatsapp": r"(?:https?://)?wa\.me/\d{6,15}",
+    "medium": r"(?:https?://)?medium\.com/[@A-Za-z0-9._\-]{2,}/?",
+    "reddit": r"(?:https?://)?(?:www\.)?reddit\.com/r/[A-Za-z0-9_]{2,}/?",
+    "pinterest": r"(?:https?://)?(?:www\.)?pinterest\.com/[A-Za-z0-9_\-]{2,}/?",
+    "tiktok": r"(?:https?://)?(?:www\.)?tiktok\.com/[@A-Za-z0-9._\-]{2,}/?",
+    "snapchat": r"(?:https?://)?(?:www\.)?snapchat\.com/add/[A-Za-z0-9_\-]{2,}/?",
+}
 
 
 class ShadowReconAgent(Agent):
@@ -45,13 +168,56 @@ class ShadowReconAgent(Agent):
         disallowed = self._parse_robots(robots.get("body", ""))
         sitemap_urls = self._parse_sitemap(sitemap.get("body", ""))
 
-        homepage = await self._fetch_path(base, "/")
-        leaked_emails = self._extract_emails(homepage.get("body", ""))
-        js_sourcemaps = self._extract_sourcemaps(homepage.get("body", ""), base)
-        internal_ips = self._extract_internal_ips(homepage.get("body", ""))
-        comments = self._extract_html_comments(homepage.get("body", ""))
+        homepage = await self._fetch_path(base, "")
+        body = homepage.get("body", "")
+        leaked_emails = self._extract_emails(body)
+        js_sourcemaps = self._extract_sourcemaps(body, base)
+        internal_ips = self._extract_internal_ips(body)
+        comments = self._extract_html_comments(body)
+        phones = self._extract_phones(body)
+        social_profiles = self._extract_social(body)
 
-        exposed_files = await self._check_sensitive_paths(base)
+        extra_scan_paths = [p for p in disallowed if p not in DIRECTORY_WORDLIST and p.startswith("/")]
+        discovered_files = await self._brute_force_paths(base, DIRECTORY_WORDLIST + extra_scan_paths)
+
+        fetched_bodies = 0
+        for entry in discovered_files:
+            if fetched_bodies >= 10:
+                break
+            if entry.get("status_code") != 200:
+                continue
+            content_type = entry.get("content_type", "")
+            if not any(t in content_type for t in ("text/html", "text/plain", "application/json", "application/xml", "text/xml")):
+                continue
+            url = entry.get("url", "")
+            if not url:
+                continue
+            body2 = await self._fetch_path(base, url.replace(base.rstrip("/"), ""))
+            fetched_bodies += 1
+            body_text = body2.get("body", "")
+            leaked_emails.extend(self._extract_emails(body_text))
+            internal_ips.extend(self._extract_internal_ips(body_text))
+            phones.extend(self._extract_phones(body_text))
+            social_profiles.extend(self._extract_social(body_text))
+            comments.extend(self._extract_html_comments(body_text))
+
+        exposed_files = [e for e in discovered_files if e.get("status_code") in (200, 301, 302)]
+
+        apis = await self._discover_apis(base, hint_bodies=[body, robots.get("body", ""), sitemap.get("body", "")])
+        graphql = await self._introspect_graphql(base)
+
+        leaked_emails = list(dict.fromkeys(leaked_emails))
+        internal_ips = list(dict.fromkeys(internal_ips))
+        phones = list(dict.fromkeys(phones))
+        social_seen: set[str] = set()
+        social_unique: list[dict[str, Any]] = []
+        for profile in social_profiles:
+            key = profile.get("url", "")
+            if key and key not in social_seen:
+                social_seen.add(key)
+                social_unique.append(profile)
+        social_profiles = social_unique
+        comments = list(dict.fromkeys(comments))
 
         self.discovered_emails = leaked_emails
         self.internal_ips = internal_ips
@@ -69,8 +235,12 @@ class ShadowReconAgent(Agent):
             f"Disallowed: {len(disallowed)}, "
             f"Sitemap: {len(sitemap_urls)}, "
             f"Emails: {len(leaked_emails)}, "
+            f"Phones: {len(phones)}, "
+            f"Social: {len(social_profiles)}, "
             f"Sourcemaps: {len(js_sourcemaps)}, "
-            f"Exposed: {len(exposed_files)}"
+            f"Files: {len(discovered_files)}, "
+            f"APIs: {len(apis)}, "
+            f"GraphQL: {'enabled' if graphql else 'disabled'}"
         )
 
         result = {
@@ -79,12 +249,17 @@ class ShadowReconAgent(Agent):
             "disallowed_paths": disallowed,
             "sitemap_urls": sitemap_urls,
             "exposed_files": exposed_files,
+            "discovered_files": discovered_files,
             "leaked_emails": leaked_emails,
             "js_sourcemaps": js_sourcemaps,
             "robots_txt": robots.get("body", "")[:2000],
             "sitemap_xml": sitemap.get("body", "")[:2000],
             "internal_ips": internal_ips,
             "html_comments": comments,
+            "phones": phones,
+            "social_profiles": social_profiles,
+            "api_endpoints": apis,
+            "graphql_schema": graphql,
         }
 
         await self._save_artifacts(result)
@@ -165,7 +340,7 @@ class ShadowReconAgent(Agent):
             try:
                 r = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
                 return {"url": url, "status_code": r.status_code, "body": r.text[:50000]}
-            except Exception as exc:
+            except Exception:
                 return {"url": url, "status_code": None, "body": ""}
 
     def _parse_robots(self, body: str) -> list[str]:
@@ -190,6 +365,28 @@ class ShadowReconAgent(Agent):
         emails = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", body)
         return list(set(emails))
 
+    def _extract_phones(self, body: str) -> list[str]:
+        phones: list[str] = []
+        for pattern in PHONE_PATTERNS:
+            for match in re.finditer(pattern, body):
+                candidate = match.group(0)
+                digits = re.sub(r"\D", "", candidate)
+                if 7 <= len(digits) <= 15:
+                    cleaned = re.sub(r"^(?:\+?\d{1,3}[-.\s]?)?0*", "", candidate)
+                    if cleaned and cleaned not in phones and re.search(r"\d{3}", cleaned):
+                        phones.append(cleaned[:30])
+        return phones
+
+    def _extract_social(self, body: str) -> list[str]:
+        profiles: list[str] = []
+        for network, pattern in SOCIAL_PATTERNS.items():
+            for match in re.finditer(pattern, body, re.IGNORECASE):
+                url = match.group(0).rstrip("/")
+                if not url.startswith("http"):
+                    url = "https://" + url
+                profiles.append({"network": network, "url": url[:200]})
+        return profiles
+
     def _extract_sourcemaps(self, body: str, base: str) -> list[str]:
         maps: list[str] = []
         for m in re.finditer(r'sourceMappingURL=([^\s"\'<>]+)', body, re.IGNORECASE):
@@ -210,6 +407,158 @@ class ShadowReconAgent(Agent):
 
     def _extract_html_comments(self, body: str) -> list[str]:
         return re.findall(r"<!--(.*?)-->", body, re.DOTALL)
+
+    async def _brute_force_paths(self, base: str, paths: list[str]) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        sem = asyncio.Semaphore(12)
+        base_url = base.rstrip("/")
+
+        async def check(path: str) -> None:
+            async with sem:
+                url = urljoin(base_url + "/", path.lstrip("/"))
+                try:
+                    async with httpx.AsyncClient(timeout=5.0, follow_redirects=False, verify=False) as c:
+                        r = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
+                        if r.status_code == 404 or r.status_code == 405:
+                            return
+                        headers = {k.lower(): v for k, v in r.headers.items()}
+                        results.append({
+                            "path": path,
+                            "url": url,
+                            "status_code": r.status_code,
+                            "content_type": headers.get("content-type", ""),
+                            "size": len(r.content),
+                            "redirect": headers.get("location"),
+                            "server": headers.get("server"),
+                            "last_modified": headers.get("last-modified"),
+                            "snippet": r.text[:200] if r.status_code in (200, 403) else "",
+                        })
+                except Exception:
+                    pass
+
+        chunk_size = 60
+        for i in range(0, len(paths), chunk_size):
+            chunk = paths[i:i + chunk_size]
+            await asyncio.gather(*[check(p) for p in chunk])
+
+        results.sort(key=lambda e: e["status_code"])
+        return results
+
+    async def _discover_apis(self, base: str, hint_bodies: list[str] | None = None) -> list[dict[str, Any]]:
+        found: list[dict[str, Any]] = []
+        base_url = base.rstrip("/")
+        parsed = urlparse(base)
+        origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else base_url
+
+        patterns: list[str] = list(API_PATTERNS)
+        hint_urls: list[str] = []
+        for body_text in hint_bodies or []:
+            for match in re.finditer(
+                r"[\"']((?:/?[A-Za-z0-9_\-./]*)?(?:api|rest|service|graphql|openapi|swagger|docs)[A-Za-z0-9_\-/.]*)[\"']",
+                body_text,
+                re.IGNORECASE,
+            ):
+                candidate = match.group(1).strip()
+                if candidate.startswith("/") and len(candidate) > 1 and candidate not in hint_urls and len(hint_urls) < 30:
+                    hint_urls.append(candidate)
+        seen: set[str] = set()
+
+        async def check(url: str, endpoint_label: str) -> None:
+            if url in seen:
+                return
+            seen.add(url)
+            try:
+                async with httpx.AsyncClient(timeout=5.0, follow_redirects=False, verify=False) as c:
+                    r = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
+                    if r.status_code == 404:
+                        return
+                    headers = {k.lower(): v for k, v in r.headers.items()}
+                    schema = None
+                    if any(t in endpoint_label for t in ("swagger", "openapi", "api-docs", "redoc")):
+                        schema = self._extract_schema(r, headers.get("content-type", ""))
+                    found.append({
+                        "endpoint": endpoint_label,
+                        "url": url,
+                        "method": "GET",
+                        "status": r.status_code,
+                        "content_type": headers.get("content-type", ""),
+                        "allow": headers.get("allow", ""),
+                        "schema": schema,
+                    })
+            except Exception:
+                pass
+
+        for pattern in patterns:
+            await check(base_url + pattern, pattern)
+        for candidate in hint_urls:
+            await check(origin + candidate, candidate)
+
+        if any(a["status"] < 400 for a in found):
+            try:
+                async with httpx.AsyncClient(timeout=5.0, follow_redirects=False, verify=False) as c:
+                    r = await c.options(base_url + "/api", headers={"User-Agent": "PhantomScan/1.0"})
+                    allow = r.headers.get("allow", "")
+                    if allow and r.status_code != 404:
+                        for entry in found:
+                            if entry["endpoint"] == "/api":
+                                entry["allow"] = allow
+                                break
+            except Exception:
+                pass
+
+        return sorted(found, key=lambda e: e["status"])
+
+    def _extract_schema(self, response: httpx.Response, content_type: str) -> dict[str, Any] | None:
+        if "json" not in content_type:
+            return None
+        try:
+            data = response.json()
+            if not isinstance(data, dict):
+                return None
+            summary: dict[str, Any] = {}
+            if "openapi" in data or "swagger" in data:
+                info = data.get("info", {})
+                summary["type"] = "openapi" if "openapi" in data else "swagger"
+                summary["title"] = info.get("title")
+                summary["version"] = info.get("version")
+                paths = data.get("paths", {})
+                summary["paths_count"] = len(paths) if isinstance(paths, dict) else 0
+                summary["paths"] = list(paths.keys())[:50] if isinstance(paths, dict) else []
+            return summary or None
+        except Exception:
+            return None
+
+    async def _introspect_graphql(self, base: str) -> dict[str, Any] | None:
+        base_url = base.rstrip("/")
+        candidates = ["/graphql", "/api/graphql", "/graphql/", "/graphiql"]
+        for candidate in candidates:
+            try:
+                async with httpx.AsyncClient(timeout=6.0, follow_redirects=False, verify=False) as c:
+                    r = await c.post(
+                        base_url + candidate,
+                        json={"query": GRAPHQL_INTROSPECTION},
+                        headers={"User-Agent": "PhantomScan/1.0"},
+                    )
+                    if r.status_code != 200:
+                        continue
+                    data = r.json()
+                    schema = (data or {}).get("data", {}).get("__schema")
+                    if not schema:
+                        continue
+                    query_type = (schema.get("queryType") or {}).get("name")
+                    mutation_type = (schema.get("mutationType") or {}).get("name")
+                    types = sorted({t.get("name") for t in schema.get("types", []) if t.get("name") and not t.get("name", "").startswith("__")})
+                    return {
+                        "endpoint": base_url + candidate,
+                        "enabled": True,
+                        "queries": query_type,
+                        "mutations": mutation_type,
+                        "types": types[:100],
+                        "types_count": len(types),
+                    }
+            except Exception:
+                continue
+        return None
 
     async def _check_sensitive_paths(self, base: str) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []

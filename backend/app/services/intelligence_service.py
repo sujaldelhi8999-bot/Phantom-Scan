@@ -10,6 +10,12 @@ from app.services.openrouter_client import call_openrouter
 
 
 class IntelligenceService:
+    SENSITIVE_FILE_PATTERNS = [
+        ".env", ".git", ".htaccess", "config.php", "wp-config.php",
+        "backup.sql", "phpinfo.php", ".aws", "id_rsa", "credentials",
+        "docker-compose.yml", "server-status", "web.config",
+    ]
+
     def __init__(self, target_url: str, scan_id: Optional[int] = None) -> None:
         self.target_url = target_url
         self.scan_id = scan_id
@@ -41,14 +47,19 @@ class IntelligenceService:
             },
             "recon": {
                 "dns": {"a_records": [], "aaaa_records": [], "mx_records": [], "txt_records": [],
-                        "cname_records": [], "ns_records": [], "zone_transfer": None},
-                "ports": {"open": [], "closed": [], "filtered": []},
-                "technologies": {"frameworks": [], "servers": [], "waf": None, "cdn": None},
+                        "cname_records": [], "ns_records": [], "soa_records": [], "ptr_records": [],
+                        "srv_records": [], "caa_records": [], "zone_transfer": None,
+                        "wildcard": None, "dnssec": None},
+                "ports": {"open": [], "closed": [], "filtered": [], "details": []},
+                "technologies": {"frameworks": [], "servers": [], "waf": None, "cdn": None,
+                                 "detailed": [], "waf_evidence": []},
                 "headers": {},
-                "tls": {"version": None, "cipher": None, "expiry": None, "valid": None},
+                "tls": {"version": None, "cipher": None, "expiry": None, "valid": None,
+                        "protocols": {}, "ciphers": [], "vulnerabilities": [], "port": None},
             },
             "exposed": {"robots_txt": None, "sitemap": [], "emails": [], "internal_ips": [],
-                        "comments": [], "sensitive_files": {}, "js_source_maps": []},
+                        "comments": [], "sensitive_files": {}, "js_source_maps": [],
+                        "phones": [], "social_profiles": [], "discovered_files": []},
             "entry_points": {"url_parameters": [], "post_fields": [], "headers": [], "cookies": [],
                              "json_body": [], "websockets": [], "graphql_endpoints": [],
                              "api_endpoints": [], "file_uploads": []},
@@ -79,14 +90,22 @@ class IntelligenceService:
                     "txt_records": [],
                     "cname_records": [],
                     "ns_records": [],
+                    "soa_records": [],
+                    "ptr_records": [],
+                    "srv_records": [],
+                    "caa_records": [],
                     "zone_transfer": None,
+                    "wildcard": None,
+                    "dnssec": None,
                 },
-                "ports": {"open": [], "closed": [], "filtered": []},
+                "ports": {"open": [], "closed": [], "filtered": [], "details": []},
                 "technologies": {
                     "frameworks": [],
                     "servers": [],
                     "waf": None,
                     "cdn": None,
+                    "detailed": [],
+                    "waf_evidence": [],
                 },
                 "headers": {},
                 "tls": {
@@ -94,6 +113,10 @@ class IntelligenceService:
                     "cipher": None,
                     "expiry": None,
                     "valid": None,
+                    "protocols": {},
+                    "ciphers": [],
+                    "vulnerabilities": [],
+                    "port": None,
                 },
             },
             "exposed": {
@@ -104,6 +127,9 @@ class IntelligenceService:
                 "comments": [],
                 "sensitive_files": {},
                 "js_source_maps": [],
+                "phones": [],
+                "social_profiles": [],
+                "discovered_files": [],
             },
             "entry_points": {
                 "url_parameters": [],
@@ -274,14 +300,27 @@ class IntelligenceService:
         shadow = artifacts.get("shadow_recon_output") or {}
 
         dns_records = scanner.get("dns_records", {})
+        if not isinstance(dns_records, dict):
+            dns_records = {}
         data["recon"]["dns"]["a_records"] = self._dict_get_ci(dns_records, "A") or self._dict_get_ci(dns_records, "a") or []
         data["recon"]["dns"]["aaaa_records"] = self._dict_get_ci(dns_records, "AAAA") or self._dict_get_ci(dns_records, "aaaa") or []
         data["recon"]["dns"]["mx_records"] = self._dict_get_ci(dns_records, "MX") or self._dict_get_ci(dns_records, "mx") or []
         data["recon"]["dns"]["txt_records"] = self._dict_get_ci(dns_records, "TXT") or self._dict_get_ci(dns_records, "txt") or []
         data["recon"]["dns"]["cname_records"] = self._dict_get_ci(dns_records, "CNAME") or self._dict_get_ci(dns_records, "cname") or []
         data["recon"]["dns"]["ns_records"] = self._dict_get_ci(dns_records, "NS") or self._dict_get_ci(dns_records, "ns") or []
+        for dns_key, out_key in (("SOA", "soa_records"), ("PTR", "ptr_records"),
+                                 ("SRV", "srv_records"), ("CAA", "caa_records")):
+            vals = self._dict_get_ci(dns_records, dns_key)
+            if vals:
+                data["recon"]["dns"][out_key] = vals if isinstance(vals, list) else [vals]
+        data["recon"]["dns"]["zone_transfer"] = scanner.get("zone_transfer") or data["recon"]["dns"]["zone_transfer"]
+        data["recon"]["dns"]["wildcard"] = scanner.get("wildcard")
+        data["recon"]["dns"]["dnssec"] = scanner.get("dnssec")
 
-        data["recon"]["ports"]["open"] = scanner.get("open_ports", [])
+        ports_details = (scanner.get("ports") or {}).get("details", [])
+        data["recon"]["ports"]["open"] = scanner.get("open_ports", []) or [p["number"] for p in ports_details if isinstance(p, dict)]
+        if ports_details:
+            data["recon"]["ports"]["details"] = ports_details
 
         tech_stack = scanner.get("tech_stack", {})
         if isinstance(tech_stack, dict):
@@ -293,7 +332,22 @@ class IntelligenceService:
 
             data["recon"]["technologies"]["cdn"] = scanner.get("cdn_detected") or tech_stack.get("cdn")
 
+        detailed = scanner.get("technologies_detailed", [])
+        if detailed:
+            data["recon"]["technologies"]["detailed"] = detailed
+            for item in detailed:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name") or "")
+                version = str(item.get("version") or "")
+                label = f"{name} {version}".strip()
+                if label:
+                    data["recon"]["technologies"]["frameworks"].append(label)
+
         data["recon"]["technologies"]["waf"] = scanner.get("waf_detected") or (tech_stack.get("waf") if isinstance(tech_stack, dict) else None)
+        waf_details = scanner.get("waf_details") or {}
+        if isinstance(waf_details, dict) and waf_details.get("evidence"):
+            data["recon"]["technologies"]["waf_evidence"] = list(waf_details.get("evidence", {}).keys())
 
         whois = shadow.get("whois", {})
         if isinstance(whois, dict):
@@ -303,12 +357,19 @@ class IntelligenceService:
         if isinstance(headers, dict):
             data["recon"]["headers"] = headers
 
-        tls_info = scanner.get("tls_info", {})
+        tls_info = scanner.get("tls_details") or scanner.get("tls_info", {})
         if isinstance(tls_info, dict):
-            data["recon"]["tls"]["version"] = tls_info.get("version")
-            data["recon"]["tls"]["cipher"] = tls_info.get("cipher")
-            data["recon"]["tls"]["expiry"] = tls_info.get("expiry")
-            data["recon"]["tls"]["valid"] = tls_info.get("valid")
+            data["recon"]["tls"]["version"] = tls_info.get("negotiated_version") or tls_info.get("version")
+            cipher_raw = tls_info.get("negotiated_cipher") or tls_info.get("cipher")
+            data["recon"]["tls"]["cipher"] = cipher_raw
+            data["recon"]["tls"]["port"] = tls_info.get("port")
+            cert = tls_info.get("certificate") or {}
+            if isinstance(cert, dict):
+                data["recon"]["tls"]["expiry"] = cert.get("not_after") or cert.get("expiry")
+                data["recon"]["tls"]["valid"] = cert.get("valid")
+            data["recon"]["tls"]["protocols"] = tls_info.get("protocols", {})
+            data["recon"]["tls"]["ciphers"] = tls_info.get("ciphers", [])
+            data["recon"]["tls"]["vulnerabilities"] = tls_info.get("vulnerabilities", [])
 
         data["target"]["timestamp"] = artifacts.get("updated_at")
 
@@ -342,13 +403,17 @@ class IntelligenceService:
                                 continue
                             if agent == "ReconAgent":
                                 for key in ("open_ports", "dns_records", "tech_stack", "waf_detected",
-                                            "http_headers", "tls_info", "ip", "cdn_detected"):
+                                            "http_headers", "tls_info", "tls_details", "ip", "cdn_detected",
+                                            "ports", "technologies_detailed", "wildcard", "dnssec",
+                                            "zone_transfer", "waf_details"):
                                     if key in parsed and not scanner_out.get(key):
                                         scanner_out[key] = parsed[key]
                             elif agent == "ShadowReconAgent":
                                 for key in ("whois", "leaked_emails", "internal_ips", "sitemap_urls",
                                             "robots_txt", "html_comments", "comments", "js_sourcemaps",
-                                            "exposed_files", "disallowed_paths"):
+                                            "exposed_files", "disallowed_paths", "phones",
+                                            "social_profiles", "api_endpoints", "graphql_schema",
+                                            "discovered_files"):
                                     if key in parsed and not shadow_out.get(key):
                                         shadow_out[key] = parsed[key]
                         except (json.JSONDecodeError, TypeError):
@@ -432,20 +497,46 @@ class IntelligenceService:
         robots = shadow.get("robots_txt", {})
         if isinstance(robots, dict):
             data["exposed"]["robots_txt"] = robots.get("body", "") if robots.get("body") else None
+        elif isinstance(robots, str):
+            data["exposed"]["robots_txt"] = robots or None
 
         data["exposed"]["sitemap"] = shadow.get("sitemap_urls", [])
         data["exposed"]["emails"] = shadow.get("leaked_emails", [])
         data["exposed"]["internal_ips"] = shadow.get("internal_ips", [])
         data["exposed"]["comments"] = shadow.get("html_comments") or shadow.get("comments") or []
         data["exposed"]["js_source_maps"] = shadow.get("js_sourcemaps", [])
+        data["exposed"]["phones"] = shadow.get("phones", [])
+        social_profiles = shadow.get("social_profiles", [])
+        data["exposed"]["social_profiles"] = social_profiles
+        data["exposed"]["discovered_files"] = shadow.get("discovered_files", [])
 
         exposed_files = shadow.get("exposed_files", [])
+        known_keys = list(data["exposed"]["sensitive_files"].keys())
         for entry in exposed_files:
-            if isinstance(entry, dict):
-                path = entry.get("path", "")
-                for key in list(data["exposed"]["sensitive_files"].keys()):
-                    if key in path or key.rstrip("/") in path:
-                        data["exposed"]["sensitive_files"][key] = entry.get("status_code")
+            if not isinstance(entry, dict):
+                continue
+            path = (entry.get("path") or "") + " " + (entry.get("url") or "")
+            for key in known_keys:
+                if key in path or key.rstrip("/") in path:
+                    data["exposed"]["sensitive_files"][key] = entry.get("status_code")
+            for pattern in self.SENSITIVE_FILE_PATTERNS:
+                if pattern in path:
+                    data["exposed"]["sensitive_files"][pattern] = entry.get("status_code")
+
+        apis = shadow.get("api_endpoints", [])
+        for api in apis:
+            if isinstance(api, dict):
+                ep = api.get("url") or api.get("endpoint") or api.get("path") or ""
+                if ep and ep not in data["entry_points"]["api_endpoints"]:
+                    data["entry_points"]["api_endpoints"].append(ep)
+            elif isinstance(api, str) and api not in data["entry_points"]["api_endpoints"]:
+                data["entry_points"]["api_endpoints"].append(api)
+
+        graphql = shadow.get("graphql_schema") or {}
+        if isinstance(graphql, dict) and graphql.get("enabled"):
+            endpoint = graphql.get("endpoint") or "/graphql"
+            if endpoint not in data["entry_points"]["graphql_endpoints"]:
+                data["entry_points"]["graphql_endpoints"].append(endpoint)
 
     async def _populate_findings(self, data: Dict[str, Any]) -> None:
         from app.database import get_findings

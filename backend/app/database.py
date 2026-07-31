@@ -243,6 +243,32 @@ CREATE TABLE IF NOT EXISTS dos_jobs (
     requests_sent INTEGER DEFAULT 0,
     responses_received INTEGER DEFAULT 0,
     errors INTEGER DEFAULT 0,
+    baseline_latency REAL NOT NULL DEFAULT 0,
+    peak_latency REAL NOT NULL DEFAULT 0,
+    avg_latency_during REAL NOT NULL DEFAULT 0,
+    recovery_latency REAL NOT NULL DEFAULT 0,
+    impact_score REAL NOT NULL DEFAULT 0,
+    effective INTEGER NOT NULL DEFAULT 0,
+    website_status TEXT NOT NULL DEFAULT 'unknown',
+    health_score REAL NOT NULL DEFAULT 100,
+    p95_latency REAL NOT NULL DEFAULT 0,
+    p99_latency REAL NOT NULL DEFAULT 0,
+    jitter_ms REAL NOT NULL DEFAULT 0,
+    error_rate REAL NOT NULL DEFAULT 0,
+    throughput_mbps REAL NOT NULL DEFAULT 0,
+    total_requests INTEGER NOT NULL DEFAULT 0,
+    status_2xx INTEGER NOT NULL DEFAULT 0,
+    status_3xx INTEGER NOT NULL DEFAULT 0,
+    status_4xx INTEGER NOT NULL DEFAULT 0,
+    status_5xx INTEGER NOT NULL DEFAULT 0,
+    total_data_mb REAL NOT NULL DEFAULT 0,
+    avg_dns_ms REAL NOT NULL DEFAULT 0,
+    avg_tcp_ms REAL NOT NULL DEFAULT 0,
+    avg_tls_ms REAL NOT NULL DEFAULT 0,
+    avg_ttfb_ms REAL NOT NULL DEFAULT 0,
+    packet_loss REAL NOT NULL DEFAULT 0,
+    recovery_ratio REAL NOT NULL DEFAULT 0,
+    recovered INTEGER NOT NULL DEFAULT 1,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     stopped_at TIMESTAMP,
     user_id TEXT,
@@ -358,6 +384,7 @@ async def initialize_database() -> None:
         await _migrate_execution_status_table(connection)
         await _migrate_shadow_recon_table(connection)
         await _migrate_scan_artifact_recon_columns(connection)
+        await _migrate_dos_metrics_columns(connection)
         await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
         await connection.commit()
 
@@ -552,6 +579,40 @@ async def _migrate_scan_artifact_recon_columns(connection: aiosqlite.Connection)
     ]:
         if not await _column_exists(connection, "scan_artifacts", col):
             await connection.execute(f"ALTER TABLE scan_artifacts ADD COLUMN {col} {definition}")
+
+
+async def _migrate_dos_metrics_columns(connection: aiosqlite.Connection) -> None:
+    columns = [
+        ("baseline_latency", "REAL NOT NULL DEFAULT 0"),
+        ("peak_latency", "REAL NOT NULL DEFAULT 0"),
+        ("avg_latency_during", "REAL NOT NULL DEFAULT 0"),
+        ("recovery_latency", "REAL NOT NULL DEFAULT 0"),
+        ("impact_score", "REAL NOT NULL DEFAULT 0"),
+        ("effective", "INTEGER NOT NULL DEFAULT 0"),
+        ("website_status", "TEXT NOT NULL DEFAULT 'unknown'"),
+        ("health_score", "REAL NOT NULL DEFAULT 100"),
+        ("p95_latency", "REAL NOT NULL DEFAULT 0"),
+        ("p99_latency", "REAL NOT NULL DEFAULT 0"),
+        ("jitter_ms", "REAL NOT NULL DEFAULT 0"),
+        ("error_rate", "REAL NOT NULL DEFAULT 0"),
+        ("throughput_mbps", "REAL NOT NULL DEFAULT 0"),
+        ("total_requests", "INTEGER NOT NULL DEFAULT 0"),
+        ("status_2xx", "INTEGER NOT NULL DEFAULT 0"),
+        ("status_3xx", "INTEGER NOT NULL DEFAULT 0"),
+        ("status_4xx", "INTEGER NOT NULL DEFAULT 0"),
+        ("status_5xx", "INTEGER NOT NULL DEFAULT 0"),
+        ("total_data_mb", "REAL NOT NULL DEFAULT 0"),
+        ("avg_dns_ms", "REAL NOT NULL DEFAULT 0"),
+        ("avg_tcp_ms", "REAL NOT NULL DEFAULT 0"),
+        ("avg_tls_ms", "REAL NOT NULL DEFAULT 0"),
+        ("avg_ttfb_ms", "REAL NOT NULL DEFAULT 0"),
+        ("packet_loss", "REAL NOT NULL DEFAULT 0"),
+        ("recovery_ratio", "REAL NOT NULL DEFAULT 0"),
+        ("recovered", "INTEGER NOT NULL DEFAULT 1"),
+    ]
+    for column, definition in columns:
+        if not await _column_exists(connection, "dos_jobs", column):
+            await connection.execute(f"ALTER TABLE dos_jobs ADD COLUMN {column} {definition}")
 
 
 async def _migrate_execution_status_table(connection: aiosqlite.Connection) -> None:
