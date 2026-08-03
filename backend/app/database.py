@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS findings (
     fix TEXT NOT NULL DEFAULT '',
     cve_id TEXT,
     cvss_score REAL CHECK (cvss_score IS NULL OR (cvss_score >= 0 AND cvss_score <= 10)),
+    cwe TEXT,
+    version_affected TEXT,
     parameter TEXT,
     module TEXT,
     recommended_fix TEXT,
@@ -127,15 +129,56 @@ CREATE TABLE IF NOT EXISTS scan_artifacts (
     FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS ai_cache (
-    cache_key TEXT PRIMARY KEY,
-    finding_id INTEGER,
-    evidence_hash TEXT NOT NULL,
-    language TEXT NOT NULL,
-    model TEXT NOT NULL,
-    response TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS agent_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    agent_name TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT,
+    status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+    execution_time REAL,
+    attempts INTEGER NOT NULL DEFAULT 1,
+    error_message TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_runs_scan_id ON agent_runs (scan_id);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_agent_name ON agent_runs (agent_name);
+
+CREATE TABLE IF NOT EXISTS scan_event_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data TEXT,
+    agent_name TEXT,
+    timestamp TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_scan_event_logs_scan_id ON scan_event_logs (scan_id);
+CREATE INDEX IF NOT EXISTS idx_scan_event_logs_event_type ON scan_event_logs (event_type);
+
+CREATE TABLE IF NOT EXISTS audit_log_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL UNIQUE,
+    severity TEXT NOT NULL CHECK (severity IN ('CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO')),
+    color TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS agent_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_name TEXT NOT NULL,
+    run_id TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT,
+    status TEXT NOT NULL CHECK (status IN ('idle', 'active', 'complete', 'error')),
+    tasks_completed INTEGER NOT NULL DEFAULT 0,
+    tasks_failed INTEGER NOT NULL DEFAULT 0,
+    execution_time REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (run_id) REFERENCES agent_runs (id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_findings_scan_id ON findings (scan_id);
@@ -298,6 +341,9 @@ CREATE TABLE IF NOT EXISTS shadow_recon_results (
     sensitive_files TEXT,
     robots_txt_content TEXT,
     sitemap_urls TEXT,
+    wayback_urls TEXT,
+    crtsh_subdomains TEXT,
+    all_subdomains TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (scan_id) REFERENCES scans(id) ON DELETE CASCADE
 );
@@ -383,6 +429,7 @@ async def initialize_database() -> None:
         await _migrate_job_events_table(connection)
         await _migrate_execution_status_table(connection)
         await _migrate_shadow_recon_table(connection)
+        await _migrate_shadow_recon_columns(connection)
         await _migrate_scan_artifact_recon_columns(connection)
         await _migrate_dos_metrics_columns(connection)
         await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
@@ -564,6 +611,16 @@ async def _migrate_shadow_recon_table(connection: aiosqlite.Connection) -> None:
         )
 
 
+async def _migrate_shadow_recon_columns(connection: aiosqlite.Connection) -> None:
+    for col, definition in [
+        ("wayback_urls", "TEXT"),
+        ("crtsh_subdomains", "TEXT"),
+        ("all_subdomains", "TEXT"),
+    ]:
+        if not await _column_exists(connection, "shadow_recon_results", col):
+            await connection.execute(f"ALTER TABLE shadow_recon_results ADD COLUMN {col} {definition}")
+
+
 async def _migrate_scan_artifact_recon_columns(connection: aiosqlite.Connection) -> None:
     for col, definition in [
         ("ports_open", "TEXT"),
@@ -575,8 +632,9 @@ async def _migrate_scan_artifact_recon_columns(connection: aiosqlite.Connection)
         ("tls_version", "TEXT"),
         ("tls_cipher", "TEXT"),
         ("tls_expiry", "TEXT"),
-        ("tls_valid", "INTEGER"),
-    ]:
+         ("tls_valid", "INTEGER"),
+         ("body_technologies", "TEXT"),
+     ]:
         if not await _column_exists(connection, "scan_artifacts", col):
             await connection.execute(f"ALTER TABLE scan_artifacts ADD COLUMN {col} {definition}")
 

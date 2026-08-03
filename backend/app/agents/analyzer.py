@@ -17,6 +17,35 @@ SECURITY_HEADERS = {
     "x-content-type-options": "XCTO",
     "referrer-policy": "Referrer-Policy",
     "permissions-policy": "Permissions-Policy",
+    "cross-origin-embedder-policy": "COEP",
+    "cross-origin-opener-policy": "COOP",
+    "cross-origin-resource-policy": "CORP",
+    "origin-agent-cluster": "OAC",
+}
+
+CSP_DANGEROUS_DIRECTIVES = {
+    "unsafe-inline": "script-src allows inline scripts, weakening XSS protection",
+    "unsafe-eval": "script-src allows eval(), enabling dynamic code execution",
+    "unsafe-hashes": "script-src allows unsafe hashes, reducing CSP effectiveness",
+    "unsafe-allow-redirects": "connect-src allows redirects, enabling SSRF risk",
+    "data:": "script-src allows data: URIs, enabling inline script injection",
+    "blob:": "script-src allows blob: URIs, enabling object URL injection",
+    "filesystem:": "script-src allows filesystem: URIs",
+}
+
+CSP_MISSING_DIRECTIVES = {
+    "default-src": "No default-src fallback; all resource types are unrestricted",
+    "script-src": "No script-src directive; inline scripts and eval() are allowed by default",
+    "style-src": "No style-src directive; inline styles are allowed by default",
+    "img-src": "No img-src directive; images can be loaded from any origin",
+    "font-src": "No font-src directive; fonts can be loaded from any origin",
+    "connect-src": "No connect-src directive; fetch/XHR can target any origin",
+    "frame-src": "No frame-src directive; frames can embed any origin",
+    "media-src": "No media-src directive; audio/video can be loaded from any origin",
+    "object-src": "No object-src directive; Flash/Java applets can be loaded from any origin",
+    "base-uri": "No base-uri directive; base tag injection can redirect relative URLs",
+    "form-action": "No form-action directive; forms can submit to any origin",
+    "frame-ancestors": "No frame-ancestors directive; clickjacking is possible",
 }
 
 HSTS_MIN_MAX_AGE = 31536000
@@ -72,6 +101,12 @@ class AnalyzerAgent(Agent):
             traceback.print_exc()
             raise
 
+        try:
+            findings.extend(await self._check_http_methods(target_url))
+        except Exception:
+            traceback.print_exc()
+            raise
+
         self.status = "complete"
         await self.log_action("completed", f"Generated {len(findings)} findings")
         return {
@@ -81,6 +116,7 @@ class AnalyzerAgent(Agent):
             "cookie_issues": [f for f in findings if f.get("category") == "Cookies"],
             "tls_issues": [f for f in findings if f.get("category") == "TLS"],
             "info_leakage": [f for f in findings if f.get("category") == "Information Disclosure"],
+            "http_method_issues": [f for f in findings if f.get("category") == "HTTP Methods"],
         }
 
     async def _get_headers(
@@ -111,7 +147,26 @@ class AnalyzerAgent(Agent):
             ))
         else:
             csp = headers.get("content-security-policy", "")
-            if "unsafe-inline" in csp and "script-src" in csp:
+            csp_lower = csp.lower()
+
+            for directive, desc in CSP_DANGEROUS_DIRECTIVES.items():
+                if directive in csp_lower:
+                    sev = "high" if directive in ("unsafe-inline", "unsafe-eval") else "medium"
+                    findings.append(self._finding(
+                        f"CSP contains dangerous directive: {directive}", "Security Headers", sev,
+                        f"CSP {directive}: {desc}", "Reduces CSP protection against injection attacks",
+                        f"Remove or restrict the {directive} directive in CSP", target
+                    ))
+
+            for directive in CSP_MISSING_DIRECTIVES:
+                if directive not in csp_lower and directive not in ("default-src",):
+                    findings.append(self._finding(
+                        f"CSP missing {directive} directive", "Security Headers", "low",
+                        f"CSP does not include {directive}", CSP_MISSING_DIRECTIVES[directive],
+                        f"Add {directive} directive to Content-Security-Policy header", target
+                    ))
+
+            if "unsafe-inline" in csp_lower and "script-src" in csp_lower:
                 findings.append(self._finding(
                     "CSP allows unsafe-inline scripts", "Security Headers", "high",
                     "script-src includes 'unsafe-inline'", "Bypasses CSP protection against XSS",
@@ -174,6 +229,34 @@ class AnalyzerAgent(Agent):
                 "Add: Permissions-Policy: geolocation=(), microphone=(), camera=()", target
             ))
 
+        if "cross-origin-embedder-policy" not in present:
+            findings.append(self._finding(
+                "Missing Cross-Origin-Embedder-Policy", "Security Headers", "medium",
+                "No COEP header", "Page is not isolated from cross-origin embeddings; Spectre/Meltdown mitigations are weakened",
+                "Add: Cross-Origin-Embedder-Policy: require-corp", target
+            ))
+
+        if "cross-origin-opener-policy" not in present:
+            findings.append(self._finding(
+                "Missing Cross-Origin-Opener-Policy", "Security Headers", "medium",
+                "No COOP header", "Top-level navigations can open the page in a pop-up window and access it via window.opener",
+                "Add: Cross-Origin-Opener-Policy: same-origin", target
+            ))
+
+        if "cross-origin-resource-policy" not in present:
+            findings.append(self._finding(
+                "Missing Cross-Origin-Resource-Policy", "Security Headers", "low",
+                "No CORP header", "Cross-origin requests can load the resource, enabling data exfiltration",
+                "Add: Cross-Origin-Resource-Policy: same-origin", target
+            ))
+
+        if "origin-agent-cluster" not in present:
+            findings.append(self._finding(
+                "Missing Origin-Agent-Cluster", "Security Headers", "low",
+                "No OAC header", "The page is not isolated in its own agent cluster; cross-origin attacks may affect it",
+                "Add: Origin-Agent-Cluster: ?1", target
+            ))
+
         return findings
 
     async def _check_cors(self, target_url: str) -> list[dict[str, Any]]:
@@ -182,31 +265,72 @@ class AnalyzerAgent(Agent):
 
         async with httpx.AsyncClient(timeout=8.0, verify=False) as c:
             try:
-                r = await c.options(url, headers={
+                r1 = await c.options(url, headers={
                     "Origin": "https://evil.com",
                     "Access-Control-Request-Method": "GET"
                 })
-                acao = r.headers.get("access-control-allow-origin", "")
-                acac = r.headers.get("access-control-allow-credentials", "")
+                acao1 = r1.headers.get("access-control-allow-origin", "")
+                acac1 = r1.headers.get("access-control-allow-credentials", "")
 
-                if acao == "*":
+                if acao1 == "*":
                     findings.append(self._finding(
                         "Wildcard CORS allowed", "CORS", "medium",
                         "Access-Control-Allow-Origin: *", "Any origin can read responses",
                         "Restrict to specific trusted origins", target_url
                     ))
-                if acao == "https://evil.com":
-                    findings.append(self._finding(
-                        "Reflected CORS origin", "CORS", "high",
-                        "Server echoes Origin header value", "Attacker can read authenticated responses cross-origin",
-                        "Validate Origin against an allowlist; do not echo", target_url
-                    ))
-                if acao and acac.lower() == "true" and acao != "*":
-                    findings.append(self._finding(
-                        "CORS with credentials from arbitrary origin", "CORS", "high",
-                        f"ACAO: {acao}, ACAC: true", "Authenticated cross-origin reads possible",
-                        "Restrict ACAO to specific origins and avoid credentialed wildcard", target_url
-                    ))
+                elif acao1 == "https://evil.com":
+                    is_dynamic_reflection = False
+                    try:
+                        r2 = await c.options(url, headers={
+                            "Origin": "https://attacker-different-test.com",
+                            "Access-Control-Request-Method": "GET"
+                        })
+                        acao2 = r2.headers.get("access-control-allow-origin", "")
+                        if acao2 == "https://attacker-different-test.com":
+                            is_dynamic_reflection = True
+                    except Exception:
+                        pass
+
+                    if is_dynamic_reflection:
+                        findings.append(self._finding(
+                            "Reflected CORS origin (dynamic reflection)", "CORS", "high",
+                            "Server reflects arbitrary Origin header values", "Attacker can read authenticated responses cross-origin from any domain",
+                            "Validate Origin against a strict allowlist; do not reflect arbitrary origins", target_url
+                        ))
+                    else:
+                        findings.append(self._finding(
+                            "Reflected CORS origin (static)", "CORS", "medium",
+                            f"Server echoed Origin: {acao1}", "Server may have a permissive CORS policy",
+                            "Verify if evil.com is an intentional trusted origin; otherwise restrict to specific origins", target_url
+                        ))
+
+                if acao1 and acac1.lower() == "true" and acao1 != "*":
+                    is_wildcard_creds = False
+                    if acao1 == "https://evil.com":
+                        try:
+                            r3 = await c.options(url, headers={
+                                "Origin": "https://another-test.com",
+                                "Access-Control-Request-Method": "GET"
+                            })
+                            acao3 = r3.headers.get("access-control-allow-origin", "")
+                            acac3 = r3.headers.get("access-control-allow-credentials", "")
+                            if acao3 == "https://another-test.com" and acac3.lower() == "true":
+                                is_wildcard_creds = True
+                        except Exception:
+                            pass
+
+                    if is_wildcard_creds:
+                        findings.append(self._finding(
+                            "CORS with credentials from arbitrary origin (dynamic)", "CORS", "high",
+                            f"ACAO: {acao1}, ACAC: true (reflected from multiple origins)", "Authenticated cross-origin reads possible from any domain",
+                            "Restrict ACAO to a specific allowlist and never enable credentials with reflected origins", target_url
+                        ))
+                    elif acao1 != "https://evil.com":
+                        findings.append(self._finding(
+                            "CORS with credentials from non-wildcard origin", "CORS", "low",
+                            f"ACAO: {acao1}, ACAC: true", "CORS policy allows credentials from a specific non-wildcard origin",
+                            "Verify the allowed origin is intentional and properly restricted", target_url
+                        ))
             except Exception:
                 pass
 
@@ -218,11 +342,38 @@ class AnalyzerAgent(Agent):
         if not set_cookie:
             return findings
 
-        for cookie in set_cookie.split("\n"):
+        import re as _re
+        cookie_pattern = _re.compile(r'^([^=]+)=', _re.IGNORECASE)
+
+        raw_cookies: list[str] = []
+        if "\n" in set_cookie:
+            raw_cookies = [c.strip() for c in set_cookie.split("\n") if c.strip()]
+        elif "," in set_cookie:
+            parts = set_cookie.split(",")
+            current = ""
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+                if cookie_pattern.match(part) and current:
+                    raw_cookies.append(current)
+                    current = part
+                else:
+                    current = f"{current}, {part}" if current else part
+            if current:
+                raw_cookies.append(current)
+        else:
+            raw_cookies = [set_cookie]
+
+        seen_cookies: set[str] = set()
+        for cookie in raw_cookies:
             c = cookie.strip()
             if not c:
                 continue
-            name = c.split("=")[0] if "=" in c else c
+            name = c.split("=")[0].strip() if "=" in c else c.strip()
+            if not name or name.lower() in seen_cookies:
+                continue
+            seen_cookies.add(name.lower())
 
             if "secure" not in c.lower():
                 findings.append(self._finding(
@@ -339,6 +490,64 @@ class AnalyzerAgent(Agent):
                     f"Header '{hdr}: {val}'", "Attackers fingerprint stack for targeted exploits",
                     f"Remove or obfuscate the '{hdr}' header in server config", None
                 ))
+
+        return findings
+
+    async def _check_http_methods(self, target_url: str) -> list[dict[str, Any]]:
+        findings: list[dict[str, Any]] = []
+        url = target_url if "://" in target_url else f"https://{target_url}"
+
+        async with httpx.AsyncClient(timeout=8.0, verify=False) as c:
+            try:
+                r = await c.options(url, headers={
+                    "Origin": "https://evil.com",
+                    "Access-Control-Request-Method": "GET"
+                })
+                allowed = r.headers.get("access-control-allow-methods", "")
+                allow_header = r.headers.get("allow", "")
+                methods_str = allowed or allow_header
+                methods = [m.strip().upper() for m in methods_str.split(",") if m.strip()]
+
+                dangerous = {"TRACE", "CONNECT", "TRACK"}
+                for method in methods:
+                    if method in dangerous:
+                        findings.append(self._finding(
+                            f"HTTP {method} method is enabled", "HTTP Methods", "high",
+                            f"Allow header advertises {method}",
+                            f"{method} method can be used for cross-site tracing or tunneling attacks",
+                            f"Disable the {method} method on the server", target_url
+                        ))
+
+                if "PUT" in methods or "DELETE" in methods:
+                    state_changing = []
+                    if "PUT" in methods:
+                        state_changing.append("PUT")
+                    if "DELETE" in methods:
+                        state_changing.append("DELETE")
+                    findings.append(self._finding(
+                        f"State-changing HTTP methods exposed: {', '.join(state_changing)}",
+                        "HTTP Methods", "medium",
+                        f"Allow header advertises {', '.join(state_changing)}",
+                        "State-changing methods without proper authorization can be exploited",
+                        "Ensure authentication and authorization are enforced for state-changing methods", target_url
+                    ))
+
+                if "OPTIONS" in methods and not methods:
+                    pass
+
+                if not methods:
+                    resp = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
+                    allow = resp.headers.get("allow", "")
+                    if allow:
+                        get_methods = [m.strip().upper() for m in allow.split(",") if m.strip()]
+                        if "GET" in get_methods and "POST" not in get_methods:
+                            findings.append(self._finding(
+                                "Only GET method is allowed; POST not advertised", "HTTP Methods", "info",
+                                "Allow header only lists GET", "POST endpoints may be hidden or not implemented",
+                                "Verify POST endpoints are intentionally hidden or properly secured", target_url
+                            ))
+            except Exception:
+                pass
 
         return findings
 

@@ -290,6 +290,41 @@ CIPHER_PROBES = [
     "DES-CBC3-SHA",
 ]
 
+TLS_VULNERABLE_CIPHERS: dict[str, str] = {
+    "RC4-SHA": "RC4: weak stream cipher",
+    "RC4-MD5": "RC4: weak stream cipher",
+    "DES-CBC3-SHA": "Sweet32: 3DES cipher supported",
+    "DES-CBC-SHA": "Sweet32: 3DES cipher supported",
+    "DES-CBC-MD5": "Sweet32: 3DES cipher supported",
+    "RC2-CBC-MD5": "RC2: weak block cipher",
+    "PSK-AES256-CBC-SHA": "PSK: pre-shared key cipher",
+    "PSK-3DES-EDE-CBC-SHA": "PSK: 3DES weak cipher",
+    "KRB5-DES-CBC3-SHA": "Kerberos: DES weak cipher",
+    "KRB5-RC4-SHA": "Kerberos: RC4 weak cipher",
+    "EDH-RSA-DES-CBC3-SHA": "EDH: 3DES weak cipher",
+    "EDH-RSA-DES-CBC-SHA": "EDH: DES weak cipher",
+    "DHE-RSA-DES-CBC-SHA": "DHE: DES weak cipher",
+    "DHE-RSA-CAMELLIA128-SHA": "DHE: Camellia weak cipher",
+    "DHE-RSA-CAMELLIA256-SHA": "DHE: Camellia weak cipher",
+    "ECDHE-RSA-DES-CBC3-SHA": "ECDHE: 3DES weak cipher",
+    "ECDHE-RSA-DES-CBC-SHA": "ECDHE: DES weak cipher",
+    "SRP-DSS-AES-256-CBC-SHA": "SRP: weak cipher",
+    "SRP-RSA-AES-256-CBC-SHA": "SRP: weak cipher",
+    "SRP-DSS-3DES-EDE-CBC-SHA": "SRP: 3DES weak cipher",
+    "SRP-RSA-3DES-EDE-CBC-SHA": "SRP: 3DES weak cipher",
+    "PSK-AES128-CBC-SHA256": "PSK: weak cipher",
+    "PSK-AES256-CBC-SHA384": "PSK: weak cipher",
+    "DHE-PSK-AES256-CBC-SHA": "DHE-PSK: weak cipher",
+    "DHE-PSK-AES128-CBC-SHA": "DHE-PSK: weak cipher",
+    "RSA-PSK-AES256-CBC-SHA": "RSA-PSK: weak cipher",
+    "RSA-PSK-AES128-CBC-SHA": "RSA-PSK: weak cipher",
+}
+
+TLS_PROTOCOL_VULNERABILITIES: dict[str, list[str]] = {
+    "TLSv1": ["POODLE: TLS 1.0 enabled", "BEAST: TLS 1.0 CBC ciphers enabled"],
+    "TLSv1.1": ["BEAST: TLS 1.1 CBC ciphers enabled"],
+}
+
 WAF_SIGNATURES = {
     "cloudflare": ["cloudflare", "__cfduid", "cf-ray", "__cf_bm"],
     "akamai": ["akamai", "akamaighost", "akamai-x-"],
@@ -361,6 +396,7 @@ class ScannerAgent(Agent):
             "cdn_detected": fingerprint["cdn_detected"],
             "tls_details": tls_analysis,
             "http_headers": fingerprint["headers"],
+            "http_body_technologies": fingerprint.get("body_technologies", []),
         }
 
         await self._save_artifacts(result)
@@ -380,6 +416,7 @@ class ScannerAgent(Agent):
             from app.database import get_connection
             technologies = (self.tech_stack or {}).get("technologies", [])
             server_header = (self.tech_stack or {}).get("headers", {}).get("server", "")
+            body_techs = (self.tech_stack or {}).get("body_technologies", [])
             async with get_connection() as conn:
                 await conn.execute("INSERT OR IGNORE INTO scan_artifacts (scan_id) VALUES (?)", (self.scan_id,))
                 await conn.execute(
@@ -395,6 +432,7 @@ class ScannerAgent(Agent):
                         tls_cipher = ?,
                         tls_expiry = ?,
                         tls_valid = ?,
+                        body_technologies = ?,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE scan_id = ?
                     """,
@@ -409,6 +447,7 @@ class ScannerAgent(Agent):
                         self.tls_cipher if hasattr(self, 'tls_cipher') else None,
                         self.tls_expiry if hasattr(self, 'tls_expiry') else None,
                         1 if getattr(self, 'tls_valid', None) else 0,
+                        json.dumps(body_techs) if body_techs else None,
                         self.scan_id,
                     ),
                 )
@@ -538,16 +577,29 @@ class ScannerAgent(Agent):
         open_ports = sorted(open_set)
         banners = await self._grab_banners(target_host, open_ports)
 
-        detailed = []
+        version_tasks = []
         for port in open_ports:
             banner = banners.get(port)
             service = self._identify_service(port, banner)
-            detailed.append({
+            version_tasks.append(self._probe_service_version(target_host, port, service))
+        version_results = await asyncio.gather(*version_tasks)
+
+        detailed = []
+        for port, banner, version_info in zip(open_ports, [banners.get(p) for p in open_ports], version_results):
+            service = self._identify_service(port, banner)
+            tls = port in (443, 8443, 9443, 4443) or "https" in service
+            port_detail: dict[str, Any] = {
                 "number": port,
                 "service": service,
                 "banner": banner,
-                "tls": port in (443, 8443, 9443, 4443) or "https" in service,
-            })
+                "tls": tls,
+                "version": version_info.get("version"),
+                "protocol": version_info.get("protocol"),
+                "http_version": version_info.get("http_version"),
+                "server": version_info.get("server"),
+                "x_powered_by": version_info.get("x_powered_by"),
+            }
+            detailed.append(port_detail)
 
         return {
             "open_ports": open_ports,
@@ -702,6 +754,101 @@ class ScannerAgent(Agent):
                     return match.group(1).lower()
         return known or "unknown"
 
+    async def _probe_service_version(
+        self, hostname: str, port: int, service: str
+    ) -> dict[str, Any]:
+        version_info: dict[str, Any] = {"service": service, "version": None, "protocol": None}
+        try:
+            if service in ("http", "https"):
+                version_info = await self._probe_http_version(hostname, port, service)
+            elif service == "ssh":
+                version_info = await self._probe_ssh_version(hostname, port)
+            elif service in ("ftp", "smtp", "pop3", "imap"):
+                version_info = await self._probe_mail_version(hostname, port, service)
+        except Exception:
+            pass
+        return version_info
+
+    async def _probe_http_version(
+        self, hostname: str, port: int, service: str
+    ) -> dict[str, Any]:
+        scheme = "https" if service == "https" else "http"
+        url = f"{scheme}://{hostname}:{port}/"
+        headers = {"User-Agent": "PhantomScan/1.0", "Accept": "*/*"}
+        try:
+            async with httpx.AsyncClient(timeout=5.0, verify=False, follow_redirects=False) as client:
+                resp = await client.get(url, headers=headers)
+                http_version = resp.http_version
+                server = resp.headers.get("server")
+                x_powered = resp.headers.get("x-powered-by")
+                result: dict[str, Any] = {
+                    "service": service,
+                    "http_version": http_version,
+                    "server": server,
+                    "x_powered_by": x_powered,
+                    "version": None,
+                    "protocol": f"{scheme}/{http_version}",
+                }
+                if server:
+                    version_match = re.search(r"([\d.]+)", server)
+                    if version_match:
+                        result["version"] = version_match.group(1)
+                elif x_powered:
+                    version_match = re.search(r"([\d.]+)", x_powered)
+                    if version_match:
+                        result["version"] = version_match.group(1)
+                return result
+        except Exception:
+            return {"service": service, "version": None, "protocol": scheme}
+
+    async def _probe_ssh_version(self, hostname: str, port: int) -> dict[str, Any]:
+        try:
+            r, w = await asyncio.wait_for(
+                asyncio.open_connection(hostname, port), timeout=5.0
+            )
+            banner = await asyncio.wait_for(r.read(1024), timeout=3.0)
+            w.close()
+            try:
+                await w.wait_closed()
+            except Exception:
+                pass
+            text = banner.decode("utf-8", errors="replace").strip()
+            version_match = re.search(r"SSH-([\d.]+)-([^\s]+)", text)
+            if version_match:
+                return {
+                    "service": "ssh",
+                    "version": version_match.group(2),
+                    "protocol": f"SSH-{version_match.group(1)}",
+                }
+            return {"service": "ssh", "banner": text[:200], "protocol": "SSH"}
+        except Exception:
+            return {"service": "ssh", "version": None, "protocol": None}
+
+    async def _probe_mail_version(
+        self, hostname: str, port: int, service: str
+    ) -> dict[str, Any]:
+        try:
+            r, w = await asyncio.wait_for(
+                asyncio.open_connection(hostname, port), timeout=5.0
+            )
+            banner = await asyncio.wait_for(r.read(1024), timeout=3.0)
+            w.close()
+            try:
+                await w.wait_closed()
+            except Exception:
+                pass
+            text = banner.decode("utf-8", errors="replace").strip()
+            version_match = re.search(r"([\w.-]+)/([\d.]+)", text, re.I)
+            if version_match:
+                return {
+                    "service": service,
+                    "version": version_match.group(2),
+                    "protocol": version_match.group(1),
+                }
+            return {"service": service, "banner": text[:200], "protocol": None}
+        except Exception:
+            return {"service": service, "version": None, "protocol": None}
+
     async def _fingerprint(self, target_url: str) -> dict[str, Any]:
         url = target_url if "://" in target_url else f"https://{target_url}"
         headers: dict[str, str] = {}
@@ -729,6 +876,9 @@ class ScannerAgent(Agent):
 
         detailed = self._detect_technologies(headers, body)
 
+        body_detailed = self._detect_body_technologies(body, headers)
+        detailed.extend(body_detailed)
+
         tech_names: list[str] = []
         for tech in detailed:
             label = tech["name"]
@@ -754,14 +904,99 @@ class ScannerAgent(Agent):
             "detailed": detailed,
         }
 
+        body_tech_names: list[str] = []
+        for tech in body_detailed:
+            label = tech["name"]
+            if tech.get("version"):
+                label = f"{label} {tech['version']}"
+            body_tech_names.append(label)
+
         return {
             "tech_stack": tech_stack,
             "technologies_detailed": detailed,
+            "body_technologies": body_detailed,
             "waf_detected": waf_detected,
             "waf_details": {"provider": waf_detected, "evidence": waf_evidence} if waf_detected else {"provider": None, "evidence": {}},
             "cdn_detected": self._detect_cdn(headers, detailed),
             "headers": headers,
         }
+
+    def _detect_body_technologies(self, body: str, headers: dict[str, str]) -> list[dict[str, Any]]:
+        findings: list[dict[str, Any]] = []
+        b = body.lower()
+
+        meta_generator = re.search(r'<meta[^>]+name=["\']generator["\'][^>]*content=["\']([^"\']+)', b, re.I)
+        if meta_generator:
+            gen = meta_generator.group(1).strip()
+            findings.append({
+                "category": "web_frameworks",
+                "name": "Meta Generator",
+                "version": gen[:50],
+                "confidence": 60,
+                "evidence": [f'meta generator tag: {gen[:120]}'],
+            })
+
+        x_powered = headers.get("x-powered-by", "")
+        if x_powered and not any(t.get("name") == x_powered for t in findings):
+            findings.append({
+                "category": "web_frameworks",
+                "name": x_powered,
+                "version": None,
+                "confidence": 50,
+                "evidence": [f"X-Powered-By: {x_powered}"],
+            })
+
+        script_srcs = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', b, re.I)
+        for src in script_srcs:
+            src_lower = src.lower()
+            if "jquery" in src_lower and "jquery" not in [t.get("name") for t in findings]:
+                ver_match = re.search(r'jquery[.-]([\d.]+)', src_lower)
+                findings.append({
+                    "category": "frameworks",
+                    "name": "jQuery",
+                    "version": ver_match.group(1) if ver_match else None,
+                    "confidence": 70,
+                    "evidence": [f"script src: {src[:120]}"],
+                })
+            if "angular" in src_lower and "angular" not in [t.get("name") for t in findings]:
+                findings.append({
+                    "category": "frameworks",
+                    "name": "Angular",
+                    "version": None,
+                    "confidence": 60,
+                    "evidence": [f"script src: {src[:120]}"],
+                })
+            if "react" in src_lower and "react" not in [t.get("name") for t in findings]:
+                findings.append({
+                    "category": "frameworks",
+                    "name": "React",
+                    "version": None,
+                    "confidence": 60,
+                    "evidence": [f"script src: {src[:120]}"],
+                })
+            if "vue" in src_lower and "vue" not in [t.get("name") for t in findings]:
+                findings.append({
+                    "category": "frameworks",
+                    "name": "Vue.js",
+                    "version": None,
+                    "confidence": 60,
+                    "evidence": [f"script src: {src[:120]}"],
+                })
+
+        link_hrefs = re.findall(r'<link[^>]+href=["\']([^"\']+)["\']', b, re.I)
+        for href in link_hrefs:
+            href_lower = href.lower()
+            if "bootstrap" in href_lower and "bootstrap" not in [t.get("name") for t in findings]:
+                ver_match = re.search(r'bootstrap[.-]([\d.]+)', href_lower)
+                findings.append({
+                    "category": "css_frameworks",
+                    "name": "Bootstrap",
+                    "version": ver_match.group(1) if ver_match else None,
+                    "confidence": 60,
+                    "evidence": [f"link href: {href[:120]}"],
+                })
+
+        return findings
 
     def _detect_technologies(self, headers: dict[str, str], body: str) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
@@ -772,6 +1007,9 @@ class ScannerAgent(Agent):
             for tech_name, sig in techs.items():
                 score = 0
                 evidence: list[str] = []
+                source_count = 0
+                has_header_match = False
+                has_body_match = False
 
                 for header_name, header_sub in sig.get("headers", []):
                     hkey = header_name.rstrip("*").lower()
@@ -781,20 +1019,28 @@ class ScannerAgent(Agent):
                             if header_sub:
                                 if header_sub in v.lower():
                                     score += 2
+                                    source_count += 1
+                                    has_header_match = True
                                     evidence.append(f"header {h}: {v[:120]}")
                             else:
                                 score += 2
+                                source_count += 1
+                                has_header_match = True
                                 evidence.append(f"header {h}: {v[:120]}")
                             break
 
                 for body_pattern in sig.get("body", []):
                     if body_pattern.lower() in body_lower:
                         score += 1
+                        source_count += 1
+                        has_body_match = True
                         evidence.append(f'body contains "{body_pattern}"')
 
                 for path in sig.get("path", []):
                     if path in body:
                         score += 1
+                        source_count += 1
+                        has_body_match = True
                         evidence.append(f'body contains path "{path}"')
 
                 version: str | None = None
@@ -808,15 +1054,32 @@ class ScannerAgent(Agent):
                     if match:
                         version = match.group(1) if match.lastindex else match.group(0).strip()
                         score += 3
+                        source_count += 1
                         evidence.append(f"version match: {match.group(0)}")
 
-                if score >= 2:
+                min_score = 2
+                if source_count >= 2 and has_header_match and has_body_match:
+                    min_score = 2
+                elif has_header_match:
+                    min_score = 2
+                elif has_body_match:
+                    min_score = 3
+
+                if score >= min_score:
+                    if source_count >= 3 or (has_header_match and has_body_match and version):
+                        confidence = min(100, score * 25)
+                    elif source_count >= 2:
+                        confidence = min(90, score * 20)
+                    else:
+                        confidence = min(70, score * 15)
+
                     results.append({
                         "category": category,
                         "name": tech_name,
                         "version": version,
-                        "confidence": min(100, score * 20),
+                        "confidence": confidence,
                         "evidence": list(dict.fromkeys(evidence))[:5],
+                        "multi_source": source_count >= 2,
                     })
 
         return sorted(results, key=lambda t: t["confidence"], reverse=True)
@@ -903,17 +1166,20 @@ class ScannerAgent(Agent):
             result["ciphers"] = await self._probe_ciphers(hostname, port)
 
         if result["protocols"].get("tlsv1.0"):
-            result["vulnerabilities"].append("POODLE: TLS 1.0 enabled")
-            result["vulnerabilities"].append("BEAST: TLS 1.0 CBC ciphers enabled")
+            for vuln in TLS_PROTOCOL_VULNERABILITIES.get("TLSv1", []):
+                if vuln not in result["vulnerabilities"]:
+                    result["vulnerabilities"].append(vuln)
         if result["protocols"].get("tlsv1.1"):
-            result["vulnerabilities"].append("BEAST: TLS 1.1 CBC ciphers enabled")
-        cipher_names = [c for c in result["ciphers"]]
-        if any("RC4" in c for c in cipher_names):
-            result["vulnerabilities"].append("RC4: weak stream cipher supported")
-        if any("3DES" in c or "CBC3" in c for c in cipher_names):
-            result["vulnerabilities"].append("Sweet32: 3DES cipher supported")
+            for vuln in TLS_PROTOCOL_VULNERABILITIES.get("TLSv1.1", []):
+                if vuln not in result["vulnerabilities"]:
+                    result["vulnerabilities"].append(vuln)
+        for cipher in result["ciphers"]:
+            vuln = TLS_VULNERABLE_CIPHERS.get(cipher)
+            if vuln and vuln not in result["vulnerabilities"]:
+                result["vulnerabilities"].append(vuln)
         if not result["protocols"].get("tlsv1.3"):
-            result["vulnerabilities"].append("INFO: TLS 1.3 not supported")
+            if "INFO: TLS 1.3 not supported" not in result["vulnerabilities"]:
+                result["vulnerabilities"].append("INFO: TLS 1.3 not supported")
 
         cert = result["certificate"]
         if cert.get("not_after"):

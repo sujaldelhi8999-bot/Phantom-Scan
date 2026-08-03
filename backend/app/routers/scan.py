@@ -1,8 +1,11 @@
 import asyncio
 import json
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
+
+logger = logging.getLogger("phantomscan.scan")
 
 from app.config import get_settings
 from app.database import (
@@ -66,6 +69,8 @@ def _scan_response(row: dict[str, Any], findings: list[dict[str, Any]]) -> ScanR
 
 @router.post("/start", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
 async def start_scan(scan_request: ScanRequest) -> ScanResponse:
+    print("[SCAN] REQUEST RECEIVED")
+    logger.info("Scan request received for target=%s mode=%s", scan_request.target_url, scan_request.mode)
     try:
         admission = await scan_policy.admit(scan_request, settings.local_user_id)
     except ScanPolicyError as exc:

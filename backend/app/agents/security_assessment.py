@@ -897,6 +897,28 @@ class InfrastructureAgent(_AssessmentAgent):
                 recommendation="Disable SSLv2, SSLv3, TLS 1.0, and TLS 1.1; prefer TLS 1.2 and 1.3.",
                 verification="Repeat an approved TLS configuration scan and confirm legacy handshakes fail.",
             ))
+        tls_versions_text = " ".join(str(v) for v in _named_values((context.scanner_output, context.shadow_output), "tls_versions"))
+        if tls_versions_text and "TLSv1.3" not in tls_versions_text and "tlsv1.3" not in tls_versions_text.lower():
+            findings.append(self.finding(
+                context, title="TLS 1.3 is not supported", category="Infrastructure Security",
+                severity="LOW", confidence="MEDIUM", endpoint=context.target_url,
+                evidence="Captured TLS data does not report TLS 1.3 support.",
+                impact="TLS 1.3 provides improved security and performance over TLS 1.2.",
+                recommendation="Enable TLS 1.3 on the server and disable TLS 1.0/1.1.",
+                verification="Capture a TLS handshake and confirm TLS 1.3 is offered.",
+            ))
+        tls_cert_text = " ".join(str(v) for v in _named_values((context.scanner_output, context.shadow_output), "certificate"))
+        if tls_cert_text and "issuer" in tls_cert_text.lower():
+            issuer_match = re.search(r"issuer.*?organizationName=([^,]+)", tls_cert_text, re.IGNORECASE)
+            if issuer_match and issuer_match.group(1).strip().lower() in ("", "unknown"):
+                findings.append(self.finding(
+                    context, title="Certificate issuer information is missing or incomplete", category="Infrastructure Security",
+                    severity="MEDIUM", confidence="MEDIUM", endpoint=context.target_url,
+                    evidence="The captured certificate data has an empty or unknown issuer organization name.",
+                    impact="Incomplete certificate chain validation can allow MITM attacks.",
+                    recommendation="Ensure the full certificate chain is served and the issuer is properly configured.",
+                    verification="Capture the certificate chain and confirm the issuer is a trusted CA.",
+                ))
         for capture in context.captures:
             if re.search(r"<title>\s*index of\s*/|<h1>\s*index of\s*/", capture.body, re.IGNORECASE):
                 findings.append(self.finding(
@@ -963,6 +985,16 @@ class WebSocketSecurityAgent(_AssessmentAgent):
                     impact="If the channel is not intentionally public, unauthenticated clients may receive or send sensitive messages.",
                     recommendation="Authenticate during or immediately after the handshake and authorize every message and subscription.",
                     verification="Connect without credentials using an approved client and confirm sensitive operations remain unavailable.",
+                ))
+            ws_url = capture.endpoint
+            if ws_url and ws_url.lower().startswith("ws://") and _scheme(context.target_url, context.target_url) == "https":
+                findings.append(self.finding(
+                    context, title="WebSocket endpoint uses cleartext ws:// on HTTPS page", category="WebSocket Security",
+                    severity="HIGH", confidence="HIGH", endpoint=ws_url,
+                    evidence="A captured WebSocket URL uses ws:// while the target is served over HTTPS.",
+                    impact="WebSocket messages can be intercepted or modified in transit.",
+                    recommendation="Use wss:// exclusively for WebSocket connections on HTTPS pages.",
+                    verification="Inspect the client-side WebSocket configuration and confirm wss:// is used.",
                 ))
         return findings
 

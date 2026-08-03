@@ -1,103 +1,281 @@
 # 🛡️ PhantomScan
 
-**PhantomScan** is an enterprise-grade, AI-powered security scanning and controlled penetration testing platform. It orchestrates autonomous reconnaissance, deep vulnerability analysis, real-time threat intelligence matching, controlled exploit verification, and AI-driven remediation reporting from a unified operations console.
+**PhantomScan** is an AI-powered, full-stack web application security testing platform. It orchestrates autonomous reconnaissance, deep vulnerability analysis, real-time threat intelligence correlation, controlled exploit verification, and AI-driven remediation reporting from a unified operations console.
+
+Built for **authorized security testing** on targets you own, the PhantomBank Lab, or localhost.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Quick Start
 
-* 🤖 **Autonomous Multi-Agent Architecture**: 10+ core specialized security agents working in tandem with 9 targeted assessment sub-agents.
-* ⚡ **Real-Time WebSocket Ops Console**: Live scan telemetry, real-time progress streaming, findings timeline, and interactive terminal event logs.
-* 🔍 **Passive & Active Reconnaissance**: DNS resolution, port scanning, service banner grabbing, technology fingerprinting, subdomains, WHOIS, `robots.txt`, and `sitemap.xml` parsing.
-* 🛡️ **Deep Vulnerability & CVE Intelligence**: Live correlation of detected technologies and library versions with the National Vulnerability Database (NVD API).
-* 🧠 **AI Explainer & Localization**: Leverages Claude / OpenRouter LLM to explain exploitation vectors, produce exact code remediation snippets, and generate regional Hindi security reports.
-* 🔐 **Target Authorization & Scope Gate**: Strict ownership verification system (via DNS TXT record or file verification token) ensuring scans run only on authorized targets.
-* 🧪 **Built-in Vulnerable Security Lab**: Integrated safe sandbox environments to test and validate SQLi, XSS, Header misconfigurations, and BOLA vulnerability detection.
-* 💥 **Controlled DoS & Load Stress Testing**: Isolated, rate-bounded simulation panel to measure server resilience under heavy traffic. Supports five intensity levels (Low, Medium, High, Critical, **Nuclear — 10,000 req/s, lab-only**) with auto-downgrade guard for external targets, per-worker connection isolation, and real-time telemetry (RPS, latency percentiles, error rates, impact scoring).
-* 🌙 **Automated Nightly Self-Audit**: Scheduled cron job (runs daily at 02:00 UTC) that scans PhantomScan's own deployment and alerts on misconfigurations or vulnerabilities.
+### Option 1: Docker Compose (Recommended)
+
+```bash
+git clone <repo-url>
+cd phantomscan
+cp backend/.env.example backend/.env
+# Edit backend/.env with your API keys (see Configuration below)
+docker-compose -f docker/docker-compose.yml up --build
+```
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **Swagger UI**: http://localhost:8000/docs
+
+### Option 2: Local Development
+
+```bash
+# Terminal 1 — Backend
+cd backend
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env with your API keys
+python -m uvicorn main:app --host 127.0.0.1 --port 8001
+
+# Terminal 2 — Frontend
+cd frontend
+npm install
+npm run dev
+# Vite will be available at http://localhost:5173
+```
+
+> **Port note**: The backend runs on port `8001` for local dev (port `8000` is often occupied).
+> The frontend `.env` is configured to connect to `http://127.0.0.1:8001`.
 
 ---
 
-## 🧩 Autonomous Agent Matrix
+## 🏗️ Project Structure
 
-| Agent | Responsibility & Functions |
+```
+phantomscan/
+├── backend/
+│   ├── app/
+│   │   ├── agents/            # Security agents (orchestrator, scanner, recon, analyzer...)
+│   │   │   └── exploitation/    # PoC exploitation modules (SQLi, XSS, etc.)
+│   │   ├── routers/           # REST API endpoints (scan, active, dos, findings, auth...)
+│   │   ├── services/          # Active gate, target authorization, AI client, browser obs
+│   │   ├── workers/           # Background worker for authorized tests
+│   │   ├── config.py          # App configuration & settings
+│   │   ├── database.py        # SQLite storage engine, schema, migrations
+│   │   ├── lab.py             # Built-in vulnerable test lab endpoints
+│   │   ├── models.py          # Pydantic v2 data models
+│   │   ├── security.py        # JWT authentication & password hashing
+│   │   ├── main.py            # FastAPI entry: CORS, WebSockets, scheduler, routes
+│   │   └── websockets.py      # Real-time WebSocket event broker
+│   ├── tests/                 # Integration & smoke tests
+│   ├── .env.example           # Backend environment template
+│   ├── requirements.txt       # Python dependencies
+│   └── Dockerfile             # Production container image
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # UI components (AppShell, ErrorBoundary, LoginModal, UI primitives)
+│   │   ├── context/           # React context providers (AuthContext)
+│   │   ├── features/          # Page-level components (dashboard, scans, findings, dos...)
+│   │   ├── hooks/             # Custom hooks (usePhantomData, useScanTelemetry)
+│   │   ├── services/          # API client (axios), auth service
+│   │   ├── utils/             # Data transformation utilities (derived.ts)
+│   │   ├── types.ts           # TypeScript type definitions
+│   │   ├── App.tsx            # Main app with route definitions
+│   │   ├── main.tsx           # React entry point (HashRouter + ErrorBoundary)
+│   │   └── index.css          # Tailwind CSS entry
+│   ├── .env                   # Vite environment variables
+│   ├── vite.config.ts         # Vite configuration (base path, proxy, dev server)
+│   ├── package.json           # Frontend scripts & dependencies
+│   └── Dockerfile             # Development container image
+│
+├── docker/
+│   └── docker-compose.yml     # Multi-container orchestration
+├── .env.example               # Root environment template
+└── README.md                  # This file
+```
+
+---
+
+## ⚙️ Configuration
+
+### Backend Environment Variables (`backend/.env`)
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `OPENROUTER_API_KEY` | _none_ | OpenRouter API key for AI features (explainer, analyst, fixer) |
+| `OPENROUTER_MODEL` | `openrouter/free` | LLM model identifier |
+| `GROQ_API_KEY` | _none_ | Optional Groq API key |
+| `NVD_API_KEY` | _none_ | NVD API key for CVE lookup (increases rate limits) |
+| `DATABASE_URL` | `sqlite:///./phantomscan.db` | SQLite database path |
+| `SELF_AUDIT_WEBHOOK` | `http://localhost:8000/api/logs/alert` | Self-audit alert endpoint |
+| `FRONTEND_URL` | `http://localhost:5173` | Frontend origin (for CORS) |
+| `ACTIVE_TARGET_ALLOWLIST` | _none_ | Comma-separated allowed origins for active testing |
+| `ADMIN_USERNAME` | `admin` | Admin login username |
+| `ADMIN_PASSWORD` | `admin123` | Admin login password |
+| `SECRET_KEY` | `your-secret-key-change-this` | JWT signing secret |
+| `LOCAL_USER_ID` | `local-user` | Local user identifier |
+| `LOCAL_USER_ROLE` | `user` | Local user role (`admin` grants admin access) |
+| `MAX_SCAN_DURATION` | `300` | Maximum scan duration in seconds |
+| `MAX_REQUESTS_PER_SECOND` | `2.0` | Rate limit for scan HTTP requests |
+| `MAX_TOTAL_REQUESTS` | `300` | Maximum total HTTP requests per scan |
+| `MAX_CONCURRENT_SCANS` | `2` | Maximum concurrent scans |
+| `MAX_REDIRECT_DEPTH` | `0` | Maximum redirect chain depth |
+| `MAX_RESPONSE_SIZE` | `1048576` | Maximum response body size (bytes) |
+| `BROWSER_PAGE_LIMIT` | `8` | Maximum browser pages for browser security agent |
+| `DEEP_PORT_SCAN` | `1` | Enable deep port scanning (full 1-65535 range) |
+| `PORT_SCAN_CONCURRENCY` | `64` | Port scan concurrency |
+| `PORT_SCAN_MAX_PORTS` | `1024` | Maximum ports to scan |
+| `PORT_SCAN_SWEEP_TIMEOUT` | `75.0` | Port sweep timeout in seconds |
+
+### Frontend Environment Variables (`frontend/.env`)
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | `http://127.0.0.1:8001` | Backend API base URL |
+| `VITE_WS_BASE_URL` | `ws://127.0.0.1:8001` | WebSocket base URL |
+| `VITE_API_URL` | _none_ | Legacy variable (unused, kept for compatibility) |
+
+---
+
+## 🛡️ Key Features
+
+### 1. Autonomous Multi-Agent Security Scanning
+
+PhantomScan orchestrates 20+ specialized agents to perform comprehensive security assessments:
+
+| Agent | Responsibility |
 | :--- | :--- |
-| **Orchestrator** | Coordinates scan lifecycles, phase progression, progress updates, parallel agent execution, and artifact storage. |
-| **Scanner** | Active host discovery, port scanning, HTTP stack fingerprinting, and subdomain enumeration. |
-| **Shadow Recon** | Passive OSINT: WHOIS domain metadata, search query footprints, `robots.txt`, and `sitemap.xml` analysis. |
-| **Analyzer** | Security header validation (CSP, HSTS, CORS), cookie security flags (`HttpOnly`, `Secure`, `SameSite`), and open redirects. |
-| **CVE Matcher** | Correlates discovered tech stacks and versions against the NVD API database to surface known CVE vulnerabilities. |
-| **Browser Security** | Client-side security verification using browser-emulated HTTP probes and headful security checks. |
-| **Security Assessment Suite** | Modular sub-agents targeting specific vulnerability classes: <br> • **AccessControl**: BOLA / IDOR detection <br> • **ApiSecurity**: REST / GraphQL endpoint fuzzing & spec leaks <br> • **AuthSecurity**: Auth bypass & session handling <br> • **Dependency**: Vulnerable third-party JS/Python libraries <br> • **Infrastructure**: SSL/TLS & server misconfigurations <br> • **InjectionAnalysis**: SQLi, XSS & Command Injection <br> • **SessionSecurity**: Session token entropy & cookie flags <br> • **ThreatIntelligence**: IP reputation & threat feed correlation <br> • **WebSocketSecurity**: WS handshake & frame security |
-| **Pentest Engine** | Controlled, authorized proof-of-concept payload execution for SQLi, XSS, CSRF, and access control probes. |
-| **AI Explainer** | Generates detailed threat descriptions, impact analysis, and ready-to-apply code patch snippets using LLMs. |
-| **Hindi Explainer** | Produces Hindi-language vulnerability summaries and remediation steps for localized security reporting. |
-| **Fixer** | Aggregates findings, ranks risk levels (Critical, High, Medium, Low), and compiles prioritized Markdown action plans. |
-| **Notifier** | Dispatches instant alerts and scan summaries via webhooks (Slack/Discord/Custom endpoints). |
-| **Sandbox Manager** | Enforces process timeouts, memory limits, and subprocess execution safety boundaries. |
-| **Self Audit** | Automated cron agent performing internal security regression audits every night at 02:00 UTC. |
-| **DoS Agent** | Controlled load generator with five intensity tiers (Low 2 rps, Medium 10 rps, High 50 rps, Critical 100 rps, **Nuclear 10,000 rps**). Uses a per-worker single-connection pool (httpx AsyncClient, `max_connections=1`) to bypass httpcore 1.0.9's connection pool pile-up bug, achieving ~800–1200 rps sustained on lab targets. Includes auto-downgrade guard (nuclear → high for non-lab targets), baseline/recovery measurements, statistical impact scoring, and zero FD leak on stop. |
+| **Orchestrator** | Coordinates scan lifecycles, phase progression, parallel agent execution |
+| **Scanner** | DNS enumeration, port scanning, service fingerprinting, TLS analysis, subdomain discovery |
+| **Shadow Recon** | Passive OSINT: WHOIS, Google dorks, robots.txt, sitemap.xml, source maps, wayback URLs |
+| **Analyzer** | Security header validation (CSP, HSTS, CORS), cookie security flags, open redirects |
+| **CVE Matcher** | Correlates detected technologies against NVD API for known vulnerabilities |
+| **Browser Security** | Client-side security verification via Playwright browser automation |
+| **Security Assessment Suite** | 9 targeted sub-agents: Auth, AccessControl, API, Session, Injection, Infrastructure, WebSocket, Dependency, ThreatIntelligence |
+| **AI Security Analyst** | AI-powered vulnerability prioritization and root-cause analysis |
+| **AI Explainer** | Threat descriptions and code remediation snippets via LLM |
+| **Hindi Explainer** | Hindi-language security reports |
+| **Fixer** | Prioritized Markdown remediation action plans |
+| **Notifier** | Webhook alerts (Slack/Discord/Custom) |
+| **DoS Agent** | Controlled load testing with 5 intensity tiers |
+| **Self Audit** | Automated nightly security regression audit |
 
----
+### 2. Real-Time WebSocket Console
 
-## 📈 DoS Agent — Technical Deep Dive
+- **Global health**: `ws://localhost:8001/ws/status` — server health, scheduler status, agent availability
+- **Scan telemetry**: `ws://localhost:8001/ws/scan/{scan_id}` — live progress, log streaming, finding alerts
 
-### Intensity Tiers
+### 3. Controlled DoS & Load Stress Testing
 
-| Intensity | Requests/s | Max Duration | Use Case |
+The DoS agent provides five intensity tiers for controlled load testing:
+
+| Intensity | Requests/s | Max Duration | Outside Lab? |
 | :--- | :--- | :--- | :--- |
-| Low | 2 | 300 s | Baseline health checks |
-| Medium | 10 | 120 s | Light load profiling |
-| High | 50 | 30 s | Stress validation |
-| Critical | 100 | 10 s | Spike testing |
-| **Nuclear** | **10,000** | **5 s** | **Lab-only saturation test** |
+| **Low** | 2 | 300s | ✅ |
+| **Medium** | 10 | 120s | ✅ |
+| **High** | 50 | 30s | ✅ |
+| **Critical** | 100 | 10s | ❌ (auto-downgraded to High) |
+| **Nuclear** | 10,000 | 5s | ❌ (auto-downgraded to High) |
 
-### Architecture
+**Nuclear guardrails**: Nuclear and Critical intensities are restricted to lab/localhost targets. External targets are auto-downgraded to High intensity.
 
-The DoS agent (`backend/app/agents/dos.py`) replaces the shared `httpx.AsyncClient` connection pool (limits: 20 conns / 10 keepalive) with a **worker-per-connection** model:
+#### DoS Agent Architecture
 
-- Each worker owns one `httpx.AsyncClient(limits=Limits(max_connections=1, max_keepalive_connections=1))`
-- A round-robin scheduler assigns each outgoing request to the next available worker's `asyncio.Semaphore(1)`
-- This guarantees at most **one request in flight per worker**, eliminating:
-  - httpcore 1.0.9's `_assign_requests_to_connections` pile-up (all queued requests assigned to one idle connection)
-  - The resulting serialization bottleneck that capped throughput at ~60 rps
-- Worker count scales with intensity: `min(max(4, rps // 10), 128)` → Nuclear = 128 workers
+The DoS agent uses a **worker-per-connection** model to achieve high throughput:
+- Each worker owns one `httpx.AsyncClient` with `max_connections=1`
+- A round-robin scheduler distributes requests across workers
+- This bypasses httpcore's connection pool pile-up bottleneck
+- Worker count scales with intensity: `min(max(4, rps // 10), 128)`
 
-### The `sniffio` Discovery
+### 4. Target Authorization & Scope Gate
 
-During Nuclear development, throughput plateaued at ~340 rps despite the worker model. Root cause: the optional `sniffio` package was not installed. Both `anyio` and `httpcore` lazily import `sniffio` inside synchronization primitives (`AsyncEvent`, `AsyncLock`, `AsyncShieldCancellation`) on **every call**. Without it, each import triggered a full `sys.path` scan (~700 µs on Windows). Installing `sniffio` (a 10 KB pure-Python package) reduced per-request overhead by ~3.5×, lifting throughput to **1,100–1,200 rps** on a bare ASGI app and **~800 rps** against the real PhantomScan backend.
+PhantomScan enforces strict target authorization:
 
-### Nuclear Guardrails
+| Authorization Level | How It Works |
+| :--- | :--- |
+| **Built-in Lab** | PhantomBank lab targets (`localhost/lab/phantombank`) — always allowed |
+| **Loopback** | `localhost` and `127.0.0.1` — always allowed for lab/development |
+| **Allowlist** | Configured in `ACTIVE_TARGET_ALLOWLIST` env var |
+| **Verified** | Requires DNS TXT record or file verification token |
+| **Admin Override** | Targets in Private Scope (requires `LOCAL_USER_ROLE=admin`) |
 
-- **Lab-only enforcement**: `DoSAgent._is_lab_or_localhost(url)` checks for `localhost`, `127.0.0.1`, or `phantombank` substring
-- External targets requesting Nuclear are auto-downgraded to **High (50 rps, max 30 s)** with a warning in the API response
-- Frontend (`DoSPanel.tsx`) shows a red warning banner, yellow notice, and clamps duration to 5 s
+Admin endpoints require the `LOCAL_USER_ROLE` environment variable to be set to `admin`.
 
-### Metrics & Telemetry
+### 5. AI-Powered Analysis
 
-Per-request measurements (DNS, TCP, TLS, TTFB, TTLB, status, body size) are stored in a `deque(maxlen=20_000)` with statistical rollups (mean, median, p95, p99, jitter, throughput). Live stats persist to SQLite every `max(10, rps // 10)` requests. Impact scoring compares attack-phase latency/error rate against baseline (weighted: latency 40%, errors 30%, 5xx 20%, throughput 10%).
-
----
-
-## 🛠️ Technology Stack
-
-* **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Lucide Icons, WebSockets.
-* **Backend**: FastAPI (Python 3.11+), SQLite Database, AsyncIOScheduler (APScheduler), WebSockets, Pydantic v2.
-* **AI Provider**: OpenRouter / Anthropic Claude API.
-* **Infrastructure**: Docker, Docker Compose.
+- OpenRouter/Anthropic Claude API integration for:
+  - Vulnerability explanation and risk assessment
+  - Code remediation snippets
+  - Findings prioritization and root-cause grouping
+  - Hindi-language reporting
 
 ---
 
-## ⚙️ Quick Start & Setup
+## 📂 API Endpoints
 
-### Prerequisites
-* **Docker & Docker Compose** (or Node.js v18+ and Python 3.11+)
-* **NVD API Key** (optional, for live CVE lookup rate-limit increases)
-* **Anthropic / OpenRouter API Key** (for AI explanations and automated code fixing)
+### Scan Operations
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/scan/start` | Start a new security scan |
+| `GET` | `/api/scan/{scan_id}` | Get scan status and progress |
+| `POST` | `/api/scan/{scan_id}/stop` | Stop a running scan |
+| `GET` | `/api/scan/{scan_id}/artifacts` | Get scan artifacts |
+| `GET` | `/api/scan/history` | Get scan history |
 
-### 1. Backend Environment Setup
+### Findings
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/findings` | List all findings |
+| `POST` | `/api/findings/{id}/verify` | Verify finding fix |
+| `PATCH` | `/api/findings/{id}/remediation` | Update remediation status |
+| `PATCH` | `/api/findings/{id}/risk` | Update risk status |
+
+### Authorized Testing
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/active/map` | Generate attack surface map |
+| `POST` | `/api/active/score` | Calculate attack surface score |
+| `POST` | `/api/active/run` | Start authorized test run |
+| `GET` | `/api/active/jobs/{jobId}` | Get job status |
+| `GET` | `/api/active/jobs/{jobId}/results` | Get job results |
+| `GET` | `/api/active/jobs/{jobId}/events` | Get job event stream |
+| `GET` | `/api/execution/status` | Get execution lifecycle status |
+
+### DoS Testing (Admin Only)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/admin/dos/start` | Start DoS test |
+| `POST` | `/api/admin/dos/stop/{job_id}` | Stop running DoS test |
+| `GET` | `/api/admin/dos/status/{job_id}` | Get DoS job status |
+| `GET` | `/api/admin/dos/history` | Get DoS job history |
+
+### System & Admin
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/lab/status` | Lab status |
+| `GET` | `/api/lab/manifest` | Lab manifest |
+| `POST` | `/api/lab/scenario` | Set lab scenario |
+| `POST` | `/api/lab/reset` | Reset lab |
+| `GET` | `/api/admin/scope/list` | List private scope targets |
+| `POST` | `/api/admin/scope/add` | Add target to private scope |
+| `DELETE` | `/api/admin/scope/remove` | Remove target from scope |
+| `GET` | `/api/admin/scope/role` | Get user role |
+| `GET` | `/api/agents/status` | Get agent statuses |
+| `GET` | `/api/logs` | Get audit logs |
+| `POST` | `/api/auth/login` | Login |
+| `GET` | `/api/authorization/status` | Check target authorization |
+
+### Authorization System
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/authorization/challenge` | Create authorization challenge |
+| `POST` | `/api/authorization/{id}/verify` | Verify authorization |
+| `POST` | `/api/authorization/{id}/revoke` | Revoke authorization |
+
+---
+
+## 🧪 Running Tests
+
 ```bash
 cd backend
+<<<<<<< HEAD
 cp .env.example .env
 ```
 Edit `backend/.env` with your API keys and configuration:
@@ -108,69 +286,64 @@ NVD_API_KEY=your_nvd_api_key
 DATABASE_URL=sqlite:///./phantomscan.db
 SELF_AUDIT_WEBHOOK=http://localhost:8000/api/logs/alert
 FRONTEND_URL=http://localhost:5173
+=======
+python -m pytest tests/ -v
+>>>>>>> 65acbad (finilised version)
 ```
 
-### 2. Running with Docker Compose (Recommended)
-From the root directory:
+---
+
+## 🐳 Docker
+
+### Build & Run
 ```bash
 docker-compose -f docker/docker-compose.yml up --build
 ```
 
-### 3. Running Locally (Without Docker)
-From the project root:
-```bash
-npm run dev
-```
+### Environment Configuration in Docker
+The docker-compose file sets the frontend environment variables:
+- `VITE_API_BASE_URL: http://localhost:8000`
+- `VITE_WS_BASE_URL: ws://localhost:8000`
 
----
-
-## 🌐 Ports & Services
-
-| Service | URL | Description |
-| :--- | :--- | :--- |
-| **Frontend Operations Console** | `http://localhost:5173` | React TypeScript Dashboard & Ops Console |
-| **FastAPI Backend Service** | `http://localhost:8000` | REST API, Agent Worker, WebSockets |
-| **API Documentation (Swagger UI)** | `http://localhost:8000/docs` | Interactive OpenAPI documentation |
-
-### Key WebSockets
-* `ws://localhost:8000/ws/status`: Global health and scheduler heartbeat updates.
-* `ws://localhost:8000/ws/scan/{scan_id}`: Real-time scan telemetry, log streaming, and finding alerts.
-
----
-
-## 📁 Project Structure
-
-```text
-phantomscan/
-├── backend/
-│   ├── app/
-│   │   ├── agents/            # Orchestrator & Autonomous Security Agents
-│   │   │   └── exploitation/  # PoC exploitation modules (SQLi, XSS, etc.)
-│   │   ├── routers/           # REST endpoints (scan, active, lab, dos, findings, auth)
-│   │   ├── services/          # Active Gate, Target Authorization, OpenRouter AI Client
-│   │   ├── config.py          # App configuration & settings
-│   │   ├── database.py        # SQLite storage engine & audit logger
-│   │   ├── lab.py             # Built-in vulnerable test lab endpoints
-│   │   ├── models.py          # Pydantic schema models
-│   │   └── websockets.py      # Real-time WebSocket broker
-│   ├── main.py                # FastAPI lifecycle, route inclusions, and scheduler
-│   └── requirements.txt       # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/        # UI components & AppShell layout
-│   │   ├── features/          # Dashboard, Scans, Findings, CVE, Remediation, Lab, DoS
-│   │   ├── hooks/             # Data providers & WebSocket hooks
-│   │   ├── App.tsx            # Main App router
-│   │   └── types.ts           # Global TypeScript definitions
-│   └── package.json           # Frontend scripts & dependencies
-├── docker/
-│   └── docker-compose.yml     # Container orchestration stack
-├── package.json               # Root monorepo dev scripts
-└── README.md                  # Project documentation
+For local development (without Docker), create a `frontend/.env` file:
+```dotenv
+VITE_API_BASE_URL=http://127.0.0.1:8001
+VITE_WS_BASE_URL=ws://127.0.0.1:8001
 ```
 
 ---
 
 ## ⚖️ Legal & Ethical Disclaimer
 
-**PhantomScan is intended strictly for security testing on authorized assets.** Scanning, probing, or testing targets without prior explicit written authorization from the system owner is illegal and unethical. The authors assume no liability for misuse or damage caused by this software.
+**PhantomScan is intended strictly for security testing on authorized assets.**
+
+- Only scan targets you own or have **explicit written permission** to test
+- The PhantomBank Lab (`/lab/phantombank`) is provided as a safe, controlled environment for testing
+- DoS testing is restricted to lab/localhost targets by default
+- Unauthorized scanning of third-party systems is illegal and unethical
+- The authors assume no liability for misuse or damage caused by this software
+
+---
+
+## 🔧 Development Notes
+
+### Error Handling
+PhantomScan includes a React `ErrorBoundary` component that catches render-time JavaScript errors and displays a diagnostic page instead of a blank screen. The backend includes a global exception handler that logs full stack traces.
+
+### Database Migrations
+PhantomScan uses an incremental migration system in `database.py`. New columns and tables are added via migration functions called during `initialize_database()`. The database is automatically created and migrated on startup.
+
+### Technology Stack
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Lucide Icons |
+| **Backend** | FastAPI, Python 3.11+, aiosqlite, Pydantic v2, APScheduler |
+| **AI Provider** | OpenRouter API (configurable) |
+| **Browser Automation** | Playwright |
+| **Infrastructure** | Docker, Docker Compose |
+
+---
+
+## 📜 License
+
+This project is provided for educational and authorized security testing purposes. See the LICENSE file for details.

@@ -2,14 +2,16 @@ import asyncio
 import logging
 import sys
 
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("phantomscan")
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -106,6 +108,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception on %s: %s", request.url.path, exc, exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": str(exc)[:1000]})
 
 app.include_router(scan.router)
 app.include_router(active.router)
@@ -220,6 +228,7 @@ async def global_status(websocket: WebSocket) -> None:
 
 @app.websocket("/ws/scan/{scan_id}")
 async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
+    print(f"🔌 WEBSOCKET CONNECTION ATTEMPTED for scan {scan_id}")
     await websocket.accept()
     queue = await scan_event_broker.subscribe(scan_id)
     try:

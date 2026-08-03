@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import traceback
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -49,6 +49,18 @@ from app.services.active_gate import ActiveTargetGate
 from app.services.authorization import TargetAuthorizationService, VerifiedTarget, canonicalize_target
 from app.services.execution import SafetyLimits
 from app.websockets import scan_event_broker
+
+
+def _safe_timestamp(value: Any) -> datetime:
+    """Parse a finding timestamp, falling back to now on failure."""
+    if value is None:
+        return datetime.now(timezone.utc)
+    if isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(str(value))
+    except Exception:
+        return datetime.now(timezone.utc)
 
 
 class OrchestratorAgent(Agent):
@@ -98,8 +110,8 @@ class OrchestratorAgent(Agent):
             scanner = ScannerAgent()
             shadow_recon = ShadowReconAgent()
             scanner_event, shadow_event = await self.gather_agents(
-                self.run_agent("scanner", scanner.name, scanner.run(target.url, scan_id), scan_id),
-                self.run_agent("shadow_recon", shadow_recon.name, shadow_recon.run(target.url, scan_id), scan_id),
+                self.run_agent("scanner", scanner.name, lambda: scanner.run(target.url, scan_id), scan_id),
+                self.run_agent("shadow_recon", shadow_recon.name, lambda: shadow_recon.run(target.url, scan_id), scan_id),
             )
             scanner_output = scanner_event["result"]
             shadow_output = shadow_event["result"]
@@ -117,19 +129,19 @@ class OrchestratorAgent(Agent):
                 self.run_agent(
                     "analyzer",
                     analyzer.name,
-                    analyzer.run(target.url, scan_id, scanner_output),
+                    lambda: analyzer.run(target.url, scan_id, scanner_output),
                     scan_id,
                 ),
                 self.run_agent(
                     "cve_matcher",
                     cve_matcher.name,
-                    cve_matcher.run(scanner_output.get("tech_stack", {}), scan_id),
+                    lambda: cve_matcher.run(scanner_output.get("tech_stack", {}), scan_id),
                     scan_id,
                 ),
                 self.run_agent(
                     "browser_security",
                     browser_security.name,
-                    browser_security.run(
+                    lambda: browser_security.run(
                         target.url,
                         scan_id,
                         mode=scan_request.mode,
@@ -154,7 +166,7 @@ class OrchestratorAgent(Agent):
                     self.run_agent(
                         event_name,
                         agent.name,
-                        agent.run(target.url, scan_id, scanner_output, shadow_output),
+                        lambda: agent.run(target.url, scan_id, scanner_output, shadow_output),
                         scan_id,
                     )
                 )
@@ -179,7 +191,7 @@ class OrchestratorAgent(Agent):
                     self.run_agent(
                         "sandbox_manager",
                         sandbox.name,
-                        sandbox.run_active_scan(active_payload, scan_id),
+                        lambda: sandbox.run_active_scan(active_payload, scan_id),
                         scan_id,
                     )
                 )
@@ -257,13 +269,13 @@ class OrchestratorAgent(Agent):
                 self.run_agent(
                     "ai_explainer",
                     ai_explainer.name,
-                    ai_explainer.run(findings, scan_id),
+                    lambda: ai_explainer.run(findings, scan_id),
                     scan_id,
                 ),
                 self.run_agent(
                     "hindi_explainer",
                     hindi_explainer.name,
-                    hindi_explainer.run(findings, scan_id),
+                    lambda: hindi_explainer.run(findings, scan_id),
                     scan_id,
                 ),
             )
@@ -282,7 +294,7 @@ class OrchestratorAgent(Agent):
                 expl_event = await self.run_agent(
                     "exploitation",
                     exploiter.name,
-                    exploiter.run(target.url, scan_id, findings=persisted_findings),
+                    lambda: exploiter.run(target.url, scan_id, findings=persisted_findings),
                     scan_id,
                 )
                 exploitation_result = expl_event.get("result")
@@ -297,7 +309,7 @@ class OrchestratorAgent(Agent):
             fixer_event = await self.run_agent(
                 "fixer",
                 fixer.name,
-                fixer.run(persisted_findings, scan_id),
+                lambda: fixer.run(persisted_findings, scan_id),
                 scan_id,
             )
             markdown_report = str(fixer_event["result"].get("markdown_report", ""))
@@ -353,7 +365,7 @@ class OrchestratorAgent(Agent):
             notifier_event = await self.run_agent(
                 "notifier",
                 notifier.name,
-                notifier.run(summary, scan_id),
+                lambda: notifier.run(summary, scan_id),
                 scan_id,
             )
             notification_result = notifier_event["result"]
@@ -477,7 +489,7 @@ class OrchestratorAgent(Agent):
             event = await self.run_agent(
                 "ai_security_analyst",
                 analyst.name,
-                analyst.run(
+                lambda: analyst.run(
                     scan={"id": scan_id, "target_url": target_url, "mode": mode, "intensity": intensity},
                     findings=findings,
                     artifacts=artifacts,
@@ -555,36 +567,59 @@ class OrchestratorAgent(Agent):
         self,
         event_name: str,
         agent_name: str,
-        operation: Awaitable[dict[str, Any]],
+        operation: Callable[[], Awaitable[dict[str, Any]]],
         scan_id: int,
+        *,
+        max_retries: int = 1,
+        timeout: float | None = None,
     ) -> dict[str, Any]:
         await self.publish(
             scan_id,
             event_name,
             {"agent": event_name, "agent_name": agent_name, "status": "active"},
         )
-        try:
-            result = await operation
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            traceback.print_exc()
-            await add_audit_log(scan_id, agent_name, "error", str(exc)[:2000])
-            await self.publish(
-                scan_id,
-                event_name,
-                {"agent": event_name, "agent_name": agent_name, "status": "error", "error": str(exc)},
-            )
-            await self.log_action("agent_error", f"{agent_name} failed: {exc}"[:2000])
-            raise
-        event = {
-            "agent": event_name,
-            "agent_name": agent_name,
-            "status": "complete",
-            "result": result,
-        }
-        await self.publish(scan_id, event_name, event)
-        return event
+        last_exc: Exception | None = None
+        for attempt in range(max_retries + 1):
+            try:
+                op = operation()
+                if timeout is not None:
+                    result = await asyncio.wait_for(op, timeout=timeout)
+                else:
+                    result = await op
+                event = {
+                    "agent": event_name,
+                    "agent_name": agent_name,
+                    "status": "complete",
+                    "result": result,
+                    "attempt": attempt + 1,
+                }
+                await self.publish(scan_id, event_name, event)
+                return event
+            except asyncio.CancelledError:
+                raise
+            except asyncio.TimeoutError as exc:
+                last_exc = exc
+                await add_audit_log(scan_id, agent_name, "timeout", f"Attempt {attempt + 1} timed out after {timeout}s")
+                await self.publish(
+                    scan_id,
+                    event_name,
+                    {"agent": event_name, "agent_name": agent_name, "status": "timeout", "attempt": attempt + 1},
+                )
+            except Exception as exc:
+                last_exc = exc
+                traceback.print_exc()
+                await add_audit_log(scan_id, agent_name, "error", f"Attempt {attempt + 1}: {str(exc)[:2000]}")
+                await self.publish(
+                    scan_id,
+                    event_name,
+                    {"agent": event_name, "agent_name": agent_name, "status": "error", "attempt": attempt + 1, "error": str(exc)},
+                )
+                if attempt < max_retries:
+                    await asyncio.sleep(1)
+                    continue
+                await self.log_action("agent_error", f"{agent_name} failed after {attempt + 1} attempts: {exc}"[:2000])
+                raise
+        raise last_exc or RuntimeError(f"{agent_name} failed")
 
     def collect_findings(self, events: list[dict[str, Any]], target_url: str) -> list[dict[str, Any]]:
         findings: list[dict[str, Any]] = []
@@ -596,7 +631,51 @@ class OrchestratorAgent(Agent):
                     findings.append({"agent": default_agent, **finding})
             findings.extend(self.cve_matches_to_findings(result.get("cve_matches", []), target_url))
             findings.extend(self.pentest_responses_to_findings(result.get("abnormal_responses", []), target_url))
-        return findings
+        return self._deduplicate_findings(findings)
+
+    def _deduplicate_findings(self, findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not findings:
+            return findings
+
+        seen: dict[str, dict[str, Any]] = {}
+        deduplicated: list[dict[str, Any]] = []
+
+        severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+
+        for finding in findings:
+            title = str(finding.get("title", "")).lower().strip()
+            category = str(finding.get("category", "")).lower().strip()
+            endpoint = str(finding.get("endpoint", "")).lower().strip()
+            dedup_key = f"{title}|{category}|{endpoint}"
+
+            if dedup_key in seen:
+                existing = seen[dedup_key]
+                existing_sev = severity_order.get(str(existing.get("severity", "INFO")).upper(), 4)
+                new_sev = severity_order.get(str(finding.get("severity", "INFO")).upper(), 4)
+
+                if new_sev < existing_sev:
+                    seen[dedup_key] = finding
+                    dedup_idx = None
+                    for i, d in enumerate(deduplicated):
+                        d_key = f"{str(d.get('title', '')).lower().strip()}|{str(d.get('category', '')).lower().strip()}|{str(d.get('endpoint', '')).lower().strip()}"
+                        if d_key == dedup_key:
+                            dedup_idx = i
+                            break
+                    if dedup_idx is not None:
+                        deduplicated[dedup_idx] = finding
+
+                if existing.get("agent") != finding.get("agent"):
+                    existing_agents = existing.get("corroborating_agents", [])
+                    if not isinstance(existing_agents, list):
+                        existing_agents = []
+                    if finding.get("agent") and finding["agent"] not in existing_agents:
+                        existing_agents.append(finding["agent"])
+                    existing["corroborating_agents"] = existing_agents
+            else:
+                seen[dedup_key] = finding
+                deduplicated.append(finding)
+
+        return deduplicated
 
     def cve_matches_to_findings(
         self,
@@ -608,6 +687,10 @@ class OrchestratorAgent(Agent):
             score = match.get("cvss_score")
             cve_id = match.get("cve_id") or "Unknown CVE"
             technology = match.get("technology") or "detected technology"
+            cwe_list = match.get("cwe", [])
+            version_affected = match.get("version_affected")
+            cwe_str = ", ".join(cwe_list) if cwe_list else ""
+            version_str = f" (versions: {version_affected})" if version_affected else ""
             findings.append(
                 {
                     "title": f"Known vulnerability in {technology}: {cve_id}",
@@ -617,12 +700,14 @@ class OrchestratorAgent(Agent):
                     "target": target_url,
                     "endpoint": target_url,
                     "description": match.get("description") or "NVD reported a matching CVE for detected technology.",
-                    "how_exploited": "A reachable affected version may be targeted with the techniques documented for this CVE.",
+                    "how_exploited": f"A reachable affected version{version_str} may be targeted with the techniques documented for this CVE.",
                     "fix": "Upgrade the affected package or service to a vendor-supported version that remediates the CVE.",
                     "verification": "Confirm the deployed version is outside the affected range and rerun dependency detection.",
                     "agent": "CVE Matcher Agent",
                     "cve_id": match.get("cve_id"),
                     "cvss_score": score,
+                    "cwe": cwe_str or None,
+                    "version_affected": version_affected,
                 }
             )
         return findings
@@ -744,10 +829,12 @@ class OrchestratorAgent(Agent):
                 "verification",
                 default="Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
             )[:4000],
-            agent=agent[:120],
-            timestamp=finding.get("timestamp") or datetime.now(timezone.utc),
+             agent=agent[:120],
+             timestamp=_safe_timestamp(finding.get("timestamp")),
             cve_id=str(finding["cve_id"])[:40] if finding.get("cve_id") else None,
             cvss_score=finding.get("cvss_score"),
+            cwe=str(finding.get("cwe"))[:200] if finding.get("cwe") else None,
+            version_affected=str(finding.get("version_affected"))[:500] if finding.get("version_affected") else None,
             parameter=first_text("parameter", default="")[:200] or None,
             module=first_text("module", "selected_module", default="")[:120] or None,
             recommended_fix=first_text("recommended_fix", "recommendation", "fix", default="")[:6000] or None,
@@ -828,6 +915,10 @@ class OrchestratorAgent(Agent):
             lines.append(f"- Evidence: {f.get('evidence', 'N/A')}")
             lines.append(f"- Impact: {f.get('impact', 'N/A')}")
             lines.append(f"- Fix: {f.get('fix', 'N/A')}")
+            if f.get("cwe"):
+                lines.append(f"- CWE: {f.get('cwe')}")
+            if f.get("version_affected"):
+                lines.append(f"- Affected Versions: {f.get('version_affected')}")
             if f.get("exploited") and f.get("exploitation_result"):
                 er = f["exploitation_result"]
                 lines.append(f"- **Exploited:** True")
@@ -904,6 +995,18 @@ class OrchestratorAgent(Agent):
         recon_lines.append("### Internal IPs Found")
         for ip in shadow_output.get("internal_ips", []):
             recon_lines.append(f"- {ip}")
+        recon_lines.append("")
+        recon_lines.append("### Wayback Machine URLs")
+        for u in shadow_output.get("wayback_urls", []):
+            recon_lines.append(f"- [{u.get('timestamp', '')}] {u.get('url', '')} ({u.get('status_code', '')})")
+        recon_lines.append("")
+        recon_lines.append("### crt.sh Subdomains")
+        for s in shadow_output.get("crtsh_subdomains", []):
+            recon_lines.append(f"- {s.get('subdomain', '')} (valid: {s.get('not_before', '')} to {s.get('not_after', '')})")
+        recon_lines.append("")
+        recon_lines.append("### All Discovered Subdomains")
+        for s in shadow_output.get("all_subdomains", []):
+            recon_lines.append(f"- {s}")
         with open(recon_path, "w", encoding="utf-8") as f:
             f.write("\n".join(recon_lines))
 

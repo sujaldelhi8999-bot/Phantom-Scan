@@ -23,6 +23,9 @@ DORK_QUERIES = [
     'site:{domain} inurl:api OR inurl:rest OR inurl:graphql',
 ]
 
+WAYBACK_CDX_URL = "https://web.archive.org/cdx/search/cdx"
+CRTSH_URL = "https://crt.sh/?q={domain}&output=json"
+
 DIRECTORY_WORDLIST = [
     "/admin", "/login", "/signin", "/dashboard", "/home", "/index",
     "/api", "/v1", "/v2", "/v3", "/v4", "/api/v1", "/api/v2", "/api/v3",
@@ -164,6 +167,8 @@ class ShadowReconAgent(Agent):
         dork_urls = self._build_dorks(domain)
         robots = await self._fetch_path(base, "/robots.txt")
         sitemap = await self._fetch_path(base, "/sitemap.xml")
+        wayback_urls = await self._fetch_wayback_urls(domain)
+        crtsh_subdomains = await self._fetch_crtsh_subdomains(domain)
 
         disallowed = self._parse_robots(robots.get("body", ""))
         sitemap_urls = self._parse_sitemap(sitemap.get("body", ""))
@@ -219,6 +224,10 @@ class ShadowReconAgent(Agent):
         social_profiles = social_unique
         comments = list(dict.fromkeys(comments))
 
+        all_subdomains = list(dict.fromkeys(
+            [s["subdomain"] for s in crtsh_subdomains]
+        ))
+
         self.discovered_emails = leaked_emails
         self.internal_ips = internal_ips
         self.js_source_maps = js_sourcemaps
@@ -240,7 +249,9 @@ class ShadowReconAgent(Agent):
             f"Sourcemaps: {len(js_sourcemaps)}, "
             f"Files: {len(discovered_files)}, "
             f"APIs: {len(apis)}, "
-            f"GraphQL: {'enabled' if graphql else 'disabled'}"
+            f"GraphQL: {'enabled' if graphql else 'disabled'}, "
+            f"Wayback URLs: {len(wayback_urls)}, "
+            f"crt.sh Subdomains: {len(crtsh_subdomains)}"
         )
 
         result = {
@@ -260,6 +271,9 @@ class ShadowReconAgent(Agent):
             "social_profiles": social_profiles,
             "api_endpoints": apis,
             "graphql_schema": graphql,
+            "wayback_urls": wayback_urls[:200],
+            "crtsh_subdomains": crtsh_subdomains,
+            "all_subdomains": all_subdomains,
         }
 
         await self._save_artifacts(result)
@@ -282,8 +296,9 @@ class ShadowReconAgent(Agent):
                     """
                     INSERT INTO shadow_recon_results (
                         scan_id, emails, internal_ips, js_source_maps,
-                        html_comments, sensitive_files, robots_txt_content, sitemap_urls
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        html_comments, sensitive_files, robots_txt_content, sitemap_urls,
+                        wayback_urls, crtsh_subdomains, all_subdomains
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(scan_id) DO UPDATE SET
                         emails = excluded.emails,
                         internal_ips = excluded.internal_ips,
@@ -291,7 +306,10 @@ class ShadowReconAgent(Agent):
                         html_comments = excluded.html_comments,
                         sensitive_files = excluded.sensitive_files,
                         robots_txt_content = excluded.robots_txt_content,
-                        sitemap_urls = excluded.sitemap_urls
+                        sitemap_urls = excluded.sitemap_urls,
+                        wayback_urls = excluded.wayback_urls,
+                        crtsh_subdomains = excluded.crtsh_subdomains,
+                        all_subdomains = excluded.all_subdomains
                     """,
                     (
                         self.scan_id,
@@ -302,6 +320,9 @@ class ShadowReconAgent(Agent):
                         json.dumps(self.sensitive_files_found or {}) if hasattr(self, 'sensitive_files_found') else None,
                         self.robots_txt_content if hasattr(self, 'robots_txt_content') else None,
                         json.dumps(self.sitemap_urls or []) if hasattr(self, 'sitemap_urls') else None,
+                        json.dumps(self.wayback_urls or []) if hasattr(self, 'wayback_urls') else None,
+                        json.dumps(self.crtsh_subdomains or []) if hasattr(self, 'crtsh_subdomains') else None,
+                        json.dumps(self.all_subdomains or []) if hasattr(self, 'all_subdomains') else None,
                     ),
                 )
                 await conn.commit()
@@ -342,6 +363,58 @@ class ShadowReconAgent(Agent):
                 return {"url": url, "status_code": r.status_code, "body": r.text[:50000]}
             except Exception:
                 return {"url": url, "status_code": None, "body": ""}
+
+    async def _fetch_wayback_urls(self, domain: str) -> list[dict[str, Any]]:
+        urls: list[dict[str, Any]] = []
+        try:
+            params = {
+                "url": f"*.{domain}/*",
+                "output": "json",
+                "fl": "timestamp,original,statuscode,mimetype",
+                "limit": "500",
+                "filter": "statuscode:200",
+                "collapse": "urlkey",
+            }
+            async with httpx.AsyncClient(timeout=15.0) as c:
+                r = await c.get(WAYBACK_CDX_URL, params=params)
+                r.raise_for_status()
+                data = r.json()
+                for row in data[1:] if len(data) > 1 else []:
+                    if len(row) >= 4:
+                        urls.append({
+                            "url": row[1],
+                            "timestamp": row[0],
+                            "status_code": int(row[2]) if row[2].isdigit() else None,
+                            "mime_type": row[3] if len(row) > 3 else None,
+                            "source": "wayback",
+                        })
+        except Exception:
+            pass
+        return urls
+
+    async def _fetch_crtsh_subdomains(self, domain: str) -> list[dict[str, Any]]:
+        subdomains: list[dict[str, Any]] = []
+        try:
+            url = CRTSH_URL.format(domain=domain)
+            async with httpx.AsyncClient(timeout=15.0, verify=False) as c:
+                r = await c.get(url)
+                r.raise_for_status()
+                data = r.json()
+                for entry in data:
+                    name_value = entry.get("name_value", "")
+                    if name_value:
+                        for sub in name_value.split("\n"):
+                            sub = sub.strip().lower()
+                            if sub and sub.endswith(f".{domain}") and sub not in subdomains:
+                                subdomains.append({
+                                    "subdomain": sub,
+                                    "not_before": entry.get("not_before"),
+                                    "not_after": entry.get("not_after"),
+                                    "source": "crt.sh",
+                                })
+        except Exception:
+            pass
+        return subdomains
 
     def _parse_robots(self, body: str) -> list[str]:
         paths: list[str] = []

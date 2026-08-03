@@ -99,6 +99,8 @@ class FindingCreate(BaseModel):
     timestamp: datetime
     cve_id: str | None = Field(default=None, max_length=40)
     cvss_score: float | None = Field(default=None, ge=0, le=10)
+    cwe: str | None = Field(default=None, max_length=200)
+    version_affected: str | None = Field(default=None, max_length=500)
     parameter: str | None = Field(default=None, max_length=200)
     module: str | None = Field(default=None, max_length=120)
     recommended_fix: str | None = Field(default=None, max_length=6000)

@@ -46,9 +46,10 @@ class SelfAuditAgent(Agent):
         await self.log_action("started", "Running PhantomScan self-audit")
         await update_self_audit_execution(lifecycle="running", scan_id=scan_id, target_url=target.url)
 
-        request = ScanRequest(target_url=target.url, mode="defend", intensity="low")
         try:
-            result = await OrchestratorAgent().run(request, scan_id, user_id=self.settings.local_user_id, user_role=self.settings.local_user_role)
+            orchestrator = OrchestratorAgent()
+            request = ScanRequest(target_url=target.url, mode="defend", intensity="low")
+            result = await orchestrator.run(request, scan_id)
 
             if result.get("status") == "error":
                 self.status = "error"
@@ -61,18 +62,26 @@ class SelfAuditAgent(Agent):
                 if str(f.get("severity", "")).upper() in ("CRITICAL", "HIGH")
             ]
 
+            configuration_issues = self._detect_configuration_issues()
+            dependency_issues = self._scan_dependencies()
+
             previous = self._load_previous()
             new_critical = self._diff_findings(critical_high, previous)
 
             notification_result: dict[str, Any] | None = None
-            if new_critical:
+            if critical_high or configuration_issues or dependency_issues:
                 await add_audit_log(
                     scan_id, self.name, "ALERT",
-                    f"New Critical/High findings: {len(new_critical)}",
+                    f"New Critical/High findings: {len(critical_high)}, Config issues: {len(configuration_issues)}, Dep issues: {len(dependency_issues)}",
                 )
                 notifier = NotifierAgent()
                 notification_result = await notifier.run(
-                    {"findings": critical_high, "target_url": target.url},
+                    {
+                        "findings": critical_high,
+                        "target_url": target.url,
+                        "configuration_issues": configuration_issues,
+                        "dependency_issues": dependency_issues,
+                    },
                     scan_id, webhook_url=self.settings.self_audit_webhook,
                 )
 
@@ -84,11 +93,15 @@ class SelfAuditAgent(Agent):
                 "total_findings": len(findings),
                 "critical_high": len(critical_high),
                 "new_since_last_audit": len(new_critical),
+                "configuration_issues": len(configuration_issues),
+                "dependency_issues": len(dependency_issues),
                 "findings": [
                     {"title": f.get("title"), "severity": f.get("severity"),
                      "category": f.get("category")}
                     for f in findings
                 ],
+                "configuration_details": configuration_issues,
+                "dependency_details": dependency_issues,
                 "notification_delivered": notification_result.get("delivered", False)
                 if notification_result else False,
             }
@@ -104,7 +117,9 @@ class SelfAuditAgent(Agent):
                 "completed",
                 f"Self-audit: {len(findings)} findings, "
                 f"{len(critical_high)} critical/high, "
-                f"{len(new_critical)} new"
+                f"{len(new_critical)} new, "
+                f"{len(configuration_issues)} config issues, "
+                f"{len(dependency_issues)} dependency issues"
             )
             await update_self_audit_execution(
                 lifecycle="complete", scan_id=scan_id,
@@ -115,6 +130,8 @@ class SelfAuditAgent(Agent):
                 "findings": findings,
                 "critical_high": critical_high,
                 "new_critical": new_critical,
+                "configuration_issues": configuration_issues,
+                "dependency_issues": dependency_issues,
                 "notification": notification_result,
                 "report_path": str(report_path),
             }
