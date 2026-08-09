@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -109,6 +110,122 @@ class SandboxManagerAgent(Agent):
         return {
             **result["result"],
             "sandbox_id": self.sandbox_id,
+        }
+
+    async def apply_patch(self, patch: str, file_path: str, scan_id: int, target_root: str | None = None) -> dict[str, Any]:
+        """
+        Apply a unified diff patch to a file in the sandbox.
+        
+        Args:
+            patch: Unified diff patch content
+            file_path: Relative path to the file to patch
+            scan_id: Scan ID for logging
+            target_root: Optional root directory (defaults to temp dir)
+            
+        Returns:
+            Dict with success status, applied changes, and any errors
+        """
+        self.scan_id = scan_id
+        self.status = "active"
+        await self.log_action("patch_apply_started", f"Applying patch to {file_path}")
+        
+        try:
+            with tempfile.TemporaryDirectory(prefix="phantomscan-patch-") as work_dir:
+                # If target_root provided, copy the target file there
+                if target_root:
+                    src_file = Path(target_root) / file_path
+                    dst_file = Path(work_dir) / file_path
+                    dst_file.parent.mkdir(parents=True, exist_ok=True)
+                    if src_file.exists():
+                        import shutil
+                        shutil.copy2(src_file, dst_file)
+                    else:
+                        # Create empty file if it doesn't exist
+                        dst_file.write_text("")
+                else:
+                    # Create file structure in work_dir
+                    dst_file = Path(work_dir) / file_path
+                    dst_file.parent.mkdir(parents=True, exist_ok=True)
+                    if not dst_file.exists():
+                        dst_file.write_text("")
+                
+                # Write patch to a temporary file
+                patch_file = Path(work_dir) / "patch.diff"
+                patch_file.write_text(patch)
+                
+                # Apply patch using git apply or patch command
+                result = await self._apply_patch_command(patch_file, dst_file, work_dir)
+                
+                if result["success"]:
+                    # Read the patched file content
+                    patched_content = dst_file.read_text() if dst_file.exists() else ""
+                    
+                    await self.log_action("patch_applied", f"Successfully patched {file_path}")
+                    self.status = "complete"
+                    return {
+                        "success": True,
+                        "file_path": file_path,
+                        "patched_content": patched_content,
+                        "changes": result.get("changes", []),
+                    }
+                else:
+                    await self.log_action("patch_failed", f"Failed to patch {file_path}: {result.get('error')}")
+                    self.status = "error"
+                    return {
+                        "success": False,
+                        "file_path": file_path,
+                        "error": result.get("error", "Patch application failed"),
+                        "stdout": result.get("stdout", ""),
+                        "stderr": result.get("stderr", ""),
+                    }
+                    
+        except Exception as e:
+            await self.log_action("patch_error", f"Exception applying patch to {file_path}: {e}")
+            self.status = "error"
+            return {
+                "success": False,
+                "file_path": file_path,
+                "error": str(e),
+            }
+
+    async def _apply_patch_command(self, patch_file: Path, target_file: Path, work_dir: str) -> dict[str, Any]:
+        """Apply patch using git apply or patch command."""
+        # Try git apply first (more reliable for unified diffs)
+        for cmd in [
+            ["git", "apply", "--whitespace=nowarn", str(patch_file)],
+            ["patch", "-p1", "-i", str(patch_file)],
+        ]:
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
+                    cwd=work_dir,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, stderr = await proc.communicate()
+                
+                if proc.returncode == 0:
+                    return {
+                        "success": True,
+                        "changes": stdout.decode().strip().split("\n") if stdout else [],
+                        "stdout": stdout.decode(),
+                        "stderr": stderr.decode(),
+                    }
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "stdout": "",
+                    "stderr": "",
+                }
+        
+        return {
+            "success": False,
+            "error": "Neither 'git apply' nor 'patch' command available",
+            "stdout": "",
+            "stderr": "",
         }
 
     def restricted_environment(self) -> dict[str, str]:

@@ -4,6 +4,7 @@ from typing import Any
 from app.agents import Agent
 from app.config import get_settings
 from app.services.openrouter_client import call_openrouter
+from app.skills import load_skill, get_skills_for_prompt
 
 
 STATIC_TEMPLATES = {
@@ -108,7 +109,20 @@ class AIExplainerAgent(Agent):
             enriched["verify_command"] = template["verify_command"]
             return enriched
 
-        system_prompt = "You are a senior penetration tester. Be technical, specific, no generic advice."
+        # Load relevant skill for this vulnerability type
+        vuln_key = self._map_to_skill(title, category)
+        skill_context = ""
+        if vuln_key:
+            skill = load_skill(vuln_key)
+            if skill:
+                from app.skills.loader import get_loader
+                loader = get_loader()
+                skill_context = loader.format_skill_for_prompt(skill)
+
+        system_prompt = (
+            "You are a senior penetration tester. Be technical, specific, no generic advice.\n\n"
+            f"EXPERT KNOWLEDGE:\n{skill_context}"
+        )
         user_prompt = (
             f"Vulnerability: {title} on {tech} stack.\n"
             f"1. Step-by-step exploitation (include exact payloads).\n"
@@ -154,9 +168,24 @@ class AIExplainerAgent(Agent):
 
         return enriched
 
-    def _find_template(self, title: str, category: str) -> dict[str, str] | None:
-        t = title.lower() + " " + category.lower()
-        for key, tmpl in STATIC_TEMPLATES.items():
-            if key in t:
-                return tmpl
+    def _map_to_skill(self, title: str, category: str) -> str | None:
+        """Map finding title/category to skill name."""
+        t = (title + " " + category).lower()
+        skill_map = {
+            "sql_injection": ["sql", "injection", "sqli"],
+            "xss": ["xss", "cross-site scripting"],
+            "ssrf": ["ssrf", "server-side request forgery"],
+            "idor": ["idor", "insecure direct object reference", "object reference"],
+            "jwt": ["jwt", "json web token", "token"],
+            "race_conditions": ["race condition", "race"],
+            "business_logic": ["business logic", "workflow", "logic flaw"],
+            "file_upload": ["file upload", "upload", "webshell"],
+            "ssti": ["ssti", "server-side template injection", "template injection"],
+            "xxe": ["xxe", "xml external entity", "xml injection"],
+            "prototype_pollution": ["prototype pollution", "prototype"],
+            "http_request_smuggling": ["request smuggling", "smuggling", "desync"],
+        }
+        for skill_name, keywords in skill_map.items():
+            if any(kw in t for kw in keywords):
+                return skill_name
         return None

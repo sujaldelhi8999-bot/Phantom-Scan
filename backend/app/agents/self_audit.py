@@ -11,7 +11,7 @@ from app.agents.orchestrator import OrchestratorAgent
 from app.config import get_settings
 from app.database import (
     add_audit_log, create_scan, get_findings, set_scan_artifacts,
-    update_scan_status,
+    update_scan_status, get_or_create_system_user,
 )
 from app.services.execution_status import update_self_audit_execution
 from app.models import ScanRequest
@@ -36,9 +36,10 @@ class SelfAuditAgent(Agent):
         target = canonicalize_target(target_url)
 
         if scan_id is None:
+            system_user_id = await get_or_create_system_user()
             scan_id = await create_scan(
                 target_url=target.url, mode="defend", intensity="low",
-                selected_tests="[]", user_id=self.settings.local_user_id,
+                selected_tests="[]", user_id=system_user_id,
             )
 
         self.scan_id = scan_id
