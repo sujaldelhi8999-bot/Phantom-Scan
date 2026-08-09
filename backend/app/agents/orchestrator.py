@@ -3,6 +3,7 @@ import json
 import os
 import traceback
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from app.agents.exploitation.sqli import SQLIExploitationAgent
 from app.agents.exploitation_engine import ExploitationAgent
 from app.agents.fixer import FixerAgent
 from app.agents.hindi_explainer import HindiExplainerAgent
+from app.agents.multi_agent_orchestrator import MultiAgentOrchestrator, SharedContext
 from app.agents.notifier import NotifierAgent
 from app.agents.sandbox_manager import SandboxManagerAgent
 from app.agents.scanner import ScannerAgent
@@ -40,14 +42,19 @@ from app.database import (
     get_findings,
     get_previous_scan_for_target,
     get_scan_artifacts,
+    list_applied_tunings,
     set_scan_artifacts,
     update_scan_progress,
     update_scan_status,
 )
-from app.models import FindingCreate, ScanRequest
+from app.models import FindingCreate, ScanRequest, MultiSourceScanRequest
 from app.services.active_gate import ActiveTargetGate
+from app.services.adaptive_scan_planner import AdaptiveScanPlanner
+from app.services.ai_decision_maker import AIDecisionMaker
+from app.services.ai_exploitation import AIExploitationEngine
 from app.services.authorization import TargetAuthorizationService, VerifiedTarget, canonicalize_target
 from app.services.execution import SafetyLimits
+from app.services.tci import TargetComplexityIndex
 from app.websockets import scan_event_broker
 
 
@@ -107,6 +114,15 @@ class OrchestratorAgent(Agent):
         await self.publish(scan_id, "orchestrator", {"status": "running", "progress": 2})
 
         try:
+            if scan_request.mode == "multi_agent":
+                return await self.run_multi_agent(
+                    scan_request,
+                    scan_id,
+                    target.url,
+                    user_id,
+                    authorization_context,
+                )
+
             scanner = ScannerAgent()
             shadow_recon = ShadowReconAgent()
             scanner_event, shadow_event = await self.gather_agents(
@@ -121,6 +137,56 @@ class OrchestratorAgent(Agent):
                 shadow_recon_output=shadow_output,
             )
             await self.set_progress(scan_id, 30, "reconnaissance_complete")
+
+            complexity = TargetComplexityIndex().analyze_recon(scanner_output)
+            await set_scan_artifacts(scan_id, tci_output=complexity)
+            await self.publish(
+                scan_id,
+                "tci_computed",
+                {
+                    "score": complexity["score"],
+                    "band": complexity["band"],
+                    "band_label": complexity["band_label"],
+                },
+            )
+
+            adaptive_plan = None
+            if scan_request.mode == "pentest":
+                planner = AdaptiveScanPlanner()
+                adaptive_plan = planner.plan(
+                    complexity,
+                    scan_request,
+                    self.limits,
+                    await list_applied_tunings(),
+                )
+                self.limits = replace(self.limits, **adaptive_plan["limits"])
+                await self.publish(
+                    scan_id,
+                    "adaptive_plan_computed",
+                    {
+                        "band": adaptive_plan["band"],
+                        "score": adaptive_plan["score"],
+                        "requests_per_second": adaptive_plan["requests_per_second"],
+                        "modules": adaptive_plan["modules"],
+                        "excluded_modules": adaptive_plan["excluded_modules"],
+                        "rationale": adaptive_plan["rationale"],
+                    },
+                )
+                await self.log_action(
+                    "adaptive_plan",
+                    f"TCI {complexity['score']}/100 ({complexity['band']}) -> "
+                    f"{adaptive_plan['requests_per_second']:g} req/s, "
+                    f"{len(adaptive_plan['modules'])} module(s)",
+                )
+
+            ai_decision: list[str] | None = None
+            if scan_request.mode == "pentest":
+                ai_decision = await self.run_ai_decision_maker(
+                    target.url,
+                    scan_id,
+                    scanner_output,
+                    scan_request.selected_tests,
+                )
 
             analyzer = AnalyzerAgent()
             cve_matcher = CVEMatcherAgent()
@@ -174,12 +240,17 @@ class OrchestratorAgent(Agent):
             if scan_request.mode == "pentest":
                 sandbox = SandboxManagerAgent(limits=self.limits)
                 business_logic_tests = [item.model_dump(mode="json") for item in scan_request.business_logic_tests]
+                planned_modules = (
+                    adaptive_plan["modules"]
+                    if adaptive_plan is not None and not scan_request.selected_tests and not ai_decision
+                    else None
+                )
                 active_payload = {
                     "engine": "active_security",
                     "scan_id": scan_id,
                     "target_url": target.url,
-                    "intensity": scan_request.intensity,
-                    "selected_modules": scan_request.selected_tests,
+                    "intensity": adaptive_plan["intensity"] if adaptive_plan is not None else scan_request.intensity,
+                    "selected_modules": ai_decision or scan_request.selected_tests or planned_modules or [],
                     "selected_tests": scan_request.selected_tests,
                     "business_logic_tests": business_logic_tests,
                     "workflow_rules": {"business_logic_tests": business_logic_tests},
@@ -305,6 +376,12 @@ class OrchestratorAgent(Agent):
             if scan_request.enable_exploitation and exploitation_result:
                 await self.run_sqli_exploitation(target.url, scan_id, persisted_findings)
 
+            ai_exploitation_result = None
+            if scan_request.enable_exploitation:
+                ai_exploitation_result = await self.run_ai_exploitation(
+                    target.url, scan_id, persisted_findings, sandbox_id=sandbox_id
+                )
+
             fixer = FixerAgent()
             fixer_event = await self.run_agent(
                 "fixer",
@@ -357,8 +434,12 @@ class OrchestratorAgent(Agent):
                 "markdown_report": markdown_report,
                 "active_security": active_result,
                 "browser_security": browser_result,
+                "ai_decision": ai_decision,
+                "complexity": complexity,
+                "adaptive_plan": adaptive_plan,
                 "ai_analyst_output": ai_analyst_output,
                 "exploitation_results": sqli_exploitation_results if sqli_exploitation_results else None,
+                "ai_exploitation": ai_exploitation_result,
             }
             await self._write_report_files(summary, scan_id, target.url, markdown_report, hindi_findings, scanner_output, shadow_output, active_result)
             notifier = NotifierAgent()
@@ -375,6 +456,7 @@ class OrchestratorAgent(Agent):
             await self.set_progress(scan_id, 97, "notification_complete", request_count=request_count)
 
             await update_scan_status(scan_id, "complete")
+            await self.run_learning(scan_id)
             self.status = "complete"
             await self.log_action("completed", f"Scan completed with {len(persisted_findings)} findings")
             await self.publish(scan_id, "scan_complete", {"status": "complete", "progress": 100})
@@ -388,6 +470,265 @@ class OrchestratorAgent(Agent):
             await self.log_action("error", str(exc)[:2000])
             await self.publish(scan_id, "scan_failed", {"status": "error", "error": str(exc)})
             return {"scan_id": scan_id, "status": "error", "error": str(exc)}
+
+    async def run_multi_agent(
+        self,
+        scan_request: ScanRequest,
+        scan_id: int,
+        target_url: str,
+        user_id: str = "local-user",
+        authorization_context: dict[str, object] | None = None,
+    ) -> dict[str, Any]:
+        """Run the multi-agent workflow (Recon -> Attack -> Exploit -> Report)."""
+        context = SharedContext(
+            target_url=target_url,
+            scan_id=scan_id,
+            scan_request=scan_request,
+            host=self,
+            user_id=user_id,
+            authorization_context=authorization_context,
+        )
+        multi = MultiAgentOrchestrator(limits=self.limits, host=self)
+        summary = await multi.run(context)
+        await update_scan_status(scan_id, "complete")
+        await self.run_learning(scan_id)
+        self.status = "complete"
+        await self.log_action(
+            "completed", f"Multi-agent scan completed with {len(summary.get('findings', []))} findings"
+        )
+        await self.publish(scan_id, "scan_complete", {"status": "complete", "progress": 100})
+        return summary
+
+    async def run_multi_source(
+        self,
+        scan_request: MultiSourceScanRequest,
+        scan_id: int | None = None,
+        *,
+        verified_target: VerifiedTarget | None = None,
+        user_id: str = "local-user",
+        user_role: str = "user",
+        authorization_context: dict[str, object] | None = None,
+    ) -> dict[str, Any]:
+        """Run a multi-source coordinated scan (SAST + DAST + SCA + IaC + Secrets)."""
+        target_url = "multi-source://scan"
+        if scan_request.sources:
+            for source in scan_request.sources:
+                if source.type == "live":
+                    target_url = source.target_url
+                    break
+            if target_url == "multi-source://scan":
+                for source in scan_request.sources:
+                    if source.type in {"local", "github", "gitlab", "bitbucket"}:
+                        target_url = f"code-source://{source.type}"
+                        break
+
+        target = canonicalize_target(target_url)
+
+        if scan_id is None:
+            scan_id = await create_scan(
+                target_url=target_url,
+                mode="multi_agent",
+                intensity=scan_request.intensity,
+                selected_tests=json.dumps([s.type for s in scan_request.sources]),
+                user_id=user_id,
+                authorization_id=None,
+                authorization_confirmed=False,
+            )
+
+        self.scan_id = scan_id
+        self.status = "active"
+        await update_scan_status(scan_id, "running")
+        await self.set_progress(scan_id, 2, "multi_source_started")
+        await self.log_action("started", f"Coordinating multi-source scan: {scan_request.name}")
+        await self.publish(scan_id, "orchestrator", {"status": "running", "progress": 2})
+
+        try:
+            coordinator = SourceCoordinatorAgent()
+            result = await coordinator.run(
+                scan_request=scan_request,
+                scan_id=scan_id,
+                user_id=user_id,
+                authorization_context=authorization_context,
+            )
+
+            all_findings = []
+            for sr in result.get("source_results", []):
+                if sr.get("status") == "completed" and "result" in sr:
+                    findings = sr["result"].get("findings", [])
+                    for f in findings:
+                        f["_source_type"] = sr.get("source_type", "unknown")
+                    all_findings.extend(findings)
+
+            persisted_findings = await self.persist_findings(scan_id, all_findings, target_url)
+
+            await self.set_progress(scan_id, 90, "reports_generation")
+            fixer = FixerAgent()
+            fixer_event = await self.run_agent(
+                "fixer",
+                fixer.name,
+                lambda: fixer.run(persisted_findings, scan_id),
+                scan_id,
+            )
+            markdown_report = str(fixer_event["result"].get("markdown_report", ""))
+            await set_scan_artifacts(scan_id, markdown_report=markdown_report)
+
+            await self.set_progress(scan_id, 93, "ai_analysis")
+            artifact_context = {
+                "markdown_report": markdown_report,
+                "source_results": result.get("source_results", []),
+            }
+            ai_analyst_output = await self.run_ai_security_analyst(
+                scan_id=scan_id,
+                target_url=target_url,
+                mode="multi_agent",
+                intensity=scan_request.intensity,
+                findings=persisted_findings,
+                artifacts=artifact_context,
+                request_count=0,
+            )
+            await set_scan_artifacts(scan_id, ai_analyst_output=ai_analyst_output)
+
+            notifier = NotifierAgent()
+            notifier_event = await self.run_agent(
+                "notifier",
+                notifier.name,
+                lambda: notifier.run({
+                    "scan_id": scan_id,
+                    "target_url": target_url,
+                    "mode": "multi_agent",
+                    "intensity": scan_request.intensity,
+                    "findings": persisted_findings,
+                    "source_results": result.get("source_results", []),
+                    "markdown_report": markdown_report,
+                }, scan_id),
+                scan_id,
+            )
+
+            await update_scan_status(scan_id, "complete")
+            await self.run_learning(scan_id)
+            self.status = "complete"
+            await self.log_action("completed", f"Multi-source scan completed with {len(persisted_findings)} findings, {result.get('correlated_findings', 0)} correlations")
+            await self.publish(scan_id, "scan_complete", {"status": "complete", "progress": 100})
+
+            return {
+                "scan_id": scan_id,
+                "target_url": target_url,
+                "mode": "multi_agent",
+                "intensity": scan_request.intensity,
+                "findings": persisted_findings,
+                "source_results": result.get("source_results", []),
+                "total_findings": result.get("total_findings", 0),
+                "correlated_findings": result.get("correlated_findings", 0),
+                "markdown_report": markdown_report,
+                "ai_analyst_output": ai_analyst_output,
+                "status": "complete",
+            }
+
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            traceback.print_exc()
+            self.status = "error"
+            await update_scan_status(scan_id, "error", str(exc)[:1000])
+            await self.log_action("error", str(exc)[:2000])
+            await self.publish(scan_id, "scan_failed", {"status": "error", "error": str(exc)})
+            return {"scan_id": scan_id, "status": "error", "error": str(exc)}
+
+    async def run_learning(self, scan_id: int) -> None:
+        """Run the ContinuousLearningEngine post-scan pass. Never fails the scan."""
+        try:
+            from app.services.learning_engine import ContinuousLearningEngine
+
+            engine = ContinuousLearningEngine()
+            insights = await engine.process_scan(scan_id)
+            await add_audit_log(
+                scan_id,
+                "Learning Engine",
+                "learning_insights_generated",
+                f"{len(insights)} insight(s) recorded for scan {scan_id}",
+                user_id="local-user",
+            )
+            await self.publish(
+                scan_id,
+                "learning_completed",
+                {"status": "complete", "insight_count": len(insights)},
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            traceback.print_exc()
+            try:
+                await add_audit_log(
+                    scan_id,
+                    "Learning Engine",
+                    "learning_failed",
+                    str(exc)[:1000],
+                    user_id="local-user",
+                )
+            except Exception:
+                pass
+            await self.publish(
+                scan_id,
+                "learning_failed",
+                {"status": "error", "error": str(exc)[:500]},
+            )
+
+    async def run_ai_decision_maker(
+        self,
+        target_url: str,
+        scan_id: int,
+        scanner_output: dict[str, Any],
+        selected_tests: list[str],
+    ) -> list[str] | None:
+        """Ask the AI Decision Maker for a prioritized module plan.
+
+        Uses the scanner's fingerprint (no duplicate HTTP work). Returns None
+        on failure so the caller keeps the existing full-module behavior.
+        """
+        try:
+            recon_context = {
+                "tech_stack": scanner_output.get("tech_stack") or {},
+                "technologies_detailed": scanner_output.get("technologies_detailed") or [],
+                "http_headers": scanner_output.get("http_headers") or {},
+                "waf_detected": scanner_output.get("waf_detected"),
+                "cdn_detected": scanner_output.get("cdn_detected"),
+                "open_ports": scanner_output.get("open_ports") or [],
+            }
+            decision_maker = AIDecisionMaker()
+            recommended = await decision_maker.recommend_modules(
+                target_url,
+                recon_context,
+                scan_id=scan_id,
+                manual_selection=selected_tests or None,
+            )
+            if selected_tests and recommended:
+                source = "merged"
+            elif not recommended:
+                source = "fallback"
+            else:
+                source = "ai"
+            await self.publish(
+                scan_id,
+                "ai_decision",
+                {
+                    "status": "complete" if recommended else "fallback",
+                    "source": source,
+                    "selected_modules": recommended,
+                    "module_count": len(recommended),
+                },
+            )
+            await self.log_action(
+                "ai_decision",
+                f"{source}: selected {len(recommended)} modules: {recommended[:12]}",
+            )
+            return recommended
+        except Exception as exc:
+            traceback.print_exc()
+            try:
+                await self.log_action("ai_decision_error", str(exc)[:2000])
+            except Exception:
+                pass
+            return None
 
     async def run_sqli_exploitation(
         self,
@@ -451,6 +792,42 @@ class OrchestratorAgent(Agent):
                     "message": f"SQLi exploitation failed: {exc}",
                 })
                 traceback.print_exc()
+
+    async def run_ai_exploitation(
+        self,
+        target_url: str,
+        scan_id: int,
+        findings: list[dict[str, Any]],
+        *,
+        sandbox_id: str | None = None,
+    ) -> dict[str, Any]:
+        engine = AIExploitationEngine()
+        try:
+            await self.publish(scan_id, "ai_exploitation_started", {
+                "message": "AI exploitation engine started: generating and validating PoCs...",
+            })
+            result = await engine.run_for_scan(
+                target_url, scan_id, findings, sandbox_id=sandbox_id
+            )
+            await self.publish(scan_id, "ai_exploitation_result", {
+                "exploitation_results": result.get("exploitation_results", []),
+                "summary": result.get("summary", ""),
+                "ai_available": result.get("ai_available", False),
+            })
+            await self.log_action("ai_exploitation", result.get("summary", ""))
+            return result
+        except Exception as exc:
+            traceback.print_exc()
+            try:
+                await self.log_action("ai_exploitation_error", str(exc)[:2000])
+            except Exception:
+                pass
+            return {
+                "status": "error",
+                "exploitation_results": [],
+                "summary": f"AI exploitation failed: {exc}",
+                "ai_available": False,
+            }
 
     async def run_ai_security_analyst(
         self,
