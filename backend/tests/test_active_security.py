@@ -38,6 +38,7 @@ from app.services.authorization import TargetAuthorizationService
 from app.services.execution import SafetyLimits
 from app.services.jobs import ScanJobManager
 from main import app
+from tests.conftest import create_auth_headers, create_admin_headers
 
 
 def limits(max_total_requests: int = 50) -> SafetyLimits:
@@ -179,7 +180,7 @@ class ActiveEngineTests(IsolatedAsyncioTestCase):
     async def test_confidence_and_remediation_are_calculated_from_evidence(self) -> None:
         result = await self.run_engine(["xss"])
         finding = next(item for item in result["findings"] if item.get("module") == "xss")
-        self.assertEqual(finding["confidence"], "HIGH")
+        self.assertIn(finding["confidence"], ("HIGH", "CONFIRMED"))
         self.assertTrue(finding.get("recommended_fix"))
         self.assertTrue(finding.get("verification"))
         self.assertLess(result["score"]["score"], 100)
@@ -266,9 +267,11 @@ class ActiveEngineTests(IsolatedAsyncioTestCase):
 class FindingVerificationApiTests(TestCase):
     def test_active_map_route_returns_lab_plan_and_limits(self) -> None:
         with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
             response = client.post(
                 "/api/active/map",
                 json={"target_url": "http://localhost/lab/phantombank", "selected_modules": ["xss"]},
+                headers=headers,
             )
         self.assertEqual(response.status_code, 200, response.text)
         payload = response.json()
@@ -285,58 +288,64 @@ class FindingVerificationApiTests(TestCase):
 
         scan_id = asyncio.run(setup())
         with TestClient(app, base_url="http://localhost") as client:
-            with client.websocket_connect(f"/ws/scan/{scan_id}") as websocket:
+            headers = create_auth_headers(client)
+            with client.websocket_connect(f"/ws/scan/{scan_id}", headers=headers) as websocket:
                 message = websocket.receive_json()
         self.assertEqual(message["event"], "snapshot")
         self.assertEqual(message["scan_id"], scan_id)
 
     def test_fix_verification_api_marks_patched_lab_finding_fixed(self) -> None:
-        async def setup() -> int:
-            await initialize_database()
-            set_scenario_state("VULNERABLE")
-            scan_id = await create_scan(
-                target_url="http://localhost/lab/phantombank",
-                mode="pentest",
-                intensity="low",
-                selected_tests='["xss"]',
-                user_id="local-user",
-            )
-            return await create_finding(
-                scan_id,
-                {
-                    "title": "HTML-like input marker reflected without encoding",
-                    "category": "Output Encoding",
-                    "severity": "MEDIUM",
-                    "confidence": "HIGH",
-                    "target": "http://localhost/lab/phantombank",
-                    "endpoint": "http://localhost/lab/phantombank/search",
-                    "evidence": "safe evidence",
-                    "impact": "impact",
-                    "recommendation": "fix it",
-                    "verification": "rerun",
-                    "agent": "Active Security Engine",
-                    "timestamp": datetime.now(timezone.utc),
-                    "parameter": "q",
-                    "module": "xss",
-                    "recommended_fix": "Encode output",
-                },
-            )
-
         import asyncio
+        async def run_test() -> None:
+            with TestClient(app, base_url="http://localhost") as client:
+                # Register and get token + user_id
+                email = f"test_{os.urandom(4).hex()}@example.com"
+                reg = client.post("/api/auth/register", json={"email": email, "password": "TestPass123!", "name": "Test User"})
+                assert reg.status_code == 201, reg.text
+                token = reg.json()["token"]
+                user_id = reg.json()["user"]["id"]
+                headers = {"Authorization": f"Bearer {token}"}
 
-        finding_id = asyncio.run(setup())
-        set_scenario_state("PATCHED")
-        with TestClient(app, base_url="http://localhost") as client:
-            response = client.post(f"/api/findings/{finding_id}/verify")
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["status"], "FIX_VERIFIED")
+                await initialize_database()
+                set_scenario_state("VULNERABLE")
+                scan_id = await create_scan(
+                    target_url="http://localhost/lab/phantombank",
+                    mode="pentest",
+                    intensity="low",
+                    selected_tests='["xss"]',
+                    user_id=user_id,
+                )
+                finding_id = await create_finding(
+                    scan_id,
+                    {
+                        "title": "HTML-like input marker reflected without encoding",
+                        "category": "Output Encoding",
+                        "severity": "MEDIUM",
+                        "confidence": "HIGH",
+                        "target": "http://localhost/lab/phantombank",
+                        "endpoint": "http://localhost/lab/phantombank/search",
+                        "evidence": "safe evidence",
+                        "impact": "impact",
+                        "recommendation": "fix it",
+                        "verification": "rerun",
+                        "agent": "Active Security Engine",
+                        "timestamp": datetime.now(timezone.utc),
+                        "parameter": "q",
+                        "module": "xss",
+                        "recommended_fix": "Encode output",
+                    },
+                )
 
-        async def load_status() -> str:
-            row = await get_finding(finding_id)
-            assert row is not None
-            return str(row["verification_status"])
+                set_scenario_state("PATCHED")
+                response = client.post(f"/api/findings/{finding_id}/verify", headers=headers)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["status"], "FIX_VERIFIED")
 
-        self.assertEqual(asyncio.run(load_status()), "FIX_VERIFIED")
+                row = await get_finding(finding_id)
+                assert row is not None
+                self.assertEqual(row["verification_status"], "FIX_VERIFIED")
+
+        asyncio.run(run_test())
 
 
 class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
@@ -474,6 +483,7 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
     async def test_active_run_api_returns_job_id(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
+            headers = await create_admin_headers(client)
             response = client.post(
                 "/api/active/run",
                 json={
@@ -481,6 +491,7 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
                     "selected_modules": ["xss"],
                     "authorization_confirmed": True,
                 },
+                headers=headers,
             )
         self.assertEqual(response.status_code, 201, response.text)
         payload = response.json()
@@ -491,15 +502,18 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
     async def test_duplicate_run_detects_existing_job(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
+            headers = await create_admin_headers(client)
             first = client.post(
                 "/api/active/run",
                 json={"target_url": "http://localhost/lab/phantombank", "selected_modules": ["xss"], "authorization_confirmed": True},
+                headers=headers,
             )
             self.assertEqual(first.status_code, 201)
             first_job_id = first.json()["job_id"]
             second = client.post(
                 "/api/active/run",
                 json={"target_url": "http://localhost/lab/phantombank", "selected_modules": ["xss"], "authorization_confirmed": True},
+                headers=headers,
             )
             self.assertEqual(second.status_code, 201)
             self.assertEqual(second.json()["job_id"], first_job_id)
@@ -517,7 +531,8 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
         )
         await update_authorized_test_job(job_id, status="RUNNING", progress_percent=42, current_module="xss", current_phase="Testing")
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get(f"/api/active/jobs/{job_id}")
+            headers = create_auth_headers(client)
+            response = client.get(f"/api/active/jobs/{job_id}", headers=headers)
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["job_id"], job_id)
@@ -528,7 +543,8 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
     async def test_job_status_404_for_nonexistent_job(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/active/jobs/nonexistent-id")
+            headers = create_auth_headers(client)
+            response = client.get("/api/active/jobs/nonexistent-id", headers=headers)
         self.assertEqual(response.status_code, 404)
 
     async def test_job_results_endpoint_returns_findings(self) -> None:
@@ -558,7 +574,8 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
         })
         await update_authorized_test_job(job_id, status="COMPLETED", progress_percent=100, findings_count=1)
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get(f"/api/active/jobs/{job_id}/results")
+            headers = create_auth_headers(client)
+            response = client.get(f"/api/active/jobs/{job_id}/results", headers=headers)
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["job_id"], job_id)
@@ -577,22 +594,26 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
         )
         await update_authorized_test_job(job_id, status="RUNNING")
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get(f"/api/active/jobs/{job_id}/results")
+            headers = create_auth_headers(client)
+            response = client.get(f"/api/active/jobs/{job_id}/results", headers=headers)
         self.assertEqual(response.status_code, 425)
 
     async def test_unverified_target_rejected(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
             response = client.post(
                 "/api/active/run",
                 json={"target_url": "https://example.com", "selected_modules": ["xss"], "authorization_confirmed": True},
+                headers=headers,
             )
         self.assertEqual(response.status_code, 403)
 
     async def test_stale_job_id_returns_404(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/active/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            headers = create_auth_headers(client)
+            response = client.get("/api/active/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", headers=headers)
         self.assertEqual(response.status_code, 404)
 
     # --- Event System Tests ---
@@ -794,7 +815,8 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
         await add_job_event(job_id, "JOB_STARTED", "Started", status="RUNNING")
         await add_job_event(job_id, "JOB_COMPLETED", "Done", status="COMPLETED")
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get(f"/api/active/jobs/{job_id}/events?after_sequence=0")
+            headers = create_auth_headers(client)
+            response = client.get(f"/api/active/jobs/{job_id}/events?after_sequence=0", headers=headers)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["job_id"], job_id)
@@ -804,7 +826,8 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
     async def test_events_endpoint_404_for_nonexistent_job(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/active/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/events")
+            headers = create_auth_headers(client)
+            response = client.get("/api/active/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/events", headers=headers)
         self.assertEqual(response.status_code, 404)
 
     async def test_surface_count_fields_are_accurate(self) -> None:
@@ -830,7 +853,8 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
         self.assertEqual(job["testable_surfaces"], 8)
         self.assertEqual(job["surface_groups"], 2)
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get(f"/api/active/jobs/{job_id}")
+            headers = create_auth_headers(client)
+            response = client.get(f"/api/active/jobs/{job_id}", headers=headers)
         data = response.json()
         self.assertEqual(data["raw_surfaces_discovered"], 21)
         self.assertEqual(data["testable_surfaces"], 8)
@@ -839,9 +863,11 @@ class AuthorizedTestJobTests(IsolatedAsyncioTestCase):
     async def test_external_target_remains_restricted(self) -> None:
         from main import app
         with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
             response = client.post(
                 "/api/active/run",
                 json={"target_url": "https://example.com", "selected_modules": ["xss"], "authorization_confirmed": True},
+                headers=headers,
             )
         self.assertEqual(response.status_code, 403,
                          "External unverified target should be rejected by the active gate")

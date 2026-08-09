@@ -29,6 +29,7 @@ from app.services.authorization import TargetAuthorizationService, canonicalize_
 from app.services.browser_observation import BrowserObservationEngine, DOMSecurityAgent, JavaScriptStaticAnalyzer, ScanSafetyPolicy, classify_network_request, infer_json_schema
 from app.services.execution import ExecutionLimitError, SafetyLimits
 from main import app
+from tests.conftest import create_auth_headers, create_admin_headers
 
 
 def limits(max_total_requests: int = 90) -> SafetyLimits:
@@ -42,14 +43,14 @@ def limits(max_total_requests: int = 90) -> SafetyLimits:
     )
 
 
-async def make_scan(mode: str = "defend", selected_tests: list[str] | None = None) -> int:
+async def make_scan(mode: str = "defend", selected_tests: list[str] | None = None, user_id: str = "local-user") -> int:
     await initialize_database()
     return await create_scan(
         target_url="http://localhost/lab/phantombank",
         mode=mode,
         intensity="low",
         selected_tests=json.dumps(selected_tests or []),
-        user_id="local-user",
+        user_id=user_id,
     )
 
 
@@ -86,6 +87,7 @@ class BackendStartupAndContractTests(TestCase):
 
     def test_frontend_api_contract_endpoints_exist(self) -> None:
         with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
             for path in [
                 "/api/scan/history",
                 "/api/findings",
@@ -95,18 +97,40 @@ class BackendStartupAndContractTests(TestCase):
                 "/api/lab/status",
                 "/api/lab/manifest",
             ]:
-                response = client.get(path)
+                response = client.get(path, headers=headers)
                 self.assertLess(response.status_code, 500, f"{path}: {response.text}")
 
-            lab_map = client.post("/api/active/map", json={"target_url": "http://localhost/lab/phantombank", "selected_modules": ["xss"]})
+            lab_map = client.post("/api/active/map", json={"target_url": "http://localhost/lab/phantombank", "selected_modules": ["xss"]}, headers=headers)
             self.assertEqual(lab_map.status_code, 200, lab_map.text)
             self.assertEqual(lab_map.json()["gate"]["authorization_status"], "TRAINING")
 
-            blocked = client.post("/api/active/map", json={"target_url": "https://example.com", "selected_modules": ["xss"]})
+            blocked = client.post("/api/active/map", json={"target_url": "https://example.com", "selected_modules": ["xss"]}, headers=headers)
             self.assertEqual(blocked.status_code, 403, blocked.text)
 
-            missing_finding = client.get("/api/ai/findings/99999/explain")
+            missing_finding = client.get("/api/ai/findings/99999/explain", headers=headers)
             self.assertEqual(missing_finding.status_code, 404)
+
+    def test_supabase_login_endpoint_contract(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            missing_token = client.post("/api/auth/supabase", json={})
+            self.assertEqual(missing_token.status_code, 422, missing_token.text)
+
+            short_token = client.post("/api/auth/supabase", json={"access_token": "x"})
+            self.assertEqual(short_token.status_code, 422, short_token.text)
+
+            # For unconfigured test, temporarily clear supabase settings
+            from app.config import get_settings
+            settings = get_settings()
+            orig_url = settings.supabase_url
+            orig_secret = settings.supabase_jwt_secret
+            settings.supabase_url = ""
+            settings.supabase_jwt_secret = ""
+            try:
+                unconfigured = client.post("/api/auth/supabase", json={"access_token": "a" * 32})
+                self.assertEqual(unconfigured.status_code, 401, unconfigured.text)
+            finally:
+                settings.supabase_url = orig_url
+                settings.supabase_jwt_secret = orig_secret
 
 
 class DatabaseFindingAiAndAuthorizationTests(TestCase):
@@ -134,30 +158,64 @@ class DatabaseFindingAiAndAuthorizationTests(TestCase):
             await set_scan_artifacts(scan_id, browser_security_output={"pages": [{"url": "http://localhost/lab/phantombank"}], "network_events": []})
             return finding_id
 
-        finding_id = asyncio.run(setup())
-        with TestClient(app, base_url="http://localhost") as client:
-            finding = client.patch(f"/api/findings/{finding_id}/risk", json={"risk_status": "FALSE_POSITIVE"})
-            self.assertEqual(finding.status_code, 200, finding.text)
-            self.assertEqual(finding.json()["risk_status"], "FALSE_POSITIVE")
+        def test_database_artifacts_risk_status_and_ai_fallback(self) -> None:
+            async def run_test():
+                with TestClient(app, base_url="http://localhost") as client:
+                    # Register and get token
+                    email = f"test_{os.urandom(4).hex()}@example.com"
+                    reg = client.post("/api/auth/register", json={"email": email, "password": "TestPass123!", "name": "Test User"})
+                    assert reg.status_code == 201, reg.text
+                    token = reg.json()["token"]
+                    user_id = reg.json()["user"]["id"]
+                    headers = {"Authorization": f"Bearer {token}"}
 
-            scan_id = finding.json()["scan_id"]
-            analysis = client.get(f"/api/ai/scan/{scan_id}/analysis")
-            self.assertEqual(analysis.status_code, 200, analysis.text)
-            self.assertEqual(analysis.json()["safety"]["can_start_active_test"], False)
-            self.assertEqual(analysis.json()["priorities"], [])
+                    # Create scan with this user
+                    scan_id = await make_scan("defend", user_id=user_id)
+                    finding_id = await create_finding(
+                        scan_id,
+                        {
+                            "title": "QA active risk finding",
+                            "category": "QA",
+                            "severity": "HIGH",
+                            "confidence": "CONFIRMED",
+                            "target": "http://localhost/lab/phantombank",
+                            "endpoint": "http://localhost/lab/phantombank/search",
+                            "evidence": "controlled QA evidence",
+                            "impact": "impact",
+                            "recommendation": "fix",
+                            "verification": "rerun",
+                            "agent": "QA",
+                            "timestamp": datetime.now(timezone.utc),
+                            "module": "xss",
+                        },
+                    )
+                    await set_scan_artifacts(scan_id, browser_security_output={"pages": [{"url": "http://localhost/lab/phantombank"}], "network_events": []})
 
-            answer = client.post(f"/api/ai/scan/{scan_id}/ask", json={"question": "Explain finding #99999"})
-            self.assertEqual(answer.status_code, 200, answer.text)
-            self.assertFalse(answer.json()["can_start_active_test"])
-            self.assertIn("not have enough", answer.json()["answer"].lower())
+                    finding = client.patch(f"/api/findings/{finding_id}/risk", json={"risk_status": "FALSE_POSITIVE"}, headers=headers)
+                    assert finding.status_code == 200, finding.text
+                    assert finding.json()["risk_status"] == "FALSE_POSITIVE"
 
-        artifacts = asyncio.run(get_scan_artifacts(scan_id))
-        self.assertIsNotNone(artifacts)
-        self.assertIsNotNone(artifacts["ai_analyst_output"])
+                    scan_id_resp = finding.json()["scan_id"]
+                    analysis = client.get(f"/api/ai/scan/{scan_id_resp}/analysis", headers=headers)
+                    assert analysis.status_code == 200, analysis.text
+                    assert analysis.json()["safety"]["can_start_active_test"] == False
+                    assert analysis.json()["priorities"] == []
+
+                    answer = client.post(f"/api/ai/scan/{scan_id_resp}/ask", json={"question": "Explain finding #99999"}, headers=headers)
+                    assert answer.status_code == 200, answer.text
+                    assert answer.json()["can_start_active_test"] == False
+                    assert "not have enough" in answer.json()["answer"].lower()
+
+                    artifacts = await get_scan_artifacts(scan_id_resp)
+                    assert artifacts is not None
+                    assert artifacts["ai_analyst_output"] is not None
+
+            asyncio.run(run_test())
 
     def test_authorization_challenge_success_failure_and_revoke_are_backend_authoritative(self) -> None:
         with TestClient(app, base_url="http://localhost") as client:
-            http_challenge = client.post("/api/authorization/challenge", json={"target_url": "http://localhost/lab/phantombank", "verification_method": "http"})
+            headers = create_auth_headers(client)
+            http_challenge = client.post("/api/authorization/challenge", json={"target_url": "http://localhost/lab/phantombank", "verification_method": "http"}, headers=headers)
             self.assertEqual(http_challenge.status_code, 201, http_challenge.text)
             authorization_id = http_challenge.json()["id"]
 
@@ -171,17 +229,17 @@ class DatabaseFindingAiAndAuthorizationTests(TestCase):
 
             try:
                 authorization_router.authorization_service._verify_http = http_missing
-                rejected = client.post(f"/api/authorization/{authorization_id}/verify")
+                rejected = client.post(f"/api/authorization/{authorization_id}/verify", headers=headers)
                 self.assertEqual(rejected.status_code, 409, rejected.text)
 
                 authorization_router.authorization_service._verify_http = http_present
-                verified = client.post(f"/api/authorization/{authorization_id}/verify")
+                verified = client.post(f"/api/authorization/{authorization_id}/verify", headers=headers)
                 self.assertEqual(verified.status_code, 200, verified.text)
                 self.assertEqual(verified.json()["status"], "VERIFIED")
             finally:
                 authorization_router.authorization_service._verify_http = original_http
 
-            revoked = client.post(f"/api/authorization/{authorization_id}/revoke")
+            revoked = client.post(f"/api/authorization/{authorization_id}/revoke", headers=headers)
             self.assertEqual(revoked.status_code, 200, revoked.text)
             self.assertEqual(revoked.json()["status"], "REVOKED")
 
@@ -358,7 +416,16 @@ class BrowserObservationAndActiveLabTests(IsolatedAsyncioTestCase):
 
     async def test_verify_fix_is_evidence_based_for_patched_lab(self) -> None:
         set_scenario_state("VULNERABLE")
-        scan_id = await make_scan("pentest", ["xss"])
+        # Register user first to get user_id for scan ownership
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://localhost") as client:
+            reg = await client.post("/api/auth/register", json={"email": f"test_{os.urandom(4).hex()}@example.com", "password": "TestPass123!", "name": "Test User"})
+            assert reg.status_code == 201, reg.text
+            token = reg.json()["token"]
+            user_id = reg.json()["user"]["id"]
+            auth_headers = {"Authorization": f"Bearer {token}"}
+
+        # Create scan with authenticated user's ID
+        scan_id = await make_scan("pentest", ["xss"], user_id=user_id)
         finding_id = await create_finding(
             scan_id,
             {
@@ -379,8 +446,116 @@ class BrowserObservationAndActiveLabTests(IsolatedAsyncioTestCase):
         )
         set_scenario_state("PATCHED")
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://localhost") as client:
-            response = await client.post(f"/api/findings/{finding_id}/verify")
+            response = await client.post(f"/api/findings/{finding_id}/verify", headers=auth_headers)
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["status"], "FIX_VERIFIED")
         saved = await get_finding(finding_id)
         self.assertEqual(saved["verification_status"], "FIX_VERIFIED")
+
+
+class GitHubUnauthorizedFlowTests(TestCase):
+    """When no OAuth token exists, GitHub endpoints must degrade gracefully instead of 401."""
+
+    def setUp(self) -> None:
+        async def purge() -> None:
+            from app.database import get_connection, initialize_database
+            await initialize_database()
+            async with get_connection() as conn:
+                await conn.execute("DELETE FROM github_oauth_tokens WHERE user_id = 'local-user'")
+                await conn.execute("DELETE FROM github_app_installations WHERE user_id = 'local-user'")
+                await conn.commit()
+
+        asyncio.run(purge())
+
+    def test_status_returns_connected_false_without_token(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            response = client.get("/api/github/status", headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["connected"], False)
+
+    def test_repos_returns_200_with_empty_list_without_token(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            response = client.get("/api/github/repos", headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["connected"], False)
+        self.assertEqual(payload["repos"], [])
+        self.assertEqual(payload["total"], 0)
+
+    def test_installations_returns_200_without_token(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            response = client.get("/api/github/installations", headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["installations"], [])
+
+    def test_disconnect_is_idempotent_without_token(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            response = client.delete("/api/github/disconnect", headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["status"], "disconnected")
+
+
+class SupabaseAuthEndpointTests(TestCase):
+    """POST /api/auth/supabase exchanges a Supabase access token for a session."""
+
+    def _patch_verifier(self, user) -> None:
+        import app.routers.auth as auth_router
+        from app.services import supabase_auth
+
+        async def fake_verify(access_token: str):
+            if access_token == "token-invalid-12345":
+                raise supabase_auth.SupabaseAuthError("Supabase rejected the token (HTTP 401)")
+            return type("User", (), {"user_id": user.user_id, "email": user.email.lower(), "name": user.name})()
+
+        self._original = supabase_auth.verify_supabase_token
+        supabase_auth.verify_supabase_token = fake_verify
+        auth_router.verify_supabase_token = fake_verify
+
+    def tearDown(self) -> None:
+        import app.routers.auth as auth_router
+        from app.services import supabase_auth
+
+        if hasattr(self, "_original"):
+            supabase_auth.verify_supabase_token = self._original
+            auth_router.verify_supabase_token = self._original
+
+    def test_valid_token_returns_user_role(self) -> None:
+        self._patch_verifier(
+            type("User", (), {"user_id": "u-1", "email": "dev@example.com", "name": "Dev"})(),
+        )
+        with TestClient(app, base_url="http://localhost") as client:
+            response = client.post("/api/auth/supabase", json={"access_token": "token-ok-123456"})
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["user"]["role"], "user")
+        self.assertEqual(payload["user"]["email"], "dev@example.com")
+        self.assertTrue(payload["token"])
+
+    def test_valid_token_admin_allowlist_maps_to_admin(self) -> None:
+        from app.config import get_settings
+
+        settings = get_settings()
+        original = settings.supabase_admin_emails
+        settings.supabase_admin_emails = "boss@example.com, other@example.com"
+        try:
+            self._patch_verifier(
+                type("User", (), {"user_id": "u-2", "email": "BOSS@example.com", "name": "Boss"})(),
+            )
+            with TestClient(app, base_url="http://localhost") as client:
+                response = client.post("/api/auth/supabase", json={"access_token": "token-ok-123456"})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["user"]["role"], "admin")
+        finally:
+            settings.supabase_admin_emails = original
+
+    def test_invalid_token_returns_401(self) -> None:
+        self._patch_verifier(
+            type("User", (), {"user_id": "u-3", "email": "x@example.com", "name": "X"})(),
+        )
+        with TestClient(app, base_url="http://localhost") as client:
+            response = client.post("/api/auth/supabase", json={"access_token": "token-invalid-12345"})
+        self.assertEqual(response.status_code, 401, response.text)

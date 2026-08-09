@@ -28,6 +28,7 @@ from app.services.browser_observation import (
 from app.services.execution import ExecutionBudget, ExecutionLimitError, SafetyLimits
 from app.services.redaction import SecretRedactionService
 from main import app
+from tests.conftest import create_auth_headers
 
 
 def limits(max_total_requests: int = 80) -> SafetyLimits:
@@ -131,32 +132,50 @@ class BrowserObservationTests(IsolatedAsyncioTestCase):
         self.assertEqual(artifacts["browser_security_output"]["pages"][0]["url"], "http://localhost")
 
     async def test_browser_fix_verification_marks_patched_csp_fixed(self) -> None:
-        scan_id = await make_scan()
-        finding_id = await create_finding(
-            scan_id,
-            {
-                "title": "CSP missing or weak with browser-observed script surfaces",
-                "category": "CSP",
-                "severity": "LOW",
-                "confidence": "HIGH",
-                "target": "http://localhost/lab/phantombank",
-                "endpoint": "http://localhost/lab/phantombank",
-                "evidence": "CSP status: missing.",
-                "impact": "impact",
-                "recommendation": "fix",
-                "verification": "rerun browser observation",
-                "agent": "Browser Security Agent",
-                "timestamp": "2026-01-01T00:00:00+00:00",
-                "module": "csp_analysis",
-            },
-        )
-        set_scenario_state("PATCHED")
-        with TestClient(app, base_url="http://localhost") as client:
-            response = client.post(f"/api/findings/{finding_id}/verify")
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["status"], "FIX_VERIFIED")
-        saved = await get_finding(finding_id)
-        self.assertEqual(saved["verification_status"], "FIX_VERIFIED")
+        async def run_test() -> None:
+            with TestClient(app, base_url="http://localhost") as client:
+                # Register and get token + user_id
+                email = f"test_{os.urandom(4).hex()}@example.com"
+                reg = client.post("/api/auth/register", json={"email": email, "password": "TestPass123!", "name": "Test User"})
+                assert reg.status_code == 201, reg.text
+                token = reg.json()["token"]
+                user_id = reg.json()["user"]["id"]
+                headers = {"Authorization": f"Bearer {token}"}
+
+                await initialize_database()
+                scan_id = await create_scan(
+                    target_url="http://localhost/lab/phantombank",
+                    mode="defend",
+                    intensity="low",
+                    selected_tests="[]",
+                    user_id=user_id,
+                )
+                finding_id = await create_finding(
+                    scan_id,
+                    {
+                        "title": "CSP missing or weak with browser-observed script surfaces",
+                        "category": "CSP",
+                        "severity": "LOW",
+                        "confidence": "HIGH",
+                        "target": "http://localhost/lab/phantombank",
+                        "endpoint": "http://localhost/lab/phantombank",
+                        "evidence": "CSP status: missing.",
+                        "impact": "impact",
+                        "recommendation": "fix",
+                        "verification": "rerun browser observation",
+                        "agent": "Browser Security Agent",
+                        "timestamp": "2026-01-01T00:00:00+00:00",
+                        "module": "csp_analysis",
+                    },
+                )
+                set_scenario_state("PATCHED")
+                response = client.post(f"/api/findings/{finding_id}/verify", headers=headers)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["status"], "FIX_VERIFIED")
+                saved = await get_finding(finding_id)
+                self.assertEqual(saved["verification_status"], "FIX_VERIFIED")
+
+        await run_test()
 
 
 class BrowserAnalysisUnitTests(TestCase):

@@ -27,6 +27,7 @@ from app.services.execution_status import (
     clear_execution,
 )
 from main import app
+from tests.conftest import create_auth_headers
 
 
 class AgentStateBuilderTests(IsolatedAsyncioTestCase):
@@ -173,7 +174,8 @@ class ExecutionStatusEndpointTests(IsolatedAsyncioTestCase):
 
     async def test_endpoint_returns_idle_when_no_execution(self):
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/execution/status")
+            headers = create_auth_headers(client)
+            response = client.get("/api/execution/status", headers=headers)
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["lifecycle"], "IDLE")
@@ -186,7 +188,8 @@ class ExecutionStatusEndpointTests(IsolatedAsyncioTestCase):
             target_url="http://localhost/lab/test", current_module="xss",
         )
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/execution/status")
+            headers = create_auth_headers(client)
+            response = client.get("/api/execution/status", headers=headers)
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["lifecycle"], "RUNNING")
@@ -203,7 +206,8 @@ class ExecutionStatusEndpointTests(IsolatedAsyncioTestCase):
             target_url="http://localhost/lab/phantombank",
         )
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/execution/status")
+            headers = create_auth_headers(client)
+            response = client.get("/api/execution/status", headers=headers)
         payload = response.json()
         self.assertEqual(payload["execution_type"], "LAB_OPERATION")
         self.assertTrue(payload["is_lab"])
@@ -211,7 +215,8 @@ class ExecutionStatusEndpointTests(IsolatedAsyncioTestCase):
     async def test_endpoint_self_audit_state(self):
         await update_self_audit_execution(lifecycle="running")
         with TestClient(app, base_url="http://localhost") as client:
-            response = client.get("/api/execution/status")
+            headers = create_auth_headers(client)
+            response = client.get("/api/execution/status", headers=headers)
         payload = response.json()
         self.assertEqual(payload["execution_type"], "SELF_AUDIT")
         self.assertEqual(payload["lifecycle"], "RUNNING")
