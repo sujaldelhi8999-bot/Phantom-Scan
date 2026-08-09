@@ -32,12 +32,16 @@ class Settings:
     cors_origins = list(dict.fromkeys([frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"]))
     openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
     openrouter_model = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+    ai_max_modules = env_int("AI_MAX_MODULES", 10)
+    ai_poc_max_per_scan = env_int("AI_POC_MAX_PER_SCAN", 5)
+    exploit_sandbox = os.getenv("EXPLOIT_SANDBOX", "auto")
+    exploit_docker_image = os.getenv("EXPLOIT_DOCKER_IMAGE", "python:3.12-slim")
     nvd_api_key = os.getenv("NVD_API_KEY", "")
     notification_webhook_url = os.getenv("PHANTOMSCAN_WEBHOOK_URL", "")
     self_audit_webhook = os.getenv("SELF_AUDIT_WEBHOOK", "http://localhost:8000/api/logs/alert")
-    admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
-    secret_key = os.getenv("SECRET_KEY", "your-secret-key-change-this")
+    admin_username = os.getenv("ADMIN_USERNAME")
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    secret_key = os.getenv("SECRET_KEY")
     local_user_id = os.getenv("LOCAL_USER_ID", "local-user")
     local_user_role = os.getenv("LOCAL_USER_ROLE", "user")
     verification_ttl_days = env_int("VERIFICATION_TTL_DAYS", 30)
@@ -54,6 +58,21 @@ class Settings:
     port_scan_concurrency = env_int("PORT_SCAN_CONCURRENCY", 64)
     port_scan_max_ports = env_int("PORT_SCAN_MAX_PORTS", 1024)
     port_scan_sweep_timeout = env_float("PORT_SCAN_SWEEP_TIMEOUT", 75.0)
+
+    # GitHub OAuth
+    github_client_id = os.getenv("GITHUB_CLIENT_ID", "")
+    github_client_secret = os.getenv("GITHUB_CLIENT_SECRET", "")
+    github_redirect_uri = os.getenv("GITHUB_REDIRECT_URI", "")
+
+    # GitHub App
+    github_app_id = os.getenv("GITHUB_APP_ID", "")
+    github_app_private_key = os.getenv("GITHUB_APP_PRIVATE_KEY", "")
+    github_webhook_secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
+
+    # Supabase Auth (Google / GitHub login)
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    supabase_admin_emails = os.getenv("SUPABASE_ADMIN_EMAILS", "")
 
 
 @lru_cache
