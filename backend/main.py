@@ -28,7 +28,7 @@ from app.database import (
     initialize_database,
 )
 from app.models import HealthResponse
-from app.routers import active, admin_scope, agents, ai, auth, authorization, dos, execution, findings, intelligence, lab, logs, scan, self_audit
+from app.routers import active, admin_scope, agents, ai, auth, authorization, ci_cd, dos, execution, findings, github, intelligence, lab, learning, logs, multi_source, scan, self_audit
 from app.services.jobs import scan_job_manager
 from app.services.openrouter_client import get_ai_status
 from app.websockets import scan_event_broker
@@ -129,6 +129,10 @@ app.include_router(self_audit.router)
 app.include_router(lab.router)
 app.include_router(execution.router)
 app.include_router(intelligence.router)
+app.include_router(learning.router)
+app.include_router(github.router)
+app.include_router(multi_source.router)
+app.include_router(ci_cd.router)
 
 
 def scheduler_state() -> str:

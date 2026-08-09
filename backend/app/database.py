@@ -12,7 +12,7 @@ from app.models import FindingCreate
 from app.security import redact_payload, redact_sensitive
 
 SYSTEM_TARGET_URL = "system://phantomscan"
-LATEST_SCHEMA_VERSION = 11
+LATEST_SCHEMA_VERSION = 12
 _UNSET = object()
 
 
@@ -31,6 +31,23 @@ DATABASE_PATH = resolve_database_path()
 
 
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT,
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    subscription_tier TEXT NOT NULL DEFAULT 'FREE' CHECK (subscription_tier IN ('FREE', 'PRO')),
+    subscription_status TEXT NOT NULL DEFAULT 'active' CHECK (subscription_status IN ('active', 'canceled', 'past_due')),
+    stripe_customer_id TEXT,
+    subscription_expires_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer ON users (stripe_customer_id);
+
 CREATE TABLE IF NOT EXISTS authorized_targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
@@ -48,7 +65,7 @@ CREATE TABLE IF NOT EXISTS authorized_targets (
 CREATE TABLE IF NOT EXISTS scans (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     target_url TEXT NOT NULL,
-    mode TEXT NOT NULL CHECK (mode IN ('defend', 'pentest')),
+    mode TEXT NOT NULL CHECK (mode IN ('defend', 'pentest', 'multi_agent')),
     intensity TEXT NOT NULL DEFAULT 'medium' CHECK (intensity IN ('low', 'medium', 'high')),
     selected_tests TEXT NOT NULL DEFAULT '[]',
     user_id TEXT NOT NULL DEFAULT 'local-user',
@@ -125,6 +142,8 @@ CREATE TABLE IF NOT EXISTS scan_artifacts (
     active_security_output TEXT,
     browser_security_output TEXT,
     ai_analyst_output TEXT,
+    exploitation_output TEXT,
+    tci_output TEXT,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
 );
@@ -276,6 +295,30 @@ CREATE INDEX IF NOT EXISTS idx_evidence_job_id ON evidence_records (job_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_request_id ON evidence_records (request_id);
 CREATE INDEX IF NOT EXISTS idx_evidence_finding_id ON evidence_records (finding_id);
 
+CREATE TABLE IF NOT EXISTS learning_insights (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    module TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'module' CHECK (kind IN ('module', 'scan')),
+    total_count INTEGER NOT NULL DEFAULT 0,
+    true_positives INTEGER NOT NULL DEFAULT 0,
+    false_positives INTEGER NOT NULL DEFAULT 0,
+    unrated_count INTEGER NOT NULL DEFAULT 0,
+    true_positive_rate REAL NOT NULL DEFAULT 0,
+    false_positive_rate REAL NOT NULL DEFAULT 0,
+    recommendation TEXT,
+    recommendation_data TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'dismissed')),
+    applied_settings TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE,
+    UNIQUE (scan_id, module, kind)
+);
+
+CREATE INDEX IF NOT EXISTS idx_learning_insights_scan ON learning_insights (scan_id);
+CREATE INDEX IF NOT EXISTS idx_learning_insights_module ON learning_insights (module, status);
+
 CREATE TABLE IF NOT EXISTS dos_jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     job_id TEXT NOT NULL UNIQUE,
@@ -378,7 +421,260 @@ BEFORE UPDATE ON audit_logs
 BEGIN
     SELECT RAISE(ABORT, 'audit_logs are append-only');
 END;
+
+-- Multi-source scanning tables
+CREATE TABLE IF NOT EXISTS scan_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('local', 'github', 'gitlab', 'bitbucket', 'live', 'api_spec', 'docker', 'kubernetes', 'terraform')),
+    source_config TEXT NOT NULL,
+    source_identifier TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+    priority INTEGER NOT NULL DEFAULT 1,
+    findings_count INTEGER NOT NULL DEFAULT 0,
+    scan_duration_seconds REAL NOT NULL DEFAULT 0,
+    error_message TEXT,
+    artifacts TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at TEXT,
+    completed_at TEXT,
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_scan_sources_scan_id ON scan_sources (scan_id);
+
+CREATE TABLE IF NOT EXISTS github_oauth_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    github_user_id INTEGER NOT NULL,
+    github_login TEXT NOT NULL,
+    access_token_encrypted TEXT NOT NULL,
+    refresh_token_encrypted TEXT,
+    token_type TEXT DEFAULT 'bearer',
+    scope TEXT,
+    expires_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, github_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_github_oauth_user_id ON github_oauth_tokens (user_id);
+
+CREATE TABLE IF NOT EXISTS github_app_installations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    installation_id INTEGER NOT NULL,
+    account_login TEXT NOT NULL,
+    account_type TEXT NOT NULL,
+    repository_selection TEXT NOT NULL,
+    permissions TEXT NOT NULL,
+    events TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, installation_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_github_app_user_id ON github_app_installations (user_id);
+
+CREATE TABLE IF NOT EXISTS source_correlations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    unified_id TEXT NOT NULL,
+    correlation_type TEXT NOT NULL CHECK (correlation_type IN ('exact_match', 'same_file', 'same_endpoint', 'data_flow', 'vulnerability_chain')),
+    confidence REAL NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+    source_types TEXT NOT NULL,
+    finding_ids TEXT NOT NULL,
+    evidence TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_source_correlations_scan_id ON source_correlations (scan_id);
+CREATE INDEX IF NOT EXISTS idx_source_correlations_unified_id ON source_correlations (unified_id);
+
+CREATE TABLE IF NOT EXISTS finding_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id INTEGER NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('local', 'github', 'gitlab', 'bitbucket', 'live', 'api_spec', 'docker', 'kubernetes', 'terraform')),
+    source_identifier TEXT NOT NULL,
+    location TEXT,
+    tool TEXT,
+    rule_id TEXT,
+    commit_sha TEXT,
+    branch TEXT,
+    pr_number INTEGER,
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_finding_sources_finding_id ON finding_sources (finding_id);
+
+CREATE TABLE IF NOT EXISTS sast_findings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id INTEGER NOT NULL UNIQUE,
+    language TEXT NOT NULL,
+    framework TEXT,
+    file_path TEXT NOT NULL,
+    start_line INTEGER NOT NULL,
+    end_line INTEGER NOT NULL,
+    start_column INTEGER,
+    end_column INTEGER,
+    function_name TEXT,
+    class_name TEXT,
+    code_snippet TEXT,
+    rule_id TEXT NOT NULL,
+rule_name TEXT,
+    rule_severity TEXT,
+    tool TEXT NOT NULL,
+    "references" TEXT,
+    cwe_ids TEXT,
+    owasp_category TEXT,
+    fix_suggestion TEXT,
+    fix_example TEXT,
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sast_findings_file_path ON sast_findings (file_path);
+CREATE INDEX IF NOT EXISTS idx_sast_findings_rule_id ON sast_findings (rule_id);
+
+CREATE TABLE IF NOT EXISTS secret_findings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id INTEGER NOT NULL UNIQUE,
+    secret_type TEXT NOT NULL,
+    detector_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    line_number INTEGER NOT NULL,
+    matched_content TEXT,
+    entropy REAL,
+    is_validated INTEGER NOT NULL DEFAULT 0,
+    validation_error TEXT,
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS iac_findings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id INTEGER NOT NULL UNIQUE,
+    resource_type TEXT NOT NULL,
+    resource_name TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    line_start INTEGER NOT NULL,
+    line_end INTEGER NOT NULL,
+    configuration TEXT,
+    misconfiguration_type TEXT NOT NULL,
+    platform TEXT NOT NULL CHECK (platform IN ('terraform', 'kubernetes', 'cloudformation', 'helm', 'dockerfile')),
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS sca_findings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id INTEGER NOT NULL UNIQUE,
+    package_name TEXT NOT NULL,
+    package_version TEXT NOT NULL,
+    ecosystem TEXT NOT NULL,
+    vulnerability_id TEXT NOT NULL,
+    vulnerable_versions TEXT NOT NULL,
+    fixed_version TEXT,
+    cvss_score REAL,
+    cvss_vector TEXT,
+    license TEXT,
+    is_direct INTEGER NOT NULL DEFAULT 1,
+    dependency_path TEXT,
+    advisory_url TEXT,
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ai_code_fixes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    finding_id INTEGER NOT NULL,
+    patch TEXT NOT NULL,
+    explanation TEXT NOT NULL,
+    confidence REAL NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+    fix_type TEXT NOT NULL,
+    verification_steps TEXT,
+    related_cwe TEXT,
+    estimated_effort TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'verified', 'rejected')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    applied_at TEXT,
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_code_fixes_finding_id ON ai_code_fixes (finding_id);
+
+CREATE TABLE IF NOT EXISTS ai_tutor_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    finding_id INTEGER,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    explanation TEXT,
+    code_examples TEXT,
+    "references" TEXT,
+    follow_up_questions TEXT,
+    confidence REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_tutor_user_id ON ai_tutor_sessions (user_id);
+
+CREATE TABLE IF NOT EXISTS compliance_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    frameworks TEXT NOT NULL,
+    format TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    summary TEXT,
+    generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TEXT NOT NULL,
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS pr_descriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scan_id INTEGER NOT NULL,
+    finding_ids TEXT NOT NULL,
+    base_branch TEXT NOT NULL,
+    head_branch TEXT NOT NULL,
+    repo_url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    labels TEXT,
+    reviewers TEXT,
+    related_issues TEXT,
+    status TEXT NOT NULL DEFAULT 'generated' CHECK (status IN ('generated', 'submitted', 'merged', 'rejected')),
+    pr_url TEXT,
+    pr_number INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    submitted_at TEXT,
+    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+);
 """
+
+
+SCANS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS scans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_url TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK (mode IN ('defend', 'pentest', 'multi_agent')),
+    intensity TEXT NOT NULL DEFAULT 'medium' CHECK (intensity IN ('low', 'medium', 'high')),
+    selected_tests TEXT NOT NULL DEFAULT '[]',
+    user_id TEXT NOT NULL DEFAULT 'local-user',
+    authorization_id INTEGER,
+    authorization_confirmed INTEGER NOT NULL DEFAULT 0 CHECK (authorization_confirmed IN (0, 1)),
+    status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'running', 'cancelling', 'cancelled', 'complete', 'error')),
+    progress INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+    request_count INTEGER NOT NULL DEFAULT 0,
+    sandbox_id TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at TEXT,
+    completed_at TEXT,
+    FOREIGN KEY (authorization_id) REFERENCES authorized_targets (id)
+);
+"""
+
+
+SCANS_MODE_LEGACY_MARKER = "CHECK (mode IN ('defend', 'pentest'))"
 
 
 @asynccontextmanager
@@ -408,6 +704,39 @@ async def _column_exists(connection: aiosqlite.Connection, table: str, column: s
     return any(row["name"] == column for row in await cursor.fetchall())
 
 
+async def _migrate_scans_mode_check(connection: aiosqlite.Connection) -> None:
+    """Rebuild the scans table when its mode CHECK predates the multi_agent mode."""
+    cursor = await connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'scans'"
+    )
+    row = await cursor.fetchone()
+    if row is None or SCANS_MODE_LEGACY_MARKER not in str(row["sql"]):
+        return
+    create_new = SCANS_TABLE_SQL.replace(
+        "CREATE TABLE IF NOT EXISTS scans ", "CREATE TABLE scans_new "
+    )
+    await connection.execute("PRAGMA foreign_keys = OFF")
+    await connection.executescript(
+        create_new
+        + """
+        INSERT INTO scans_new (
+            id, target_url, mode, intensity, selected_tests, user_id, authorization_id,
+            authorization_confirmed, status, progress, request_count, sandbox_id,
+            error_message, created_at, started_at, completed_at
+        )
+        SELECT
+            id, target_url, mode, intensity, selected_tests, user_id, authorization_id,
+            authorization_confirmed, status, progress, request_count, sandbox_id,
+            error_message, created_at, started_at, completed_at
+        FROM scans;
+        DROP TABLE scans;
+        ALTER TABLE scans_new RENAME TO scans;
+        """
+    )
+    await connection.commit()
+    await connection.execute("PRAGMA foreign_keys = ON")
+
+
 async def initialize_database() -> None:
     async with get_connection() as connection:
         if not await _table_exists(connection, "scans"):
@@ -421,9 +750,12 @@ async def initialize_database() -> None:
             return
 
         await connection.executescript(SCHEMA_SQL)
+        await _migrate_scans_mode_check(connection)
         await _migrate_active_finding_columns(connection)
         await _migrate_active_artifact_columns(connection)
         await _migrate_browser_artifact_columns(connection)
+        await _migrate_exploitation_artifact_column(connection)
+        await _migrate_tci_artifact_column(connection)
         await _migrate_ai_columns(connection)
         await _migrate_authorized_test_jobs_table(connection)
         await _migrate_job_events_table(connection)
@@ -432,6 +764,22 @@ async def initialize_database() -> None:
         await _migrate_shadow_recon_columns(connection)
         await _migrate_scan_artifact_recon_columns(connection)
         await _migrate_dos_metrics_columns(connection)
+        # Multi-source scanning migrations
+        await _migrate_scan_sources_table(connection)
+        await _migrate_github_oauth_table(connection)
+        await _migrate_github_app_table(connection)
+        await _migrate_source_correlations_table(connection)
+        await _migrate_finding_sources_table(connection)
+        await _migrate_sast_findings_table(connection)
+        await _migrate_secret_findings_table(connection)
+        await _migrate_iac_findings_table(connection)
+        await _migrate_sca_findings_table(connection)
+        await _migrate_ai_code_fixes_table(connection)
+        await _migrate_ai_tutor_sessions_table(connection)
+        await _migrate_compliance_reports_table(connection)
+        await _migrate_pr_descriptions_table(connection)
+        await _migrate_findings_correlation_columns(connection)
+        await _migrate_compliance_report_columns(connection)
         await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
         await connection.commit()
 
@@ -529,6 +877,16 @@ async def _migrate_active_artifact_columns(connection: aiosqlite.Connection) -> 
 async def _migrate_browser_artifact_columns(connection: aiosqlite.Connection) -> None:
     if not await _column_exists(connection, "scan_artifacts", "browser_security_output"):
         await connection.execute("ALTER TABLE scan_artifacts ADD COLUMN browser_security_output TEXT")
+
+
+async def _migrate_exploitation_artifact_column(connection: aiosqlite.Connection) -> None:
+    if not await _column_exists(connection, "scan_artifacts", "exploitation_output"):
+        await connection.execute("ALTER TABLE scan_artifacts ADD COLUMN exploitation_output TEXT")
+
+
+async def _migrate_tci_artifact_column(connection: aiosqlite.Connection) -> None:
+    if not await _column_exists(connection, "scan_artifacts", "tci_output"):
+        await connection.execute("ALTER TABLE scan_artifacts ADD COLUMN tci_output TEXT")
 
 
 async def _migrate_authorized_test_jobs_table(connection: aiosqlite.Connection) -> None:
@@ -703,6 +1061,344 @@ async def _migrate_execution_status_table(connection: aiosqlite.Connection) -> N
         )
 
 
+async def _migrate_scan_sources_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "scan_sources"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS scan_sources (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_id INTEGER NOT NULL,
+                source_type TEXT NOT NULL CHECK (source_type IN ('local', 'github', 'gitlab', 'bitbucket', 'live', 'api_spec', 'docker', 'kubernetes', 'terraform')),
+                source_config TEXT NOT NULL,
+                source_identifier TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+                priority INTEGER NOT NULL DEFAULT 1,
+                findings_count INTEGER NOT NULL DEFAULT 0,
+                scan_duration_seconds REAL NOT NULL DEFAULT 0,
+                error_message TEXT,
+                artifacts TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                started_at TEXT,
+                completed_at TEXT,
+                FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_scan_sources_scan_id ON scan_sources (scan_id);
+            """
+        )
+
+
+async def _migrate_github_oauth_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "github_oauth_tokens"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS github_oauth_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                github_user_id INTEGER NOT NULL,
+                github_login TEXT NOT NULL,
+                access_token_encrypted TEXT NOT NULL,
+                refresh_token_encrypted TEXT,
+                token_type TEXT DEFAULT 'bearer',
+                scope TEXT,
+                expires_at TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, github_user_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_github_oauth_user_id ON github_oauth_tokens (user_id);
+            """
+        )
+
+
+async def _migrate_github_app_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "github_app_installations"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS github_app_installations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                installation_id INTEGER NOT NULL,
+                account_login TEXT NOT NULL,
+                account_type TEXT NOT NULL,
+                repository_selection TEXT NOT NULL,
+                permissions TEXT NOT NULL,
+                events TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, installation_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_github_app_user_id ON github_app_installations (user_id);
+            """
+        )
+
+
+async def _migrate_source_correlations_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "source_correlations"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS source_correlations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_id INTEGER NOT NULL,
+                unified_id TEXT NOT NULL,
+                correlation_type TEXT NOT NULL CHECK (correlation_type IN ('exact_match', 'same_file', 'same_endpoint', 'data_flow', 'vulnerability_chain')),
+                confidence REAL NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+                source_types TEXT NOT NULL,
+                finding_ids TEXT NOT NULL,
+                evidence TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_source_correlations_scan_id ON source_correlations (scan_id);
+            CREATE INDEX IF NOT EXISTS idx_source_correlations_unified_id ON source_correlations (unified_id);
+            """
+        )
+
+
+async def _migrate_finding_sources_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "finding_sources"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS finding_sources (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id INTEGER NOT NULL,
+                source_type TEXT NOT NULL CHECK (source_type IN ('local', 'github', 'gitlab', 'bitbucket', 'live', 'api_spec', 'docker', 'kubernetes', 'terraform')),
+                source_identifier TEXT NOT NULL,
+                location TEXT,
+                tool TEXT,
+                rule_id TEXT,
+                commit_sha TEXT,
+                branch TEXT,
+                pr_number INTEGER,
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_finding_sources_finding_id ON finding_sources (finding_id);
+            """
+        )
+
+
+async def _migrate_sast_findings_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "sast_findings"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS sast_findings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id INTEGER NOT NULL UNIQUE,
+                language TEXT NOT NULL,
+                framework TEXT,
+                file_path TEXT NOT NULL,
+                start_line INTEGER NOT NULL,
+                end_line INTEGER NOT NULL,
+                start_column INTEGER,
+                end_column INTEGER,
+                function_name TEXT,
+                class_name TEXT,
+                code_snippet TEXT,
+                rule_id TEXT NOT NULL,
+rule_name TEXT,
+    rule_severity TEXT,
+    tool TEXT NOT NULL,
+    "references" TEXT,
+    cwe_ids TEXT,
+                owasp_category TEXT,
+                fix_suggestion TEXT,
+                fix_example TEXT,
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_sast_findings_file_path ON sast_findings (file_path);
+            CREATE INDEX IF NOT EXISTS idx_sast_findings_rule_id ON sast_findings (rule_id);
+            """
+        )
+
+
+async def _migrate_secret_findings_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "secret_findings"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS secret_findings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id INTEGER NOT NULL UNIQUE,
+                secret_type TEXT NOT NULL,
+                detector_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                line_number INTEGER NOT NULL,
+                matched_content TEXT,
+                entropy REAL,
+                is_validated INTEGER NOT NULL DEFAULT 0,
+                validation_error TEXT,
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+            );
+            """
+        )
+
+
+async def _migrate_iac_findings_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "iac_findings"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS iac_findings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id INTEGER NOT NULL UNIQUE,
+                resource_type TEXT NOT NULL,
+                resource_name TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                line_start INTEGER NOT NULL,
+                line_end INTEGER NOT NULL,
+                configuration TEXT,
+                misconfiguration_type TEXT NOT NULL,
+                platform TEXT NOT NULL CHECK (platform IN ('terraform', 'kubernetes', 'cloudformation', 'helm', 'dockerfile')),
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+            );
+            """
+        )
+
+
+async def _migrate_sca_findings_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "sca_findings"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS sca_findings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id INTEGER NOT NULL UNIQUE,
+                package_name TEXT NOT NULL,
+                package_version TEXT NOT NULL,
+                ecosystem TEXT NOT NULL,
+                vulnerability_id TEXT NOT NULL,
+                vulnerable_versions TEXT NOT NULL,
+                fixed_version TEXT,
+                cvss_score REAL,
+                cvss_vector TEXT,
+                license TEXT,
+                is_direct INTEGER NOT NULL DEFAULT 1,
+                dependency_path TEXT,
+                advisory_url TEXT,
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+            );
+            """
+        )
+
+
+async def _migrate_ai_code_fixes_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "ai_code_fixes"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS ai_code_fixes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id INTEGER NOT NULL,
+                patch TEXT NOT NULL,
+                explanation TEXT NOT NULL,
+                confidence REAL NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+                fix_type TEXT NOT NULL,
+                verification_steps TEXT,
+                related_cwe TEXT,
+                estimated_effort TEXT,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'applied', 'verified', 'rejected')),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                applied_at TEXT,
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_ai_code_fixes_finding_id ON ai_code_fixes (finding_id);
+            """
+        )
+
+
+async def _migrate_ai_tutor_sessions_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "ai_tutor_sessions"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS ai_tutor_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                finding_id INTEGER,
+                question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                explanation TEXT,
+                code_examples TEXT,
+                "references" TEXT,
+                follow_up_questions TEXT,
+                confidence REAL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (finding_id) REFERENCES findings (id) ON DELETE SET NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_ai_tutor_user_id ON ai_tutor_sessions (user_id);
+            """
+        )
+
+
+async def _migrate_compliance_reports_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "compliance_reports"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS compliance_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_id INTEGER NOT NULL,
+                frameworks TEXT NOT NULL,
+                format TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                summary TEXT,
+                generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT NOT NULL,
+                FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+            );
+            """
+        )
+
+
+async def _migrate_pr_descriptions_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "pr_descriptions"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS pr_descriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_id INTEGER NOT NULL,
+                finding_ids TEXT NOT NULL,
+                base_branch TEXT NOT NULL,
+                head_branch TEXT NOT NULL,
+                repo_url TEXT NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                labels TEXT,
+                reviewers TEXT,
+                related_issues TEXT,
+                status TEXT NOT NULL DEFAULT 'generated' CHECK (status IN ('generated', 'submitted', 'merged', 'rejected')),
+                pr_url TEXT,
+                pr_number INTEGER,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                submitted_at TEXT,
+                FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
+            );
+            """
+        )
+
+
+async def _migrate_findings_correlation_columns(connection: aiosqlite.Connection) -> None:
+    columns = [
+        ("sources", "TEXT"),
+        ("correlation", "TEXT"),
+        ("primary_source", "TEXT NOT NULL DEFAULT 'live'"),
+        ("patch", "TEXT"),
+        ("patch_status", "TEXT"),
+        ("patch_applied_at", "TEXT"),
+        ("assigned_to", "TEXT"),
+        ("due_date", "TEXT"),
+        ("fix_commit_sha", "TEXT"),
+        ("fix_pr_url", "TEXT"),
+    ]
+    for column, definition in columns:
+        if not await _column_exists(connection, "findings", column):
+            await connection.execute(f"ALTER TABLE findings ADD COLUMN {column} {definition}")
+
+
+async def _migrate_compliance_report_columns(connection: aiosqlite.Connection) -> None:
+    columns = [
+        ("report_id", "TEXT"),
+        ("download_url", "TEXT"),
+        ("content", "TEXT"),
+    ]
+    for column, definition in columns:
+        if not await _column_exists(connection, "compliance_reports", column):
+            await connection.execute(f"ALTER TABLE compliance_reports ADD COLUMN {column} {definition}")
+
+
 async def create_scan(
     target_url: str,
     mode: str,
@@ -751,21 +1447,33 @@ async def get_scan(scan_id: int) -> dict[str, Any] | None:
         return serialize_row(await cursor.fetchone())
 
 
-async def list_scans() -> list[dict[str, Any]]:
+async def list_scans(user_id: str | None = None) -> list[dict[str, Any]]:
     async with get_connection() as connection:
-        cursor = await connection.execute(
-            "SELECT * FROM scans WHERE target_url != ? ORDER BY created_at DESC, id DESC LIMIT 100",
-            (SYSTEM_TARGET_URL,),
-        )
+        if user_id:
+            cursor = await connection.execute(
+                "SELECT * FROM scans WHERE user_id = ? AND target_url != ? ORDER BY created_at DESC, id DESC LIMIT 100",
+                (user_id, SYSTEM_TARGET_URL),
+            )
+        else:
+            cursor = await connection.execute(
+                "SELECT * FROM scans WHERE target_url != ? ORDER BY created_at DESC, id DESC LIMIT 100",
+                (SYSTEM_TARGET_URL,),
+            )
         return [dict(row) for row in await cursor.fetchall()]
 
 
-async def get_latest_scan() -> dict[str, Any] | None:
+async def get_latest_scan(user_id: str | None = None) -> dict[str, Any] | None:
     async with get_connection() as connection:
-        cursor = await connection.execute(
-            "SELECT * FROM scans WHERE target_url != ? ORDER BY created_at DESC, id DESC LIMIT 1",
-            (SYSTEM_TARGET_URL,),
-        )
+        if user_id:
+            cursor = await connection.execute(
+                "SELECT * FROM scans WHERE user_id = ? AND target_url != ? ORDER BY created_at DESC, id DESC LIMIT 1",
+                (user_id, SYSTEM_TARGET_URL),
+            )
+        else:
+            cursor = await connection.execute(
+                "SELECT * FROM scans WHERE target_url != ? ORDER BY created_at DESC, id DESC LIMIT 1",
+                (SYSTEM_TARGET_URL,),
+            )
         return serialize_row(await cursor.fetchone())
 
 
@@ -783,19 +1491,32 @@ async def get_previous_scan_for_target(target_url: str, scan_id: int) -> dict[st
         return serialize_row(await cursor.fetchone())
 
 
-async def get_latest_scan_for_agent(agent_name: str) -> dict[str, Any] | None:
+async def get_latest_scan_for_agent(agent_name: str, user_id: str | None = None) -> dict[str, Any] | None:
     async with get_connection() as connection:
-        cursor = await connection.execute(
-            """
-            SELECT scans.*
-            FROM scans
-            JOIN audit_logs ON audit_logs.scan_id = scans.id
-            WHERE audit_logs.agent_name = ?
-            ORDER BY audit_logs.id DESC
-            LIMIT 1
-            """,
-            (agent_name,),
-        )
+        if user_id:
+            cursor = await connection.execute(
+                """
+                SELECT scans.*
+                FROM scans
+                JOIN audit_logs ON audit_logs.scan_id = scans.id
+                WHERE audit_logs.agent_name = ? AND scans.user_id = ?
+                ORDER BY audit_logs.id DESC
+                LIMIT 1
+                """,
+                (agent_name, user_id),
+            )
+        else:
+            cursor = await connection.execute(
+                """
+                SELECT scans.*
+                FROM scans
+                JOIN audit_logs ON audit_logs.scan_id = scans.id
+                WHERE audit_logs.agent_name = ?
+                ORDER BY audit_logs.id DESC
+                LIMIT 1
+                """,
+                (agent_name,),
+            )
         return serialize_row(await cursor.fetchone())
 
 
@@ -879,13 +1600,49 @@ async def get_findings(scan_id: int, limit: int = 1000) -> list[dict[str, Any]]:
         cursor = await connection.execute(
             "SELECT * FROM findings WHERE scan_id = ? ORDER BY id ASC LIMIT ?", (scan_id, limit),
         )
-        return [dict(row) for row in await cursor.fetchall()]
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        for col in ("sources",):
+            raw = row.get(col)
+            if raw is None or raw == "":
+                row[col] = []
+            elif isinstance(raw, str):
+                try:
+                    row[col] = json.loads(raw)
+                except json.JSONDecodeError:
+                    row[col] = []
+        for col in ("correlation", "patch"):
+            raw = row.get(col)
+            if isinstance(raw, str):
+                try:
+                    row[col] = json.loads(raw)
+                except json.JSONDecodeError:
+                    row[col] = None
+    return rows
 
 
 async def get_finding(finding_id: int) -> dict[str, Any] | None:
     async with get_connection() as connection:
         cursor = await connection.execute("SELECT * FROM findings WHERE id = ?", (finding_id,))
-        return serialize_row(await cursor.fetchone())
+        row = await cursor.fetchone()
+    result = serialize_row(row)
+    if result is None:
+        return None
+    raw = result.get("sources")
+    if raw is None or raw == "":
+        result["sources"] = []
+    elif isinstance(raw, str):
+        try:
+            result["sources"] = json.loads(raw)
+        except json.JSONDecodeError:
+            result["sources"] = []
+    raw = result.get("correlation")
+    if isinstance(raw, str):
+        try:
+            result["correlation"] = json.loads(raw)
+        except json.JSONDecodeError:
+            result["correlation"] = None
+    return result
 
 
 async def update_finding(finding_id: int, **fields: Any) -> None:
@@ -921,16 +1678,42 @@ async def update_finding(finding_id: int, **fields: Any) -> None:
         await connection.commit()
 
 
-async def list_findings(scan_id: int | None = None) -> list[dict[str, Any]]:
+async def list_findings(scan_id: int | None = None, user_id: str | None = None) -> list[dict[str, Any]]:
     async with get_connection() as connection:
-        if scan_id is None:
-            cursor = await connection.execute("SELECT * FROM findings ORDER BY id ASC")
-        else:
+        if scan_id is not None:
             cursor = await connection.execute(
                 "SELECT * FROM findings WHERE scan_id = ? ORDER BY id ASC",
                 (scan_id,),
             )
-        return [dict(row) for row in await cursor.fetchall()]
+        elif user_id is not None:
+            cursor = await connection.execute(
+                """
+                SELECT f.* FROM findings f
+                JOIN scans s ON f.scan_id = s.id
+                WHERE s.user_id = ?
+                ORDER BY f.id ASC
+                """,
+                (user_id,),
+            )
+        else:
+            cursor = await connection.execute("SELECT * FROM findings ORDER BY id ASC")
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        raw = row.get("sources")
+        if raw is None or raw == "":
+            row["sources"] = []
+        elif isinstance(raw, str):
+            try:
+                row["sources"] = json.loads(raw)
+            except json.JSONDecodeError:
+                row["sources"] = []
+        raw = row.get("correlation")
+        if isinstance(raw, str):
+            try:
+                row["correlation"] = json.loads(raw)
+            except json.JSONDecodeError:
+                row["correlation"] = None
+    return rows
 
 
 async def add_audit_log(
@@ -987,15 +1770,236 @@ async def get_audit_logs(scan_id: int) -> list[dict[str, Any]]:
         return [dict(row) for row in await cursor.fetchall()]
 
 
-async def list_audit_logs(scan_id: int | None = None) -> list[dict[str, Any]]:
+async def start_agent_run(scan_id: int, agent_name: str) -> int:
+    now = datetime.now(timezone.utc).isoformat()
     async with get_connection() as connection:
-        if scan_id is None:
-            cursor = await connection.execute("SELECT * FROM audit_logs ORDER BY timestamp ASC, id ASC")
-        else:
+        cursor = await connection.execute(
+            """
+            INSERT INTO agent_runs (scan_id, agent_name, start_time, status)
+            VALUES (?, ?, ?, 'running')
+            """,
+            (scan_id, agent_name, now),
+        )
+        await connection.commit()
+        return int(cursor.lastrowid)
+
+
+async def complete_agent_run(
+    run_id: int,
+    *,
+    status: str = "completed",
+    execution_time: float | None = None,
+    error_message: str | None = None,
+    attempts: int = 1,
+) -> None:
+    end_time = datetime.now(timezone.utc).isoformat()
+    async with get_connection() as connection:
+        await connection.execute(
+            """
+            UPDATE agent_runs
+            SET end_time = ?, status = ?, execution_time = ?, error_message = ?, attempts = ?
+            WHERE id = ?
+            """,
+            (end_time, status, execution_time, error_message, attempts, run_id),
+        )
+        await connection.commit()
+
+
+async def upsert_learning_insights(scan_id: int, rows: list[dict[str, Any]]) -> None:
+    async with get_connection() as connection:
+        for row in rows:
+            await connection.execute(
+                """
+                INSERT INTO learning_insights (
+                    scan_id, module, kind, total_count, true_positives, false_positives,
+                    unrated_count, true_positive_rate, false_positive_rate,
+                    recommendation, recommendation_data, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                ON CONFLICT(scan_id, module, kind) DO UPDATE SET
+                    total_count = excluded.total_count,
+                    true_positives = excluded.true_positives,
+                    false_positives = excluded.false_positives,
+                    unrated_count = excluded.unrated_count,
+                    true_positive_rate = excluded.true_positive_rate,
+                    false_positive_rate = excluded.false_positive_rate,
+                    recommendation = excluded.recommendation,
+                    recommendation_data = excluded.recommendation_data,
+                    updated_at = CURRENT_TIMESTAMP,
+                    status = CASE
+                        WHEN learning_insights.status = 'pending' THEN 'pending'
+                        ELSE learning_insights.status
+                    END
+                """,
+                (
+                    scan_id,
+                    row["module"],
+                    row.get("kind", "module"),
+                    int(row.get("total_count", 0)),
+                    int(row.get("true_positives", 0)),
+                    int(row.get("false_positives", 0)),
+                    int(row.get("unrated_count", 0)),
+                    float(row.get("true_positive_rate", 0.0)),
+                    float(row.get("false_positive_rate", 0.0)),
+                    str(row.get("recommendation") or "")[:2000] or None,
+                    json.dumps(row.get("recommendation_data") or {}, ensure_ascii=True, default=str)
+                    if row.get("recommendation_data")
+                    else None,
+                ),
+            )
+        await connection.commit()
+
+
+async def list_learning_insights(
+    scan_id: int | None = None,
+    status_filter: str | None = None,
+) -> list[dict[str, Any]]:
+    query = "SELECT * FROM learning_insights"
+    conditions: list[str] = []
+    parameters: list[Any] = []
+    if scan_id is not None:
+        conditions.append("scan_id = ?")
+        parameters.append(scan_id)
+    if status_filter is not None:
+        conditions.append("status = ?")
+        parameters.append(status_filter)
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+    query += " ORDER BY scan_id DESC, module ASC"
+    async with get_connection() as connection:
+        cursor = await connection.execute(query, parameters)
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        for column in ("recommendation_data", "applied_settings"):
+            value = row.get(column)
+            if value is not None:
+                try:
+                    row[column] = json.loads(value)
+                except (TypeError, json.JSONDecodeError):
+                    row[column] = None
+    return rows
+
+
+async def get_learning_insight(insight_id: int) -> dict[str, Any] | None:
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            "SELECT * FROM learning_insights WHERE id = ?", (insight_id,)
+        )
+        row = serialize_row(await cursor.fetchone())
+    if row is not None:
+        for column in ("recommendation_data", "applied_settings"):
+            value = row.get(column)
+            if value is not None:
+                try:
+                    row[column] = json.loads(value)
+                except (TypeError, json.JSONDecodeError):
+                    row[column] = None
+    return row
+
+
+async def update_learning_insight_status(
+    insight_id: int,
+    status: str,
+    applied_settings: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    async with get_connection() as connection:
+        await connection.execute(
+            """
+            UPDATE learning_insights
+            SET status = ?, applied_settings = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (status, json.dumps(applied_settings, ensure_ascii=True, default=str) if applied_settings else None, insight_id),
+        )
+        await connection.commit()
+    return await get_learning_insight(insight_id)
+
+
+async def list_applied_tunings() -> dict[str, dict[str, Any]]:
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            """
+            SELECT module, applied_settings
+            FROM learning_insights
+            WHERE kind = 'module' AND status = 'applied' AND applied_settings IS NOT NULL
+            ORDER BY updated_at DESC
+            """
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    tunings: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        module = str(row["module"] or "")
+        if not module or module in tunings:
+            continue
+        try:
+            settings = json.loads(str(row["applied_settings"]))
+        except (TypeError, json.JSONDecodeError):
+            settings = {}
+        if isinstance(settings, dict):
+            tunings[module] = settings
+    return tunings
+
+
+async def scan_quality_summary() -> dict[str, Any]:
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            """
+            SELECT
+                module,
+                SUM(total_count) AS total_count,
+                SUM(true_positives) AS true_positives,
+                SUM(false_positives) AS false_positives,
+                SUM(unrated_count) AS unrated_count
+            FROM learning_insights
+            WHERE kind = 'module'
+            GROUP BY module
+            ORDER BY total_count DESC
+            """
+        )
+        module_rows = [dict(row) for row in await cursor.fetchall()]
+        cursor = await connection.execute(
+            """
+            SELECT l.*, s.target_url
+            FROM learning_insights AS l
+            LEFT JOIN scans AS s ON s.id = l.scan_id
+            WHERE l.kind = 'scan'
+            ORDER BY l.scan_id DESC
+            """
+        )
+        scan_rows = [dict(row) for row in await cursor.fetchall()]
+    for row in module_rows:
+        total = max(1, int(row["total_count"]))
+        row["true_positive_rate"] = round(int(row["true_positives"]) / total, 3)
+        row["false_positive_rate"] = round(int(row["false_positives"]) / total, 3)
+    for row in scan_rows:
+        for column in ("recommendation_data", "applied_settings"):
+            value = row.get(column)
+            if value is not None:
+                try:
+                    row[column] = json.loads(value)
+                except (TypeError, json.JSONDecodeError):
+                    row[column] = None
+    return {"modules": module_rows, "scans": scan_rows}
+
+
+async def list_audit_logs(scan_id: int | None = None, user_id: str | None = None) -> list[dict[str, Any]]:
+    async with get_connection() as connection:
+        if scan_id is not None:
             cursor = await connection.execute(
                 "SELECT * FROM audit_logs WHERE scan_id = ? ORDER BY timestamp ASC, id ASC",
                 (scan_id,),
             )
+        elif user_id is not None:
+            cursor = await connection.execute(
+                """
+                SELECT al.* FROM audit_logs al
+                JOIN scans s ON al.scan_id = s.id
+                WHERE s.user_id = ?
+                ORDER BY al.timestamp ASC, al.id ASC
+                """,
+                (user_id,),
+            )
+        else:
+            cursor = await connection.execute("SELECT * FROM audit_logs ORDER BY timestamp ASC, id ASC")
         return [dict(row) for row in await cursor.fetchall()]
 
 
@@ -1010,6 +2014,8 @@ async def set_scan_artifacts(
     active_security_output: Any = _UNSET,
     browser_security_output: Any = _UNSET,
     ai_analyst_output: Any = _UNSET,
+    exploitation_output: Any = _UNSET,
+    tci_output: Any = _UNSET,
 ) -> None:
     values = {
         "scanner_output": scanner_output,
@@ -1020,6 +2026,8 @@ async def set_scan_artifacts(
         "active_security_output": active_security_output,
         "browser_security_output": browser_security_output,
         "ai_analyst_output": ai_analyst_output,
+        "exploitation_output": exploitation_output,
+        "tci_output": tci_output,
     }
     updates: list[str] = []
     parameters: list[Any] = []
@@ -1047,7 +2055,7 @@ async def set_scan_artifacts(
 def deserialize_artifact_row(row: dict[str, Any] | None) -> dict[str, Any] | None:
     if row is None:
         return None
-    for column in ("scanner_output", "shadow_recon_output", "hindi_findings", "notification_result", "active_security_output", "browser_security_output", "ai_analyst_output"):
+    for column in ("scanner_output", "shadow_recon_output", "hindi_findings", "notification_result", "active_security_output", "browser_security_output", "ai_analyst_output", "exploitation_output", "tci_output"):
         value = row.get(column)
         if value is not None:
             try:
@@ -1126,6 +2134,94 @@ async def database_is_available() -> bool:
             return row is not None and int(row[0]) == 1
     except (aiosqlite.Error, OSError, ValueError):
         return False
+
+
+async def create_user(
+    user_id: str,
+    email: str,
+    password_hash: str,
+    name: str | None = None,
+    role: str = "user",
+) -> None:
+    async with get_connection() as connection:
+        await connection.execute(
+            """
+            INSERT INTO users (id, email, password_hash, name, role, subscription_tier, subscription_status)
+            VALUES (?, ?, ?, ?, ?, 'FREE', 'active')
+            """,
+            (user_id, email, password_hash, name, role),
+        )
+        await connection.commit()
+
+
+async def get_user_by_id(user_id: str) -> dict[str, Any] | None:
+    async with get_connection() as connection:
+        cursor = await connection.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        return serialize_row(await cursor.fetchone())
+
+
+async def get_or_create_system_user() -> str:
+    """Get or create a system user for background jobs like self-audit."""
+    system_user_id = "system-self-audit"
+    user = await get_user_by_id(system_user_id)
+    if user:
+        return system_user_id
+    # Create system user with a random password (not used for login)
+    import secrets
+    password_hash = secrets.token_urlsafe(32)
+    await create_user(
+        user_id=system_user_id,
+        email="system-self-audit@phantomscan.local",
+        password_hash=password_hash,
+        name="System Self-Audit",
+        role="user",
+    )
+    return system_user_id
+
+
+async def get_user_by_email(email: str) -> dict[str, Any] | None:
+    async with get_connection() as connection:
+        cursor = await connection.execute("SELECT * FROM users WHERE email = ?", (email.lower(),))
+        return serialize_row(await cursor.fetchone())
+
+
+async def update_user_password(user_id: str, password_hash: str) -> None:
+    async with get_connection() as connection:
+        await connection.execute(
+            "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (password_hash, user_id),
+        )
+        await connection.commit()
+
+
+async def update_user_subscription(
+    user_id: str,
+    tier: str | None = None,
+    status: str | None = None,
+    stripe_customer_id: str | None = None,
+    expires_at: str | None = None,
+) -> None:
+    async with get_connection() as connection:
+        fields = ["updated_at = CURRENT_TIMESTAMP"]
+        values = []
+        if tier is not None:
+            fields.append("subscription_tier = ?")
+            values.append(tier)
+        if status is not None:
+            fields.append("subscription_status = ?")
+            values.append(status)
+        if stripe_customer_id is not None:
+            fields.append("stripe_customer_id = ?")
+            values.append(stripe_customer_id)
+        if expires_at is not None:
+            fields.append("subscription_expires_at = ?")
+            values.append(expires_at)
+        values.append(user_id)
+        await connection.execute(
+            f"UPDATE users SET {', '.join(fields)} WHERE id = ?",
+            values,
+        )
+        await connection.commit()
 
 
 async def create_authorized_target(
@@ -1594,3 +2690,219 @@ async def get_exploitation_result(finding_id: int) -> dict[str, Any] | None:
             except (json.JSONDecodeError, TypeError):
                 result[col] = [] if col != "raw_result" else {}
         return result
+
+
+async def get_exploitation_results_map(finding_ids: list[int]) -> dict[int, dict[str, Any]]:
+    """Latest exploitation result per finding id, for attaching PoCs to findings."""
+    ids = [int(fid) for fid in finding_ids if fid]
+    if not ids:
+        return {}
+    placeholders = ",".join("?" * len(ids))
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            f"SELECT * FROM exploitation_results WHERE finding_id IN ({placeholders}) ORDER BY id ASC",
+            ids,
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    latest: dict[int, dict[str, Any]] = {}
+    for row in rows:
+        for col in ("tables_extracted", "extracted_data", "raw_result"):
+            try:
+                row[col] = json.loads(row.get(col) or "[]") if col != "raw_result" else json.loads(row.get(col) or "{}")
+            except (json.JSONDecodeError, TypeError):
+                row[col] = [] if col != "raw_result" else {}
+        latest[int(row["finding_id"])] = row
+    return latest
+
+
+async def list_scan_sources(scan_id: int) -> list[dict[str, Any]]:
+    """List source entries for a scan."""
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            "SELECT * FROM scan_sources WHERE scan_id = ? ORDER BY priority ASC, id ASC",
+            (scan_id,),
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        for col in ("source_config", "artifacts"):
+            try:
+                row[col] = json.loads(row.get(col) or "{}")
+            except (json.JSONDecodeError, TypeError):
+                row[col] = {}
+    return rows
+
+
+async def upsert_scan_source(
+    scan_id: int,
+    source_type: str,
+    source_config: dict[str, Any],
+    source_identifier: str,
+    priority: int = 1,
+    *,
+    status: str = "pending",
+    findings_count: int = 0,
+    scan_duration_seconds: float = 0,
+    error_message: str | None = None,
+    artifacts: dict[str, Any] | None = None,
+) -> int:
+    """Insert or update a scan_sources row for a scan."""
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            "SELECT id FROM scan_sources WHERE scan_id = ? AND source_type = ?",
+            (scan_id, source_type),
+        )
+        row = await cursor.fetchone()
+        if row is not None:
+            await connection.execute(
+                """
+                UPDATE scan_sources SET
+                    source_config = ?,
+                    source_identifier = ?,
+                    priority = ?,
+                    status = ?,
+                    findings_count = ?,
+                    scan_duration_seconds = ?,
+                    error_message = ?,
+                    artifacts = ?,
+                    completed_at = CASE WHEN ? IN ('completed', 'failed') THEN CURRENT_TIMESTAMP ELSE completed_at END
+                WHERE id = ?
+                """,
+                (
+                    json.dumps(source_config, separators=(",", ":")),
+                    source_identifier,
+                    priority,
+                    status,
+                    findings_count,
+                    scan_duration_seconds,
+                    error_message,
+                    json.dumps(artifacts or {}, separators=(",", ":")),
+                    status,
+                    int(row["id"]),
+                ),
+            )
+            await connection.commit()
+            return int(row["id"])
+        cursor = await connection.execute(
+            """
+            INSERT INTO scan_sources (
+                scan_id, source_type, source_config, source_identifier, status, priority,
+                findings_count, scan_duration_seconds, error_message, artifacts
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                scan_id,
+                source_type,
+                json.dumps(source_config, separators=(",", ":")),
+                source_identifier,
+                status,
+                priority,
+                findings_count,
+                scan_duration_seconds,
+                error_message,
+                json.dumps(artifacts or {}, separators=(",", ":")),
+            ),
+        )
+        await connection.commit()
+        return int(cursor.lastrowid)
+
+
+async def update_scan_source_status(
+    scan_id: int,
+    source_type: str,
+    status: str,
+    *,
+    findings_count: int | None = None,
+    scan_duration_seconds: float | None = None,
+    error_message: str | None = None,
+    artifacts: dict[str, Any] | None = None,
+) -> None:
+    """Update status of a scan_sources row."""
+    sets = ["status = ?"]
+    params: list[Any] = [status]
+    if findings_count is not None:
+        sets.append("findings_count = ?")
+        params.append(findings_count)
+    if scan_duration_seconds is not None:
+        sets.append("scan_duration_seconds = ?")
+        params.append(scan_duration_seconds)
+    if error_message is not None:
+        sets.append("error_message = ?")
+        params.append(error_message)
+    if artifacts is not None:
+        sets.append("artifacts = ?")
+        params.append(json.dumps(artifacts, separators=(",", ":")))
+    if status in ("completed", "failed"):
+        sets.append("completed_at = CURRENT_TIMESTAMP")
+    sets.append("started_at = COALESCE(started_at, CURRENT_TIMESTAMP)")
+    params.extend([scan_id, source_type])
+    async with get_connection() as connection:
+        await connection.execute(
+            f"UPDATE scan_sources SET {', '.join(sets)} WHERE scan_id = ? AND source_type = ?",
+            params,
+        )
+        await connection.commit()
+
+
+async def list_source_correlations(scan_id: int) -> list[dict[str, Any]]:
+    """List cross-source correlations for a scan."""
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            "SELECT * FROM source_correlations WHERE scan_id = ? ORDER BY confidence DESC, id ASC",
+            (scan_id,),
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        for col in ("source_types", "finding_ids", "evidence"):
+            try:
+                if col == "evidence":
+                    row[col] = json.loads(row.get(col) or "{}")
+                else:
+                    row[col] = json.loads(row.get(col) or "[]")
+            except (json.JSONDecodeError, TypeError):
+                row[col] = [] if col != "evidence" else {}
+    return rows
+
+
+async def list_finding_sources(finding_id: int) -> list[dict[str, Any]]:
+    """List source metadata for a finding."""
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            "SELECT * FROM finding_sources WHERE finding_id = ? ORDER BY id ASC",
+            (finding_id,),
+        )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    return rows
+
+
+async def list_multi_source_scans(user_id: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    """List scans that ran with multiple sources (has scan_sources rows)."""
+    async with get_connection() as connection:
+        if user_id:
+            cursor = await connection.execute(
+                """
+                SELECT DISTINCT s.* FROM scans s
+                INNER JOIN scan_sources ss ON ss.scan_id = s.id
+                WHERE s.user_id = ?
+                ORDER BY s.id DESC
+                LIMIT ?
+                """,
+                (user_id, limit),
+            )
+        else:
+            cursor = await connection.execute(
+                """
+                SELECT DISTINCT s.* FROM scans s
+                INNER JOIN scan_sources ss ON ss.scan_id = s.id
+                ORDER BY s.id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        for col in ("selected_tests",):
+            try:
+                row[col] = json.loads(row.get(col) or "[]")
+            except (json.JSONDecodeError, TypeError):
+                row[col] = []
+    return rows
