@@ -4,9 +4,10 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.auth_middleware import get_current_user, require_tier
 from app.config import get_settings
 from app.database import (
     create_scan,
@@ -15,6 +16,7 @@ from app.database import (
     get_authorized_test_job,
     get_evidence_for_job,
     get_evidence_for_finding,
+    get_exploitation_results_map,
     get_findings,
     get_job_events,
     get_scan,
@@ -27,15 +29,17 @@ from app.models import (
     AuthorizedTestJobResultsResponse,
     AuthorizedTestRunResponse,
     AuthorizedTestJobError,
+    ComplexityResponse,
     Finding,
     JobEvent,
     JobEventsResponse,
 )
 from app.services.active_gate import ActiveTargetGate
-from app.services.active_security import AttackSurfaceMapper, SecurityTestPlanner, normalize_modules
+from app.services.active_security import AttackSurfaceMapper, SecurityTestPlanner, normalize_modules, compute_tci_from_attack_surface
 from app.services.authorization import TargetAuthorizationService, TargetValidationError
 from app.services.authorized_runner import run_authorized_test_job
 from app.services.execution import SafetyLimits
+from app.services.tci import TargetComplexityIndex
 
 logger = logging.getLogger("phantomscan.active")
 
@@ -54,33 +58,9 @@ class ActiveMapRequest(BaseModel):
     authorization_confirmed: bool = False
 
 
-@router.post("/map")
-async def active_map(map_request: ActiveMapRequest, request: Request) -> dict[str, Any]:
-    decision = await admit_or_raise(map_request)
-    transport = httpx.ASGITransport(app=request.app) if decision.is_lab else None
-    attack_surface = await AttackSurfaceMapper(transport=transport).map(decision.target_url)
-    plan = SecurityTestPlanner().create_plan(attack_surface, map_request.selected_modules)
-    return {
-        "gate": decision.to_context(),
-        "surfaces": attack_surface.get("surfaces", []),
-        "plan": plan,
-        "score": passive_plan_score(plan),
-        "limits": active_limits(),
-    }
-
-
-@router.post("/score")
-async def active_score(score_request: ActiveMapRequest, request: Request) -> dict[str, Any]:
-    decision = await admit_or_raise(score_request)
-    transport = httpx.ASGITransport(app=request.app) if decision.is_lab else None
-    attack_surface = await AttackSurfaceMapper(transport=transport).map(decision.target_url)
-    plan = SecurityTestPlanner().create_plan(attack_surface, score_request.selected_modules)
-    return {"gate": decision.to_context(), "score": passive_plan_score(plan), "module_count": len(plan.get("modules", [])), "limits": active_limits()}
-
-
-async def admit_or_raise(request: ActiveMapRequest):
+async def admit_or_raise(request: ActiveMapRequest, user: dict):
     try:
-        decision = await active_gate.admit(request.target_url, settings.local_user_id, request.authorization_id, user_role=settings.local_user_role)
+        decision = await active_gate.admit(request.target_url, user["id"], request.authorization_id, user_role=user["role"])
     except TargetValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     if not decision.allowed:
@@ -120,9 +100,97 @@ def active_limits() -> dict[str, Any]:
     }
 
 
+async def compute_complexity(target_url: str, transport: httpx.AsyncBaseTransport | None) -> dict[str, Any]:
+    tci = TargetComplexityIndex(transport=transport)
+    return await tci.analyze_live(target_url)
+
+
+@router.post("/map")
+async def active_map(
+    map_request: ActiveMapRequest,
+    request: Request,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    decision = await admit_or_raise(map_request, user)
+    transport = httpx.ASGITransport(app=request.app) if decision.is_lab else None
+    attack_surface = await AttackSurfaceMapper(transport=transport).map(decision.target_url)
+    plan = SecurityTestPlanner().create_plan(attack_surface, map_request.selected_modules)
+    complexity = await compute_complexity(decision.target_url, transport)
+    tci = compute_tci_from_attack_surface(attack_surface)
+    return {
+        "gate": decision.to_context(),
+        "surfaces": attack_surface.get("surfaces", []),
+        "plan": plan,
+        "score": passive_plan_score(plan),
+        "complexity": complexity,
+        "tci": tci,
+        "limits": active_limits(),
+    }
+
+
+@router.post("/score")
+async def active_score(
+    score_request: ActiveMapRequest,
+    request: Request,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    decision = await admit_or_raise(score_request, user)
+    transport = httpx.ASGITransport(app=request.app) if decision.is_lab else None
+    attack_surface = await AttackSurfaceMapper(transport=transport).map(decision.target_url)
+    plan = SecurityTestPlanner().create_plan(attack_surface, score_request.selected_modules)
+    complexity = await compute_complexity(decision.target_url, transport)
+    tci = compute_tci_from_attack_surface(attack_surface)
+    return {
+        "gate": decision.to_context(),
+        "score": passive_plan_score(plan),
+        "module_count": len(plan.get("modules", [])),
+        "complexity": complexity,
+        "tci": tci,
+        "limits": active_limits(),
+    }
+
+
+@router.post("/complexity", response_model=ComplexityResponse)
+async def active_complexity(
+    complexity_request: ActiveMapRequest,
+    request: Request,
+    user: dict = Depends(get_current_user),
+) -> ComplexityResponse:
+    decision = await admit_or_raise(complexity_request, user)
+    transport = httpx.ASGITransport(app=request.app) if decision.is_lab else None
+    result = await compute_complexity(decision.target_url, transport)
+    return ComplexityResponse(
+        target_url=decision.target_url,
+        score=result["score"],
+        band=result["band"],
+        band_label=result["band_label"],
+        breakdown=result["breakdown"],
+        source="live",
+    )
+
+
+async def admit_or_raise_for_run(request: ActiveRunRequest, user: dict):
+    try:
+        decision = await active_gate.admit(request.target_url, user["id"], request.authorization_id, user_role=user["role"])
+    except TargetValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    if not decision.allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code": "TARGET_NOT_VERIFIED", "message": decision.reason})
+    if decision.authorization_status == "VERIFIED" and not request.authorization_confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "AUTHORIZATION_CONFIRMATION_REQUIRED", "message": "Confirmed authorization is required before running an authorized test."},
+        )
+    return decision
+
+
 @router.post("/run", response_model=AuthorizedTestRunResponse, status_code=status.HTTP_201_CREATED)
-async def active_run(run_request: ActiveRunRequest, request: Request) -> AuthorizedTestRunResponse:
-    decision = await admit_or_raise_for_run(run_request)
+async def active_run(
+    run_request: ActiveRunRequest,
+    request: Request,
+    user: dict = require_tier("PRO"),
+) -> AuthorizedTestRunResponse:
+    decision = await admit_or_raise_for_run(run_request, user)
     existing = await find_active_authorized_test_job(
         decision.target_origin,
         decision.authorization_id,
@@ -138,7 +206,7 @@ async def active_run(run_request: ActiveRunRequest, request: Request) -> Authori
         mode="pentest",
         intensity="medium",
         selected_tests=json.dumps(run_request.selected_modules),
-        user_id=settings.local_user_id,
+        user_id=user["id"],
         authorization_id=decision.authorization_id,
         authorization_confirmed=run_request.authorization_confirmed,
     )
@@ -161,7 +229,7 @@ async def active_run(run_request: ActiveRunRequest, request: Request) -> Authori
             selected_modules=run_request.selected_modules,
             authorization_context=decision.to_context(),
             scan_id=scan_id,
-            user_id=settings.local_user_id,
+            user_id=user["id"],
             sandbox_id=f"authorized-test-{job_id[:8]}",
             verified_target=decision.verified_target,
             transport=httpx.ASGITransport(app=request.app) if decision.is_lab else None,
@@ -175,23 +243,26 @@ async def active_run(run_request: ActiveRunRequest, request: Request) -> Authori
     )
 
 
-async def admit_or_raise_for_run(request: ActiveRunRequest):
-    try:
-        decision = await active_gate.admit(request.target_url, settings.local_user_id, request.authorization_id, user_role=settings.local_user_role)
-    except TargetValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    if not decision.allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code": "TARGET_NOT_VERIFIED", "message": decision.reason})
-    if decision.authorization_status == "VERIFIED" and not request.authorization_confirmed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "AUTHORIZATION_CONFIRMATION_REQUIRED", "message": "Confirmed authorization is required before running an authorized test."},
-        )
-    return decision
+async def _verify_job_ownership(job_id: str, user_id: str) -> dict[str, Any]:
+    job = await get_authorized_test_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized test job not found")
+    if job.get("user_id") and job["user_id"] != user_id:
+        # Check via scan
+        scan_id = job.get("scan_id")
+        if scan_id:
+            scan = await get_scan(scan_id)
+            if scan and scan["user_id"] != user_id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized test job not found")
+    return job
 
 
 @router.get("/jobs/{job_id}", response_model=AuthorizedTestJobResponse)
-async def active_job_status(job_id: str) -> AuthorizedTestJobResponse:
+async def active_job_status(
+    job_id: str,
+    user: dict = Depends(get_current_user),
+) -> AuthorizedTestJobResponse:
+    await _verify_job_ownership(job_id, user["id"])
     job = await get_authorized_test_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized test job not found")
@@ -230,7 +301,11 @@ async def active_job_status(job_id: str) -> AuthorizedTestJobResponse:
 
 
 @router.get("/jobs/{job_id}/results", response_model=AuthorizedTestJobResultsResponse)
-async def active_job_results(job_id: str) -> AuthorizedTestJobResultsResponse:
+async def active_job_results(
+    job_id: str,
+    user: dict = Depends(get_current_user),
+) -> AuthorizedTestJobResultsResponse:
+    await _verify_job_ownership(job_id, user["id"])
     job = await get_authorized_test_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized test job not found")
@@ -250,6 +325,9 @@ async def active_job_results(job_id: str) -> AuthorizedTestJobResultsResponse:
     findings_data = []
     if scan_id is not None:
         findings_data = await get_findings(int(scan_id))
+    poc_map = await get_exploitation_results_map([row["id"] for row in findings_data])
+    for row in findings_data:
+        row["poc"] = poc_map.get(int(row["id"]))
     return AuthorizedTestJobResultsResponse(
         job_id=str(job["id"]),
         status=str(job["status"]),
@@ -268,7 +346,12 @@ async def active_job_results(job_id: str) -> AuthorizedTestJobResultsResponse:
 
 
 @router.get("/jobs/{job_id}/evidence")
-async def active_job_evidence(job_id: str, finding_id: int | None = None) -> list[dict[str, Any]]:
+async def active_job_evidence(
+    job_id: str,
+    finding_id: int | None = None,
+    user: dict = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    await _verify_job_ownership(job_id, user["id"])
     job = await get_authorized_test_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized test job not found")
@@ -280,7 +363,12 @@ async def active_job_evidence(job_id: str, finding_id: int | None = None) -> lis
 
 
 @router.get("/jobs/{job_id}/events", response_model=JobEventsResponse)
-async def active_job_events(job_id: str, after_sequence: int = 0) -> JobEventsResponse:
+async def active_job_events(
+    job_id: str,
+    after_sequence: int = 0,
+    user: dict = Depends(get_current_user),
+) -> JobEventsResponse:
+    await _verify_job_ownership(job_id, user["id"])
     job = await get_authorized_test_job(job_id)
     if job is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Authorized test job not found")

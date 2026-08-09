@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.routers.admin_scope import admin_required
+from app.auth_middleware import require_admin
 from app.services.intelligence_service import IntelligenceService
 
 router = APIRouter(prefix="/api/admin/intelligence", tags=["Private Intelligence"])
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/admin/intelligence", tags=["Private Intelligence
 async def get_intelligence(
     target: str = Query(min_length=4, max_length=2048),
     scan_id: int | None = Query(default=None, ge=1),
-    _admin: dict = Depends(admin_required),
+    admin: dict = Depends(require_admin),
 ) -> dict:
     if not target.startswith(("http://", "https://")):
         target = "https://" + target

@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth_middleware import get_current_user
 from app.database import get_findings, get_latest_scan_for_agent
 from app.models import SelfAuditStatusResponse
 
@@ -7,8 +8,8 @@ router = APIRouter(prefix="/api/self-audit", tags=["self-audit"])
 
 
 @router.get("/status", response_model=SelfAuditStatusResponse)
-async def self_audit_status() -> SelfAuditStatusResponse:
-    scan = await get_latest_scan_for_agent("Self Audit Agent")
+async def self_audit_status(user: dict = Depends(get_current_user)) -> SelfAuditStatusResponse:
+    scan = await get_latest_scan_for_agent("Self Audit Agent", user["id"])
     if scan is None:
         return SelfAuditStatusResponse(status="never_run")
     findings = await get_findings(int(scan["id"]))

@@ -28,7 +28,7 @@ class ScanPolicy:
         self.authorization_service = authorization_service
         self.active_gate = ActiveTargetGate(authorization_service)
 
-    async def admit(self, request: ScanRequest, user_id: str) -> ScanAdmission:
+    async def admit(self, request: ScanRequest, user_id: str, user_role: str = "user") -> ScanAdmission:
         target = canonicalize_target(request.target_url)
         if request.mode == "defend":
             if request.selected_tests or request.business_logic_tests:
@@ -62,7 +62,7 @@ class ScanPolicy:
                 "Business logic definitions require the business_logic module to be selected.",
                 "BUSINESS_LOGIC_SCOPE_MISMATCH",
             )
-        decision = await self.active_gate.admit(target.url, user_id, request.authorization_id, user_role=settings.local_user_role)
+        decision = await self.active_gate.admit(target.url, user_id, request.authorization_id, user_role=user_role)
         if not decision.allowed:
             raise ScanPolicyError(decision.reason, "TARGET_NOT_VERIFIED", 403)
         if decision.authorization_status == "VERIFIED" and not request.authorization_confirmed:

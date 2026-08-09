@@ -9,6 +9,7 @@ from app.database import get_ai_cache, set_ai_cache
 from app.security import redact_payload, redact_sensitive
 from app.services.openrouter_client import call_openrouter, ai_usage_logger
 from app.services.redaction import redaction_service
+from app.skills import get_skills_for_prompt
 
 AIProvider = Callable[[dict[str, Any]], Awaitable[str]]
 
@@ -26,10 +27,23 @@ class OpenRouterAnalysisProvider:
     async def __call__(self, prompt: dict[str, Any]) -> str:
         if not self.api_key:
             return ""
+        
+        # Extract target technologies and vulnerability types from prompt for skill selection
+        target_tech = self._extract_technologies(prompt)
+        vuln_types = self._extract_vulnerability_types(prompt)
+        
+        # Get relevant skills for context
+        skills_context = get_skills_for_prompt(
+            target_tech=target_tech,
+            vulnerability_types=vuln_types,
+            max_skills=5
+        )
+        
         system_prompt = (
             "You are PhantomScan's final security analyst. Use only the provided redacted "
             "scanner evidence. Do not invent findings, secrets, users, payloads, or exploitability. "
-            "Never start or imply that you started active tests."
+            "Never start or imply that you started active tests.\n\n"
+            f"EXPERT KNOWLEDGE BASE:\n{skills_context}"
         )
         user_content = json.dumps(redact_payload(prompt), ensure_ascii=True, default=str)
         return await call_openrouter(
@@ -40,6 +54,66 @@ class OpenRouterAnalysisProvider:
             timeout=self.timeout,
             retry_limit=1,
         )
+    
+    def _extract_technologies(self, prompt: dict[str, Any]) -> list[str]:
+        """Extract technology stack from prompt evidence."""
+        tech = set()
+        # From technologies
+        tech_stack = prompt.get("technologies", {})
+        if isinstance(tech_stack, dict):
+            for category, items in tech_stack.items():
+                if isinstance(items, list):
+                    tech.update(items)
+                elif isinstance(items, str):
+                    tech.add(items)
+        
+        # From findings
+        for finding in prompt.get("findings", []):
+            if isinstance(finding, dict):
+                category = finding.get("category", "").lower()
+                module = finding.get("module", "").lower()
+                tech.update([category, module])
+        
+        # From browser observations
+        api_inventory = prompt.get("api_inventory", [])
+        for api in api_inventory:
+            if isinstance(api, dict):
+                endpoint = api.get("endpoint", "")
+                tech.add(endpoint.split("/")[1] if "/" in endpoint else endpoint)
+        
+        return list(tech)[:20]
+    
+    def _extract_vulnerability_types(self, prompt: dict[str, Any]) -> list[str]:
+        """Extract vulnerability types from findings."""
+        vulns = set()
+        for finding in prompt.get("findings", []):
+            if isinstance(finding, dict):
+                category = finding.get("category", "").lower()
+                title = finding.get("title", "").lower()
+                module = finding.get("module", "").lower()
+                vulns.update([category, module])
+                # Map common terms
+                if "sql" in title or "injection" in title:
+                    vulns.add("sql_injection")
+                if "xss" in title or "cross-site" in title:
+                    vulns.add("xss")
+                if "ssrf" in title:
+                    vulns.add("ssrf")
+                if "idor" in title or "object reference" in title:
+                    vulns.add("idor")
+                if "jwt" in title or "json web token" in title:
+                    vulns.add("jwt")
+                if "race" in title:
+                    vulns.add("race_conditions")
+                if "business" in title or "logic" in title:
+                    vulns.add("business_logic")
+                if "file upload" in title or "upload" in title:
+                    vulns.add("file_upload")
+                if "template" in title or "ssti" in title:
+                    vulns.add("ssti")
+                if "xxe" in title or "xml" in title:
+                    vulns.add("xxe")
+        return list(vulns)[:10]
 
 
 def create_ai_security_analyst() -> "AISecurityAnalyst":

@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.agents.dos import DoSAgent, request_dos_stop
+from app.auth_middleware import require_admin
 from app.database import get_connection
-from app.routers.admin_scope import admin_required
 from app.services.active_gate import ActiveTargetGate, canonicalize_hostname
 
 logger = logging.getLogger("phantomscan.dos")
@@ -36,7 +36,7 @@ def _is_lab_target(url: str) -> bool:
 @router.post("/start")
 async def start_dos(
     req: DoSStartRequest,
-    _admin: dict = Depends(admin_required),
+    admin: dict = Depends(require_admin),
 ):
     if not req.target_url.startswith(("http://", "https://")):
         req.target_url = "https://" + req.target_url
@@ -82,7 +82,7 @@ async def start_dos(
 @router.post("/stop/{job_id}")
 async def stop_dos(
     job_id: str,
-    _admin: dict = Depends(admin_required),
+    admin: dict = Depends(require_admin),
 ):
     try:
         return await request_dos_stop(job_id)
@@ -93,7 +93,7 @@ async def stop_dos(
 @router.get("/status/{job_id}")
 async def get_dos_status(
     job_id: str,
-    _admin: dict = Depends(admin_required),
+    admin: dict = Depends(require_admin),
 ):
     async with get_connection() as conn:
         cursor = await conn.execute("SELECT * FROM dos_jobs WHERE job_id = ?", (job_id,))
@@ -106,7 +106,7 @@ async def get_dos_status(
 
 @router.get("/history")
 async def get_dos_history(
-    _admin: dict = Depends(admin_required),
+    admin: dict = Depends(require_admin),
 ):
     async with get_connection() as conn:
         cursor = await conn.execute(

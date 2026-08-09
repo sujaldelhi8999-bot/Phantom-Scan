@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.auth_middleware import get_current_user
 from app.database import get_audit_logs, get_execution_status, get_latest_scan, get_scan
 from app.models import AgentStatus
 from app.services.jobs import scan_job_manager
@@ -10,6 +11,7 @@ AGENT_NAMES = [
     "Orchestrator Agent",
     "Scanner Agent",
     "Shadow Recon Agent",
+    "Recon Agent",
     "Analyzer Agent",
     "CVE Matcher Agent",
     "Authentication Security Agent",
@@ -21,12 +23,15 @@ AGENT_NAMES = [
     "WebSocket Security Agent",
     "Dependency Agent",
     "Threat Intelligence Agent",
+    "Attack Agent",
     "Sandbox Manager Agent",
     "Pentest Agent",
+    "Exploit Agent",
     "AI Explainer Agent",
     "AI Security Analyst Agent",
     "Hindi Explainer Agent",
     "Fixer Agent",
+    "Report Agent",
     "Notifier Agent",
     "Self Audit Agent",
 ]
@@ -47,7 +52,10 @@ def known_agents_available() -> bool:
 
 
 @router.get("/status", response_model=list[AgentStatus])
-async def agent_statuses(scan_id: int | None = Query(default=None, ge=1)) -> list[AgentStatus]:
+async def agent_statuses(
+    scan_id: int | None = Query(default=None, ge=1),
+    user: dict = Depends(get_current_user),
+) -> list[AgentStatus]:
     exec_status = await get_execution_status()
     if exec_status is not None and exec_status.get("lifecycle") not in ("IDLE", None):
         agent_states = exec_status.get("agent_states", [])
@@ -58,9 +66,12 @@ async def agent_statuses(scan_id: int | None = Query(default=None, ge=1)) -> lis
                 for name in AGENT_NAMES
             ]
 
-    scan = await get_scan(scan_id) if scan_id is not None else await get_latest_scan()
-    if scan_id is not None and scan is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
+    if scan_id is not None:
+        scan = await get_scan(scan_id)
+        if scan is None or scan["user_id"] != user["id"]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
+    else:
+        scan = await get_latest_scan(user["id"])
     if scan is None:
         return [AgentStatus(name=name, status="idle") for name in AGENT_NAMES]
 

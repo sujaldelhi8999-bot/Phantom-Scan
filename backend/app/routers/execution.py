@@ -1,8 +1,9 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth_middleware import get_current_user
 from app.database import get_execution_status
 from app.models import AgentStateDetail, ExecutionStatusResponse
 from app.services.execution_status import default_agent_states
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/api/execution", tags=["execution"])
 
 
 @router.get("/status", response_model=ExecutionStatusResponse)
-async def execution_status() -> ExecutionStatusResponse:
+async def execution_status(user: dict = Depends(get_current_user)) -> ExecutionStatusResponse:
     status = await get_execution_status()
     if status is None:
         return ExecutionStatusResponse(

@@ -3,6 +3,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from html.parser import HTMLParser
 from typing import Any, Awaitable, Callable
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
@@ -14,6 +15,7 @@ from app.security import build_finding, redact_sensitive, redact_url
 from app.services.active_gate import ActiveTargetGate
 from app.services.authorization import TargetAuthorizationService, canonicalize_target
 from app.services.execution import ExecutionBudget, ExecutionLimitError, SafetyLimits, ScanCancelled
+from app.services.tci import TargetComplexityIndex, band_for_score
 
 CANONICAL_MODULES = [
     "input_security",
@@ -34,12 +36,19 @@ CANONICAL_MODULES = [
     "tls_https",
     "sensitive_exposure",
     "business_logic",
+    "rate_limiting",
+    "command_injection",
+    "ssti",
+    "xxe",
+    "ssrf",
+    "dependency_security",
+    "info_disclosure",
 ]
 
 MODULE_ALIASES = {
     "authentication": "auth_session",
     "authorization": "access_control",
-    "rate_limits": "auth_session",
+    "rate_limits": "rate_limiting",
     "session_security": "auth_session",
     "websockets": "websocket",
     "redirect_security": "redirect",
@@ -47,6 +56,31 @@ MODULE_ALIASES = {
     "sensitive": "sensitive_exposure",
     "tls": "tls_https",
     "https": "tls_https",
+    "sql_injection": "injection",
+    "xss_reflection": "xss",
+    "path_traversal": "path_handling",
+    "jwt_attacks": "jwt",
+    "command_injection": "command_injection",
+    "ssti": "ssti",
+    "xxe": "xxe",
+    "ssrf": "ssrf",
+    "dependency_security": "dependency_security",
+    "info_disclosure": "info_disclosure",
+    "file_upload": "file_upload",
+    "open_redirect": "redirect",
+    "rate_limiting": "rate_limiting",
+    "business_logic": "business_logic",
+    "access_control": "access_control",
+    "api_security": "api_security",
+    "sensitive_exposure": "sensitive_exposure",
+    "cors": "cors",
+    "security_headers": "security_headers",
+    "tls_https": "tls_https",
+    "websocket": "websocket",
+    "graphql": "graphql",
+    "jwt": "jwt",
+    "auth_session": "auth_session",
+    "csrf": "csrf",
 }
 
 FetchCallable = Callable[[str, str, str, dict[str, str] | None, dict[str, Any] | None], Awaitable[dict[str, Any]]]
@@ -64,6 +98,153 @@ def normalize_modules(modules: list[str] | None) -> list[str]:
         if normalized in CANONICAL_MODULES and normalized not in selected:
             selected.append(normalized)
     return selected
+
+
+# Module priority tiers for TCI-driven planning
+MODULE_PRIORITY = {
+    # Tier 1: Always run (high confidence, low risk)
+    "security_headers": 1,
+    "cors": 1,
+    "tls_https": 1,
+    "info_disclosure": 1,
+    # Tier 2: High priority - auth/access control
+    "auth_session": 2,
+    "access_control": 2,
+    "csrf": 2,
+    "jwt": 2,
+    # Tier 3: Injection/XSS - medium risk, high value
+    "injection": 3,
+    "xss": 3,
+    "input_security": 3,
+    # Tier 4: SSRF/XXE/SSTI - higher risk, targeted
+    "ssrf": 4,
+    "xxe": 4,
+    "ssti": 4,
+    # Tier 5: Specialized - run based on surface hints
+    "command_injection": 5,
+    "file_upload": 5,
+    "path_handling": 5,
+    "rate_limiting": 5,
+    "redirect": 5,
+    "graphql": 5,
+    "websocket": 5,
+    "api_security": 5,
+    "dependency_security": 5,
+    "sensitive_exposure": 5,
+    "business_logic": 5,
+}
+
+# Safe mode hints per module (TCI-driven)
+MODULE_SAFE_MODE = {
+    "injection": True,
+    "xss": True,
+    "input_security": True,
+    "command_injection": True,
+    "file_upload": True,
+    "path_handling": True,
+    "ssrf": True,
+    "xxe": True,
+    "ssti": True,
+    "auth_session": False,
+    "access_control": False,
+    "csrf": False,
+    "jwt": False,
+    "rate_limiting": False,
+    "security_headers": False,
+    "cors": False,
+    "tls_https": False,
+    "dependency_security": False,
+    "info_disclosure": False,
+    "redirect": False,
+    "graphql": False,
+    "websocket": False,
+    "api_security": False,
+    "sensitive_exposure": False,
+    "business_logic": False,
+}
+
+
+def compute_tci_from_attack_surface(attack_surface: dict[str, Any]) -> dict[str, Any]:
+    """
+    Compute Target Complexity Index (0-100) from attack surface data.
+    
+    Uses the same signals as TargetComplexityIndex.analyze() but derives them
+    from the AttackSurfaceMapper output instead of live probes.
+    """
+    surfaces = attack_surface.get("surfaces", [])
+    
+    # Extract signals from surfaces
+    ports = set()
+    tech_stack = set()
+    auth_mechanisms = set()
+    has_admin_surface = False
+    api_endpoints = 0
+    has_graphql = False
+    has_openapi = False
+    waf = False
+    security_headers = {}
+    endpoints = set()
+    subdomains = set()
+    
+    for surface in surfaces:
+        if not isinstance(surface, dict):
+            continue
+            
+        # Track endpoints
+        path = surface.get("path") or surface.get("url", "")
+        if path:
+            endpoints.add(path)
+            if "/admin" in path.lower():
+                has_admin_surface = True
+            if "graphql" in path.lower():
+                has_graphql = True
+            if "openapi" in path.lower() or "swagger" in path.lower():
+                has_openapi = True
+        
+        # Extract module hints as tech indicators
+        for hint in surface.get("module_hints", []):
+            if hint in {"auth_session", "jwt"}:
+                auth_mechanisms.add(hint)
+            if hint in {"api_security", "graphql", "websocket"}:
+                api_endpoints += 1
+    
+    # Derive from target URL and surface characteristics
+    target_url = attack_surface.get("target_url", "")
+    if target_url:
+        parsed = urlsplit(target_url)
+        # Add web ports
+        if parsed.scheme == "https":
+            ports.add(443)
+        elif parsed.scheme == "http":
+            ports.add(80)
+        
+        # Check for common web ports in URL
+        if ":" in parsed.netloc:
+            try:
+                port = int(parsed.netloc.split(":")[-1])
+                ports.add(port)
+            except ValueError:
+                pass
+    
+    # Build signals dict for TCI analysis
+    signals = {
+        "ports": sorted(ports),
+        "tech_stack": sorted(tech_stack) if tech_stack else [],
+        "versions": [],
+        "auth_mechanisms": sorted(auth_mechanisms),
+        "has_admin_surface": has_admin_surface,
+        "api_endpoints": api_endpoints,
+        "has_graphql": has_graphql,
+        "has_openapi": has_openapi,
+        "waf": waf,
+        "security_headers": security_headers,
+        "endpoints": len(endpoints),
+        "subdomains": len(subdomains),
+    }
+    
+    # Use TCI analyzer
+    tci = TargetComplexityIndex()
+    return tci.analyze(signals)
 
 
 @dataclass(frozen=True)
@@ -327,17 +508,59 @@ class SecurityTestPlanner:
         surfaces = [surface for surface in attack_surface.get("surfaces", []) if isinstance(surface, dict)]
         selected = normalize_modules(selected_modules)
         relevant_modules = selected or self.modules_from_surfaces(surfaces)
+        
+        # Compute TCI from attack surface
+        tci = compute_tci_from_attack_surface(attack_surface)
+        tci_score = tci.get("score", 0)
+        tci_band = tci.get("band", "simple")
+        
+        # Determine which priority tiers to include based on TCI
+        # Higher TCI = more thorough testing (include more tiers)
+        if tci_score >= 75:  # Critical/Complex
+            max_priority_tier = 5  # All modules
+        elif tci_score >= 50:  # Medium
+            max_priority_tier = 4  # Up to tier 4
+        elif tci_score >= 25:  # Simple
+            max_priority_tier = 3  # Up to tier 3
+        else:  # Very simple
+            max_priority_tier = 2  # Only tier 1-2
+        
+        # Filter modules by priority tier
+        if not selected:  # Only auto-filter if not explicitly selected
+            filtered_modules = [
+                m for m in relevant_modules 
+                if MODULE_PRIORITY.get(m, 5) <= max_priority_tier
+            ]
+        else:
+            filtered_modules = relevant_modules
+        
         modules: list[dict[str, Any]] = []
-        for module in relevant_modules:
+        for module in filtered_modules:
             module_surfaces = self.surfaces_for_module(surfaces, module)
             if module_surfaces:
-                modules.append({"module": module, "surfaces": module_surfaces})
+                modules.append({
+                    "module": module, 
+                    "surfaces": module_surfaces,
+                    "priority": MODULE_PRIORITY.get(module, 5),
+                    "safe_mode": MODULE_SAFE_MODE.get(module, False),
+                })
+        
         return {
             "target_url": attack_surface.get("target_url"),
             "source": attack_surface.get("source", "unknown"),
-            "selected_modules": relevant_modules,
+            "selected_modules": filtered_modules,
             "modules": modules,
             "surface_count": len(surfaces),
+            "tci": {
+                "score": tci_score,
+                "band": tci_band,
+                "band_label": tci.get("band_label", ""),
+                "breakdown": tci.get("breakdown", {}),
+            },
+            "planner_config": {
+                "max_priority_tier": max_priority_tier,
+                "auto_filtered": not selected,
+            },
         }
 
     def create_verification_plan(
@@ -753,6 +976,13 @@ class ActiveSecurityEngine:
             "tls_https": self.check_tls_https,
             "sensitive_exposure": self.check_sensitive_exposure,
             "business_logic": self.check_business_logic,
+            "rate_limiting": self.check_rate_limiting,
+            "command_injection": self.check_command_injection,
+            "ssti": self.check_ssti,
+            "xxe": self.check_xxe,
+            "ssrf": self.check_ssrf,
+            "dependency_security": self.check_dependency_security,
+            "info_disclosure": self.check_info_disclosure,
         }
         handler = handlers.get(module)
         if handler is None:
@@ -1376,6 +1606,317 @@ class ActiveSecurityEngine:
                         "Validate amount, account ownership, balance, and workflow state on the server.",
                         "Repeat the invalid transfer request and confirm it is rejected with HTTP 400 or 403.",
                         parameter="amount",
+                    )
+                )
+        return findings
+
+    async def check_rate_limiting(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            try:
+                rate_limit_payload = "PHANTOMSCAN_RATE_LIMIT_TEST_1"
+                response = await self.client.request(
+                    "rate_limiting", "GET", self.with_parameter(surface, "user", rate_limit_payload),
+                    surface=str(surface.get("id", "")),
+                    safe_test_marker="rate_limiting_probe",
+                )
+                headers = response.get("headers", {})
+                status = response.get("status_code")
+                body = str(response.get("body", "")).lower()
+
+                rate_limit_indicators = []
+                if status == 429:
+                    rate_limit_indicators.append("HTTP 429")
+                if "retry-after" in headers:
+                    rate_limit_indicators.append("Retry-After")
+                if "x-ratelimit-limit" in headers:
+                    rate_limit_indicators.append("RateLimit-Limit")
+                if "x-ratelimit-remaining" in headers:
+                    rate_limit_indicators.append("RateLimit-Remaining")
+
+                if rate_limit_indicators:
+                    findings.append(
+                        self.make_finding(
+                            "Rate limiting is implemented",
+                            "Rate Limiting",
+                            "MEDIUM",
+                            "CONFIRMED",
+                            "rate_limiting",
+                            surface,
+                            response,
+                            f"Rate limiting indicators: {', '.join(rate_limit_indicators)}",
+                            "Rate limiting prevents brute force and DoS attacks.",
+                            "Implement rate limiting per account and per source with documented limits.",
+                            "Repeat the request rapidly and confirm rate limiting triggers.",
+                        )
+                    )
+                elif status in {200, 401, 403}:
+                    findings.append(
+                        self.make_finding(
+                            "Rate limiting appears not implemented",
+                            "Rate Limiting",
+                            "MEDIUM",
+                            "HIGH",
+                            "rate_limiting",
+                            surface,
+                            response,
+                            "No rate limiting headers observed and no 429 responses.",
+                            "Brute force attacks on login/authentication endpoints are possible.",
+                            "Implement rate limiting (e.g., 5 attempts per minute, account lockout after X failures).",
+                            "Repeat the rate limiting test and confirm rate limiting triggers.",
+                        )
+                    )
+            except Exception as exc:
+                logger.warning("Rate limiting check failed for surface %s: %s", str(surface.get("id") or surface.get("path") or ""), exc)
+        return findings
+
+    async def check_command_injection(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            if not surface.get("path", "").endswith("/ping"):
+                path = str(surface.get("path") or surface.get("url") or "")
+                if "/ping" not in path and "/command" not in path and "/execute" not in path:
+                    continue
+            sid = str(surface.get("id", ""))
+            test_payloads = ["127.0.0.1; whoami", "127.0.0.1|whoami", "`whoami`", "$(whoami)"]
+            for payload in test_payloads[:2]:
+                try:
+                    response = await self.client.request(
+                        "command_injection", "GET", self.with_parameter(surface, "ip", payload),
+                        surface=sid,
+                        safe_test_marker="command_injection_probe",
+                    )
+                    body = str(response.get("body", "")).lower()
+                    status = response.get("status_code")
+                    if status == 500 or any(indicator in body for indicator in ["uid=", "gid=", "root:", "daemon:"]):
+                        findings.append(
+                            self.make_finding(
+                                "Command injection vulnerability detected",
+                                "Command Injection",
+                                "CRITICAL",
+                                "CONFIRMED",
+                                "command_injection",
+                                surface,
+                                response,
+                                f"Command injection probe returned: status {status}, body contains command output indicators",
+                                "Remote code execution allows full server compromise.",
+                                "Use parameterized queries for commands; never concatenate user input with shell commands.",
+                                "Test with a benign command (e.g., echo test) and confirm it is rejected or sanitized.",
+                                parameter="ip",
+                            )
+                        )
+                        break
+                except Exception as exc:
+                    logger.warning("Command injection check failed for surface %s: %s", sid, exc)
+        return findings
+
+    async def check_ssti(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            ssti_payloads = ["{{7*7}}", "${7*7}", "#{7*7}", "<%= 7*7 %>"]
+            for payload in ssti_payloads[:2]:
+                try:
+                    response = await self.client.request(
+                        "ssti", "GET", self.with_parameter(surface, "name", payload),
+                        surface=str(surface.get("id", "")),
+                        safe_test_marker="ssti_probe",
+                    )
+                    body = str(response.get("body", ""))
+                    if "49" in body:
+                        findings.append(
+                            self.make_finding(
+                                "Server-Side Template Injection detected",
+                                "SSTI",
+                                "HIGH",
+                                "CONFIRMED",
+                                "ssti",
+                                surface,
+                                response,
+                                f"SSTI probe '{payload}' evaluated to 49 in response",
+                                "RCE and file read/write via template engine exploitation.",
+                                "Use sandboxed template engines; never allow user input in templates.",
+                                "Test with a benign template expression and confirm it is rejected.",
+                                parameter="name",
+                            )
+                        )
+                        break
+                except Exception as exc:
+                    logger.warning("SSTI check failed for surface %s: %s", str(surface.get("id") or surface.get("path") or ""), exc)
+        return findings
+
+    async def check_xxe(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            xxe_payload = '<?xml version="1.0"?><!DOCTYPE root [<!ENTITY test SYSTEM "file:///etc/passwd">]><root>&test;</root>'
+            try:
+                response = await self.client.request(
+                    "xxe", "POST", self.surface_target(surface),
+                    json_body=xxe_payload,
+                    headers={"Content-Type": "application/xml"},
+                    surface=str(surface.get("id", "")),
+                    safe_test_marker="xxe_probe",
+                )
+                body = str(response.get("body", "")).lower()
+                if "root:" in body and "passwd" in body:
+                    findings.append(
+                        self.make_finding(
+                            "XML External Entity (XXE) injection detected",
+                            "XXE",
+                            "HIGH",
+                            "CONFIRMED",
+                            "xxe",
+                            surface,
+                            response,
+                            "External entity resolved: /etc/passwd content returned",
+                            "Read local files, SSRF, and DoS via billion laughs.",
+                            "Disable external entity resolution; use XML schemas and secure parsers.",
+                            "Test with a benign XML entity and confirm it is rejected.",
+                        )
+                    )
+                else:
+                    findings.append(
+                        self.make_finding(
+                            "XXE protection likely present",
+                            "XXE",
+                            "LOW",
+                            "MEDIUM",
+                            "xxe",
+                            surface,
+                            response,
+                            "No file content returned with XXE probe; possible protection.",
+                            "Missing XXE protection could lead to file disclosure or SSRF.",
+                            "Ensure XML parsers reject external entities and use secure configurations.",
+                            "Test with a benign XXE attempt and confirm rejection.",
+                        )
+                    )
+            except Exception as exc:
+                logger.warning("XXE check failed for surface %s: %s", str(surface.get("id") or surface.get("path") or ""), exc)
+        return findings
+
+    async def check_ssrf(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            ssrf_payloads = [
+                "http://169.254.169.254/latest/meta-data/",
+                "http://127.0.0.1:22",
+                "http://metadata.google.internal",
+                "file:///etc/passwd",
+            ]
+            for payload in ssrf_payloads[:2]:
+                try:
+                    response = await self.client.request(
+                        "ssrf", "GET", self.with_parameter(surface, "url", payload),
+                        surface=str(surface.get("id", "")),
+                        safe_test_marker="ssrf_probe",
+                    )
+                    body = str(response.get("body", "")).lower()
+                    status = response.get("status_code")
+                    if status == 200 or ("meta-data" in body or "root:" in body or "ssh" in body):
+                        findings.append(
+                            self.make_finding(
+                                "Server-Side Request Forgery (SSRF) detected",
+                                "SSRF",
+                                "HIGH",
+                                "CONFIRMED",
+                                "ssrf",
+                                surface,
+                                response,
+                                f"SSRF probe to {payload} succeeded: status {status}, body contains internal resource indicators",
+                                "Access internal cloud metadata (IAM keys), scan internal networks, reach internal services.",
+                                "Validate user input against an allowlist of allowed destinations.",
+                                "Test with a benign external URL and confirm it is allowed.",
+                                parameter="url",
+                            )
+                        )
+                        break
+                except Exception as exc:
+                    logger.warning("SSRF check failed for surface %s: %s", str(surface.get("id") or surface.get("path") or ""), exc)
+        return findings
+
+    async def check_dependency_security(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            response = await self.client.request(
+                "dependency_security", "GET", self.surface_target(surface),
+                surface=str(surface.get("id", "")),
+                safe_test_marker="dependency_security_probe",
+            )
+            headers = response.get("headers", {})
+            body = str(response.get("body", "")).lower()
+            info_disclosure_indicators = []
+            version_headers = ["server", "x-powered-by", "x-aspnet-version", "x-koa-version"]
+            for header in version_headers:
+                if header in headers and re.search(r"\d+", headers[header]):
+                    info_disclosure_indicators.append(f"{header}: {headers[header][:50]}")
+            if re.search(r"at java\.|\.py\.c|:\s*\d{3}\s*\(.*\) error", body):
+                info_disclosure_indicators.append("Stack trace")
+
+            if info_disclosure_indicators:
+                findings.append(
+                    self.make_finding(
+                        "Information disclosure detected",
+                        "Information Disclosure",
+                        "LOW",
+                        "HIGH",
+                        "info_disclosure",
+                        surface,
+                        response,
+                        f"Version or debug information disclosed: {'; '.join(info_disclosure_indicators[:3])}",
+                        "Attackers know exact versions and can exploit known vulnerabilities.",
+                        "Remove or obfuscate version headers; use generic server headers.",
+                        "Test with a fresh request and confirm version disclosure is eliminated.",
+                    )
+                )
+        return findings
+
+    async def check_info_disclosure(self, surfaces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        findings = []
+        for surface in surfaces[:1]:
+            responses = []
+            sensitive_paths = [".env", ".git/HEAD", "phpinfo.php", "admin/", "backup/", "config/", "phpinfo"]
+            for path in sensitive_paths[:3]:
+                try:
+                    response = await self.client.request(
+                        "info_disclosure", "GET", urljoin(self.target.url, f"/{path}"),
+                        surface=str(surface.get("id", "")),
+                        safe_test_marker=f"info_disclosure_probe_{path}",
+                    )
+                    responses.append(response)
+                    status = response.get("status_code")
+                    body = str(response.get("body", "")).lower()
+                    if status == 200 and ("api_key" in body or "debug" in body or "phpinfo" in body):
+                        findings.append(
+                            self.make_finding(
+                                f"Sensitive file disclosure: {path}",
+                                "Sensitive Exposure",
+                                "MEDIUM",
+                                "HIGH",
+                                "sensitive_exposure",
+                                surface,
+                                response,
+                                f"Path {path} returned sensitive content: status {status}",
+                                "Configuration secrets, database credentials leaked.",
+                                "Remove or protect sensitive files; use proper access controls.",
+                                "Request the sensitive path and confirm it is rejected.",
+                            )
+                        )
+                        break
+                except Exception as exc:
+                    logger.warning("Info disclosure check failed for surface %s: %s", str(surface.get("id") or surface.get("path") or "", exc))
+            if not findings:
+                findings.append(
+                    self.make_finding(
+                        "Sensitive file exposure appears mitigated",
+                        "Sensitive Exposure",
+                        "LOW",
+                        "MEDIUM",
+                        "sensitive_exposure",
+                        surface,
+                        {"url": self.target.url, "status_code": None, "headers": {}, "body": ""},
+                        "Sensitive paths returned 404 or error, suggesting protection.",
+                        "Missing protection could expose configuration or secrets.",
+                        "Ensure .env, .git, and diagnostic files are not accessible.",
+                        "Test with a benign path and confirm it returns content.",
                     )
                 )
         return findings

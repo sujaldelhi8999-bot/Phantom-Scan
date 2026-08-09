@@ -3,10 +3,11 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger("phantomscan.scan")
 
+from app.auth_middleware import get_current_user, require_tier
 from app.config import get_settings
 from app.database import (
     add_audit_log,
@@ -18,6 +19,8 @@ from app.database import (
     update_scan_status,
 )
 from app.models import (
+    PRDescriptionRequest,
+    PRDescriptionResponse,
     ScanArtifactsResponse,
     ScanHistoryItem,
     ScanRequest,
@@ -67,12 +70,24 @@ def _scan_response(row: dict[str, Any], findings: list[dict[str, Any]]) -> ScanR
     )
 
 
+async def _verify_scan_ownership(scan_id: int, user_id: str) -> dict[str, Any]:
+    scan = await get_scan(scan_id)
+    if not scan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
+    if scan["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
+    return scan
+
+
 @router.post("/start", response_model=ScanResponse, status_code=status.HTTP_201_CREATED)
-async def start_scan(scan_request: ScanRequest) -> ScanResponse:
+async def start_scan(
+    scan_request: ScanRequest,
+    user: dict = Depends(get_current_user),
+) -> ScanResponse:
     print("[SCAN] REQUEST RECEIVED")
-    logger.info("Scan request received for target=%s mode=%s", scan_request.target_url, scan_request.mode)
+    logger.info("Scan request received for target=%s mode=%s user=%s", scan_request.target_url, scan_request.mode, user["id"])
     try:
-        admission = await scan_policy.admit(scan_request, settings.local_user_id)
+        admission = await scan_policy.admit(scan_request, user["id"], user.get("role", "user"))
     except ScanPolicyError as exc:
         raise HTTPException(
             status_code=exc.status_code,
@@ -95,7 +110,7 @@ async def start_scan(scan_request: ScanRequest) -> ScanResponse:
             mode=canonical_request.mode,
             intensity=canonical_request.intensity,
             selected_tests=json.dumps(canonical_request.selected_tests, separators=(",", ":")),
-            user_id=settings.local_user_id,
+            user_id=user["id"],
             authorization_id=authorization_id,
             authorization_confirmed=canonical_request.authorization_confirmed,
         )
@@ -108,7 +123,7 @@ async def start_scan(scan_request: ScanRequest) -> ScanResponse:
                 f"{canonical_request.intensity} intensity and modules: "
                 f"{', '.join(canonical_request.selected_tests) or 'none'}"
             ),
-            user_id=settings.local_user_id,
+            user_id=user["id"],
             target=admission.target_url,
             authorization_status=str(admission.authorization_context.get("authorization_status") or "NOT_REQUIRED"),
         )
@@ -117,9 +132,9 @@ async def start_scan(scan_request: ScanRequest) -> ScanResponse:
             scan_id,
             canonical_request,
             admission.verified_target,
-            settings.local_user_id,
+            user["id"],
             admission.authorization_context,
-            user_role=settings.local_user_role,
+            user_role=user["role"],
         )
     except ScanCapacityError as exc:
         if scan_id is not None:
@@ -139,13 +154,14 @@ async def start_scan(scan_request: ScanRequest) -> ScanResponse:
 
 
 @router.get("/history", response_model=list[ScanHistoryItem])
-async def scan_history() -> list[ScanHistoryItem]:
-    rows = await list_scans()
+async def scan_history(user: dict = Depends(get_current_user)) -> list[ScanHistoryItem]:
+    rows = await list_scans(user["id"])
     return [ScanHistoryItem(**row) for row in rows]
 
 
 @router.post("/{scan_id}/stop", response_model=StopScanResponse)
-async def stop_scan(scan_id: int) -> StopScanResponse:
+async def stop_scan(scan_id: int, user: dict = Depends(get_current_user)) -> StopScanResponse:
+    await _verify_scan_ownership(scan_id, user["id"])
     try:
         scan_status = await scan_job_manager.stop(scan_id)
     except KeyError as exc:
@@ -156,7 +172,8 @@ async def stop_scan(scan_id: int) -> StopScanResponse:
 
 
 @router.get("/{scan_id}/artifacts", response_model=ScanArtifactsResponse)
-async def scan_artifacts(scan_id: int) -> ScanArtifactsResponse:
+async def scan_artifacts(scan_id: int, user: dict = Depends(get_current_user)) -> ScanArtifactsResponse:
+    await _verify_scan_ownership(scan_id, user["id"])
     scan = await get_scan(scan_id)
     if scan is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
@@ -165,8 +182,36 @@ async def scan_artifacts(scan_id: int) -> ScanArtifactsResponse:
 
 
 @router.get("/{scan_id}", response_model=ScanResponse)
-async def get_scan_status(scan_id: int) -> ScanResponse:
+async def get_scan_status(scan_id: int, user: dict = Depends(get_current_user)) -> ScanResponse:
+    await _verify_scan_ownership(scan_id, user["id"])
     scan = await get_scan(scan_id)
     if scan is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
     return _scan_response(scan, await get_findings(scan_id))
+
+
+@router.post("/{scan_id}/pr-description", response_model=PRDescriptionResponse)
+async def generate_pr_description(
+    scan_id: int,
+    request: PRDescriptionRequest,
+    user: dict = Depends(get_current_user),
+) -> PRDescriptionResponse:
+    await _verify_scan_ownership(scan_id, user["id"])
+    scan = await get_scan(scan_id)
+    if scan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found")
+    from app.agents.fixer import FixerAgent
+    fixer = FixerAgent()
+    try:
+        response = await fixer.generate_pr_description(
+            finding_ids=request.finding_ids,
+            base_branch=request.base_branch,
+            head_branch=request.head_branch,
+            repo_url=request.repo_url,
+            include_fix_details=request.include_fix_details,
+            include_verification_steps=request.include_verification_steps,
+        )
+    except Exception as exc:
+        logger.exception("PR description generation failed for scan %s", scan_id)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    return response
