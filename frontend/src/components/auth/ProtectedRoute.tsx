@@ -24,11 +24,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!user) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (requiredTier === 'PRO' && user.subscriptionTier !== 'PRO') {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    return <Navigate to="/dashboard" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

@@ -27,7 +27,7 @@ export default function AuthCallbackPage() {
         }
         await exchangeSupabaseLogin(accessToken);
         if (cancelled) return;
-        navigate('/', { replace: true });
+        navigate('/dashboard', { replace: true });
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
@@ -46,7 +46,7 @@ export default function AuthCallbackPage() {
           <>
             <div className="text-sm font-semibold text-[var(--danger)]">Login failed</div>
             <p className="max-w-md text-xs text-[var(--text-muted)]">{error}</p>
-            <Button onClick={() => navigate('/', { replace: true })}>Back to console</Button>
+            <Button onClick={() => navigate('/dashboard', { replace: true })}>Back to console</Button>
           </>
         ) : (
           <>
