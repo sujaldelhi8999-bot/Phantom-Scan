@@ -30,7 +30,7 @@ cd backend
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your API keys
-python -m uvicorn main:app --host 127.0.0.1 --port 8001
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
 
 # Terminal 2 — Frontend
 cd frontend
@@ -39,8 +39,10 @@ npm run dev
 # Vite will be available at http://localhost:5173
 ```
 
-> **Port note**: The backend runs on port `8001` for local dev (port `8000` is often occupied).
-> The frontend `.env` is configured to connect to `http://127.0.0.1:8001`.
+> **Port note**: The backend runs on port `8000` (matching Docker). If port
+> `8000` is occupied, start the backend on `8001` and set
+> `VITE_API_BASE_URL=http://127.0.0.1:8001` in `frontend/.env` so the frontend
+> connects to it.
 
 ---
 
@@ -122,6 +124,9 @@ phantomscan/
 | `PORT_SCAN_CONCURRENCY` | `64` | Port scan concurrency |
 | `PORT_SCAN_MAX_PORTS` | `1024` | Maximum ports to scan |
 | `PORT_SCAN_SWEEP_TIMEOUT` | `75.0` | Port sweep timeout in seconds |
+| `SUPABASE_URL` | _none_ | Supabase project URL (Google / GitHub login) |
+| `SUPABASE_JWT_SECRET` | _none_ | Supabase project JWT secret (Project Settings → API) |
+| `SUPABASE_ADMIN_EMAILS` | _none_ | Comma-separated emails that receive the `admin` role |
 
 ### Frontend Environment Variables (`frontend/.env`)
 
@@ -130,6 +135,74 @@ phantomscan/
 | `VITE_API_BASE_URL` | `http://127.0.0.1:8001` | Backend API base URL |
 | `VITE_WS_BASE_URL` | `ws://127.0.0.1:8001` | WebSocket base URL |
 | `VITE_API_URL` | _none_ | Legacy variable (unused, kept for compatibility) |
+| `VITE_SUPABASE_URL` | _none_ | Supabase project URL (Google / GitHub login) |
+| `VITE_SUPABASE_ANON_KEY` | _none_ | Supabase anon public key (Project Settings → API) |
+
+---
+
+## 🔑 Supabase Login Setup (Google & GitHub)
+
+The login modal offers **Continue with Google** and **Continue with GitHub**
+buttons powered by [Supabase Auth](https://supabase.com/docs/guides/auth).
+
+### 1. Create a Supabase project
+
+1. Sign up at [supabase.com](https://supabase.com) and create a new project.
+2. Open **Authentication → Providers**.
+
+### 2. Enable the Google provider
+
+1. Create OAuth credentials at
+   [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   (OAuth Client ID, type *Web application*).
+2. Add the authorized redirect URI:
+   `https://<your-project-ref>.supabase.co/auth/v1/callback`
+3. In Supabase → **Authentication → Providers → Google**, paste the Client ID
+   and Client Secret and enable the provider.
+
+### 3. Enable the GitHub provider
+
+1. Create an OAuth App at
+   [GitHub Developer Settings](https://github.com/settings/developers) →
+   *New OAuth App*.
+2. Set the authorization callback URL to:
+   `https://<your-project-ref>.supabase.co/auth/v1/callback`
+3. In Supabase → **Authentication → Providers → GitHub**, paste the Client ID
+   and Client Secret and enable the provider.
+
+### 4. Configure PhantomScan
+
+**Backend (`backend/.env`):**
+
+```env
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_JWT_SECRET=<Project Settings → API → JWT Secret>
+SUPABASE_ADMIN_EMAILS=you@example.com
+```
+
+**Frontend (`frontend/.env`):**
+
+```env
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<Project Settings → API → anon public key>
+```
+
+### 5. Allow the local callback URL
+
+In Supabase → **Authentication → URL Configuration**:
+
+1. Set **Site URL** to `http://localhost:5173`.
+2. Add `http://localhost:5173/auth/callback` to **Redirect URLs**.
+   (The default allowlist only covers `http://localhost:3000/**`; without this
+   entry the login buttons fail with *"untrusted redirect"*.)
+
+After completing the OAuth round-trip, Supabase redirects the browser to
+`/auth/callback` and PhantomScan exchanges the session, then lands you back on
+the dashboard.
+
+> **Note**: the existing GitHub OAuth integration (`/api/github`) is separate —
+> it scans repositories. GitHub *login* via Supabase only authenticates users.
+> The admin username/password login always remains available.
 
 ---
 

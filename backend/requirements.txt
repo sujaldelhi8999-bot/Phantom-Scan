@@ -13,3 +13,7 @@ websockets==16.1.1
 PyJWT==2.10.1
 pydantic==2.13.4
 packaging==24.2
+bcrypt==4.2.1
+email-validator==2.2.0
+cryptography==50.0.0
+PyYAML==6.0.3
