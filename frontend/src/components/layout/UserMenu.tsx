@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, Home, LogOut, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
@@ -66,6 +66,14 @@ export default function UserMenu() {
           </div>
 
           <div className="p-1.5">
+            <Link
+              to="/"
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[var(--text-default)] hover:bg-[var(--surface-hover)]"
+            >
+              <Home className="h-3.5 w-3.5 text-[var(--text-subtle)]" />
+              Home Page
+            </Link>
             <Link
               to="/profile"
               onClick={() => setOpen(false)}

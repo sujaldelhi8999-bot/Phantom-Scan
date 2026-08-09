@@ -43,6 +43,9 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-[var(--app-canvas)] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="bg-[var(--surface-primary)] rounded-2xl border border-[var(--border-light)] p-8 shadow-[var(--shadow-float)]">
+          <Link to="/" className="mb-5 inline-flex text-xs font-medium text-[var(--text-muted)] hover:text-[var(--brand)]">
+            Back to home
+          </Link>
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--brand)]">

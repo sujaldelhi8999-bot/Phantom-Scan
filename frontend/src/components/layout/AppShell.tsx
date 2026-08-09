@@ -50,7 +50,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/', icon: Home },
+      { label: 'Dashboard', path: '/dashboard', icon: Home },
       { label: 'Defend Scan', path: '/scan', icon: Activity },
       { label: 'Multi-Source', path: '/multi-source', icon: Layers3 },
     ],
@@ -87,7 +87,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
 ];
 
 const routeDetails: Record<string, { title: string; description: string }> = {
-  '/': { title: 'Security Overview', description: 'Monitor posture, active operations, findings, and recent security activity.' },
+  '/dashboard': { title: 'Security Overview', description: 'Monitor posture, active operations, findings, and recent security activity.' },
   '/scan': { title: 'Defend Scan', description: 'Run passive security assessments against targets.' },
   '/findings': { title: 'Findings', description: 'Triage detected vulnerabilities and risks.' },
   '/assets': { title: 'Assets', description: 'Monitored targets from scan history.' },
@@ -108,7 +108,7 @@ const routeDetails: Record<string, { title: string; description: string }> = {
 
 function currentRoute(pathname: string) {
   if (pathname.startsWith('/report/')) return { title: 'Security Assessment', description: 'Completed scan report and evidence.' };
-  return routeDetails[pathname] ?? routeDetails['/'];
+  return routeDetails[pathname] ?? routeDetails['/dashboard'];
 }
 
 /* ── Sidebar ── */
@@ -129,7 +129,7 @@ function Sidebar({
     <div className="flex h-full flex-col bg-[var(--sidebar-canvas)]">
       {/* Logo area */}
       <div className="flex items-center justify-between px-4 py-4">
-        <Link to="/" className="min-w-0" onClick={onCloseMobile}>
+        <Link to="/dashboard" className="min-w-0" onClick={onCloseMobile}>
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--brand)]">
               <Shield className="h-3.5 w-3.5 text-white" />
@@ -362,7 +362,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
     {
       label: 'Navigation',
       actions: [
-        { label: 'Dashboard', path: '/', icon: Home, shortcut: 'G D' },
+        { label: 'Dashboard', path: '/dashboard', icon: Home, shortcut: 'G D' },
         { label: 'Findings', path: '/findings', icon: ShieldAlert, shortcut: 'G F' },
         { label: 'Assets', path: '/assets', icon: Layers3, shortcut: 'G A' },
         { label: 'Remediation', path: '/remediation', icon: Wrench, shortcut: 'G R' },
@@ -684,6 +684,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <span className="font-mono">{executionStatus.progress_percent}%</span>
               </Link>
             ) : null}
+
+            <Link
+              to="/"
+              className="hidden rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)] sm:inline-flex"
+            >
+              Home
+            </Link>
 
             {/* Command palette trigger */}
             <button

@@ -11,7 +11,7 @@ export default function Navbar() {
   return (
     <nav className="border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-950/50 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-1 px-6 py-2">
-        <NavLink to="/" end className={({ isActive }) => `${baseClass} ${isActive ? activeClass : inactiveClass}`}>
+        <NavLink to="/dashboard" className={({ isActive }) => `${baseClass} ${isActive ? activeClass : inactiveClass}`}>
           Dashboard
         </NavLink>
         <NavLink to="/scan" className={({ isActive }) => `${baseClass} ${isActive ? activeClass : inactiveClass}`}>
