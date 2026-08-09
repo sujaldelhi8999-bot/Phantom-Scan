@@ -1,10 +1,13 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { type ReactNode } from 'react';
 
 import AppShell from './components/layout/AppShell';
 import { PhantomDataProvider } from './hooks/usePhantomData';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import HomePage from './features/marketing/HomePage';
+import PricingPage from './features/marketing/PricingPage';
 import DashboardPage from './features/dashboard/DashboardPage';
 import LiveScanPage from './features/scans/LiveScanPage';
 import FindingsPage from './features/findings/FindingsPage';
@@ -34,6 +37,13 @@ import RegisterPage from './features/auth/RegisterPage';
 
 export default function App() {
   const isAuthCallback = window.location.pathname === '/auth/callback';
+  const workspace = (children: ReactNode, requiredTier?: 'FREE' | 'PRO') => (
+    <ProtectedRoute requiredTier={requiredTier}>
+      <PhantomDataProvider>
+        <AppShell>{children}</AppShell>
+      </PhantomDataProvider>
+    </ProtectedRoute>
+  );
 
   if (isAuthCallback) {
     return (
@@ -45,44 +55,43 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <PhantomDataProvider>
-        <AppShell>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            
-            {/* Protected routes - FREE tier */}
-            <Route path="/scan" element={<ProtectedRoute><LiveScanPage /></ProtectedRoute>} />
-            <Route path="/findings" element={<ProtectedRoute><FindingsPage /></ProtectedRoute>} />
-            <Route path="/assets" element={<ProtectedRoute><AssetsPage /></ProtectedRoute>} />
-            <Route path="/cve" element={<ProtectedRoute><CvePage /></ProtectedRoute>} />
-            <Route path="/remediation" element={<ProtectedRoute><RemediationPage /></ProtectedRoute>} />
-            <Route path="/agents" element={<ProtectedRoute><AgentsPage /></ProtectedRoute>} />
-            <Route path="/history" element={<ProtectedRoute><ScanHistoryPage /></ProtectedRoute>} />
-            <Route path="/audit-logs" element={<ProtectedRoute><AuditLogsPage /></ProtectedRoute>} />
-            <Route path="/self-audit" element={<ProtectedRoute><SelfAuditPage /></ProtectedRoute>} />
-            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-            <Route path="/system-health" element={<ProtectedRoute><SystemHealthPage /></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="/intelligence" element={<ProtectedRoute><AttackIntelligence /></ProtectedRoute>} />
-            <Route path="/quality" element={<ProtectedRoute><ScanQualityPage /></ProtectedRoute>} />
-            <Route path="/github" element={<ProtectedRoute><GitHubConnectPage /></ProtectedRoute>} />
-            <Route path="/github/callback" element={<ProtectedRoute><GitHubConnectPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-            <Route path="/multi-source" element={<ProtectedRoute><MultiSourceScanPage /></ProtectedRoute>} />
-            <Route path="/multi-source/:scan_id" element={<ProtectedRoute><MultiSourceDetailPage /></ProtectedRoute>} />
-            <Route path="/ci-cd" element={<ProtectedRoute><CIIntegrationPage /></ProtectedRoute>} />
-            <Route path="/report/:scan_id" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
-            
-            {/* Protected routes - PRO tier only */}
-            <Route path="/authorized-testing" element={<ProtectedRoute requiredTier="PRO"><AuthorizedTestingPage /></ProtectedRoute>} />
-            <Route path="/private/dos" element={<ProtectedRoute requiredTier="PRO"><DoSPanel /></ProtectedRoute>} />
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AppShell>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Protected workspace routes - FREE tier */}
+          <Route path="/dashboard" element={workspace(<DashboardPage />)} />
+          <Route path="/scan" element={workspace(<LiveScanPage />)} />
+          <Route path="/findings" element={workspace(<FindingsPage />)} />
+          <Route path="/assets" element={workspace(<AssetsPage />)} />
+          <Route path="/cve" element={workspace(<CvePage />)} />
+          <Route path="/remediation" element={workspace(<RemediationPage />)} />
+          <Route path="/agents" element={workspace(<AgentsPage />)} />
+          <Route path="/history" element={workspace(<ScanHistoryPage />)} />
+          <Route path="/audit-logs" element={workspace(<AuditLogsPage />)} />
+          <Route path="/self-audit" element={workspace(<SelfAuditPage />)} />
+          <Route path="/notifications" element={workspace(<NotificationsPage />)} />
+          <Route path="/system-health" element={workspace(<SystemHealthPage />)} />
+          <Route path="/settings" element={workspace(<SettingsPage />)} />
+          <Route path="/intelligence" element={workspace(<AttackIntelligence />)} />
+          <Route path="/quality" element={workspace(<ScanQualityPage />)} />
+          <Route path="/github" element={workspace(<GitHubConnectPage />)} />
+          <Route path="/github/callback" element={workspace(<GitHubConnectPage />)} />
+          <Route path="/profile" element={workspace(<ProfilePage />)} />
+          <Route path="/multi-source" element={workspace(<MultiSourceScanPage />)} />
+          <Route path="/multi-source/:scan_id" element={workspace(<MultiSourceDetailPage />)} />
+          <Route path="/ci-cd" element={workspace(<CIIntegrationPage />)} />
+          <Route path="/report/:scan_id" element={workspace(<ReportPage />)} />
+
+          {/* Protected workspace routes - PRO tier only */}
+          <Route path="/authorized-testing" element={workspace(<AuthorizedTestingPage />, 'PRO')} />
+          <Route path="/private/dos" element={workspace(<DoSPanel />, 'PRO')} />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
         <Toaster
           position="bottom-right"
           toastOptions={{
@@ -98,7 +107,6 @@ export default function App() {
             },
           }}
         />
-      </PhantomDataProvider>
     </AuthProvider>
   );
 }
