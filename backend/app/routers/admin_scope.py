@@ -1,10 +1,10 @@
 import logging
-import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.auth_middleware import get_current_user
 from app.config import get_settings
 from app.database import (
     add_audit_log,
@@ -48,37 +48,37 @@ class ScopeRemoveResponse(BaseModel):
     message: str
 
 
-def admin_required() -> dict:
-    if os.getenv("LOCAL_USER_ROLE") == "admin":
-        return {"role": "admin", "username": "local-admin"}
-    if settings.local_user_role != "admin":
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    if current_user.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "ADMIN_REQUIRED", "message": "Admin privileges are required for this operation."},
         )
-    return {"role": settings.local_user_role, "username": settings.local_user_id}
+    return current_user
 
 
 @router.post("/add", response_model=ScopeAddResponse)
-async def add_to_private_scope(request: AddScopeRequest, _admin: dict = Depends(admin_required)) -> ScopeAddResponse:
+async def add_to_private_scope(
+    request: AddScopeRequest, current_user: dict = Depends(require_admin)
+) -> ScopeAddResponse:
     try:
         target = canonicalize_target(request.target_url)
     except TargetValidationError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
     hostname = canonicalize_hostname(target.url)
-    await add_private_scope(hostname, added_by=settings.local_user_id)
+    await add_private_scope(hostname, added_by=current_user["id"])
     sys_scan_id = await get_or_create_system_scan()
     await add_audit_log(
         scan_id=sys_scan_id,
         agent_name="AdminScope",
         action="private_scope_add",
         details=f"Admin added {hostname} to Private Scope",
-        user_id=settings.local_user_id,
+        user_id=current_user["id"],
         target=hostname,
         authorization_status="ADMIN_OVERRIDE",
     )
-    logger.info("Admin added %s to Private Scope", hostname)
+    logger.info("Admin %s added %s to Private Scope", current_user["id"], hostname)
     return ScopeAddResponse(
         success=True,
         message=f"Target added to Private Scope. You can now run the Full Assessment.",
@@ -87,7 +87,7 @@ async def add_to_private_scope(request: AddScopeRequest, _admin: dict = Depends(
 
 
 @router.get("/list", response_model=list[ScopeEntry])
-async def list_private_scope_endpoint(_admin: dict = Depends(admin_required)) -> list[ScopeEntry]:
+async def list_private_scope_endpoint(current_user: dict = Depends(require_admin)) -> list[ScopeEntry]:
     rows = await list_private_scope()
     return [
         ScopeEntry(
@@ -104,7 +104,7 @@ async def list_private_scope_endpoint(_admin: dict = Depends(admin_required)) ->
 @router.delete("/remove", response_model=ScopeRemoveResponse)
 async def remove_from_private_scope(
     target_url: str = Query(min_length=4, max_length=2048),
-    _admin: dict = Depends(admin_required),
+    current_user: dict = Depends(require_admin),
 ) -> ScopeRemoveResponse:
     hostname = canonicalize_hostname(target_url)
     removed = await remove_private_scope(hostname)
@@ -115,11 +115,11 @@ async def remove_from_private_scope(
             agent_name="AdminScope",
             action="private_scope_remove",
             details=f"Admin removed {hostname} from Private Scope",
-            user_id=settings.local_user_id,
+            user_id=current_user["id"],
             target=hostname,
             authorization_status="ADMIN_OVERRIDE",
         )
-        logger.info("Admin removed %s from Private Scope", hostname)
+        logger.info("Admin %s removed %s from Private Scope", current_user["id"], hostname)
         return ScopeRemoveResponse(success=True, message=f"Target removed from Private Scope.")
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
@@ -128,5 +128,5 @@ async def remove_from_private_scope(
 
 
 @router.get("/role")
-async def get_user_role() -> dict[str, str]:
-    return {"role": settings.local_user_role}
+async def get_user_role(current_user: dict = Depends(get_current_user)) -> dict[str, str]:
+    return {"role": current_user.get("role", "user")}
