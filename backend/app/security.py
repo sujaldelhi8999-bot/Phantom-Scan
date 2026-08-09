@@ -1,5 +1,12 @@
 from datetime import datetime, timezone
 from typing import Any
+import base64
+import os
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+from app.config import get_settings
 from app.services.redaction import redaction_service
 
 
@@ -21,6 +28,42 @@ def redact_url(url: str) -> str:
 
 def redact_payload(value: Any) -> Any:
     return redaction_service.redact_payload(value)
+
+
+# Encryption for sensitive data storage
+_fernet: Fernet | None = None
+
+
+def _get_fernet() -> Fernet:
+    global _fernet
+    if _fernet is None:
+        settings = get_settings()
+        # Derive key from secret
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=b"phantomscan-salt",  # In production, use a proper salt
+            iterations=100000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive(settings.secret_key.encode()))
+        _fernet = Fernet(key)
+    return _fernet
+
+
+def encrypt_data(data: str) -> str:
+    """Encrypt sensitive data for storage."""
+    if not data:
+        return ""
+    fernet = _get_fernet()
+    return fernet.encrypt(data.encode()).decode()
+
+
+def decrypt_data(encrypted: str) -> str:
+    """Decrypt sensitive data from storage."""
+    if not encrypted:
+        return ""
+    fernet = _get_fernet()
+    return fernet.decrypt(encrypted.encode()).decode()
 
 
 def build_finding(
