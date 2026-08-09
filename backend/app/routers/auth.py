@@ -1,39 +1,250 @@
-import os
+import bcrypt
+import jwt
+import uuid
 from datetime import datetime, timedelta, timezone
 
-import jwt
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr, Field
 
+from app.auth_middleware import get_current_user, require_admin
 from app.config import get_settings
+from app.database import create_user, get_user_by_email, get_user_by_id, update_user_password
+from app.models import SupabaseLoginRequest
+from app.services.supabase_auth import SupabaseAuthError, verify_supabase_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 class LoginRequest(BaseModel):
-    username: str
+    email: EmailStr
     password: str
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    name: str | None = Field(default=None, max_length=100)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str | None
+    role: str
+    subscription_tier: str
+    subscription_status: str
+    created_at: str
 
 
 class LoginResponse(BaseModel):
     token: str
-    role: str
-    username: str
+    user: UserResponse
+
+
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    return bcrypt.checkpw(password.encode(), password_hash.encode())
+
+
+def _issue_token(settings, user_id: str, role: str) -> str:
+    payload = {
+        "sub": user_id,
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+
+
+@router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+async def register(req: RegisterRequest):
+    settings = get_settings()
+    
+    if not settings.secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server not configured: SECRET_KEY not set",
+        )
+    
+    existing = await get_user_by_email(req.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+    
+    user_id = uuid.uuid4().hex
+    password_hash = _hash_password(req.password)
+    await create_user(
+        user_id=user_id,
+        email=req.email.lower(),
+        password_hash=password_hash,
+        name=req.name,
+        role="user",
+    )
+    
+    token = _issue_token(settings, user_id, "user")
+    return LoginResponse(
+        token=token,
+        user=UserResponse(
+            id=user_id,
+            email=req.email.lower(),
+            name=req.name,
+            role="user",
+            subscription_tier="FREE",
+            subscription_status="active",
+            created_at=datetime.now(timezone.utc).isoformat(),
+        ),
+    )
 
 
 @router.post("/login", response_model=LoginResponse)
 async def login(req: LoginRequest):
     settings = get_settings()
-    if req.username == settings.admin_username and req.password == settings.admin_password:
-        payload = {
-            "sub": req.username,
-            "role": "admin",
-            "exp": datetime.now(timezone.utc) + timedelta(hours=24),
-        }
-        token = jwt.encode(payload, settings.secret_key, algorithm="HS256")
-        return LoginResponse(token=token, role="admin", username=req.username)
+    
+    if not settings.secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server not configured: SECRET_KEY not set",
+        )
+    
+    user = await get_user_by_email(req.email)
+    if not user or not _verify_password(req.password, user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+    
+    token = _issue_token(settings, user["id"], user["role"])
+    return LoginResponse(
+        token=token,
+        user=UserResponse(
+            id=user["id"],
+            email=user["email"],
+            name=user.get("name"),
+            role=user["role"],
+            subscription_tier=user.get("subscription_tier", "FREE"),
+            subscription_status=user.get("subscription_status", "active"),
+            created_at=user.get("created_at", ""),
+        ),
+    )
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid credentials",
+
+@router.post("/change-password", response_model=UserResponse)
+async def change_password(req: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    if not _verify_password(req.current_password, user["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+    
+    new_hash = _hash_password(req.new_password)
+    await update_user_password(user["id"], new_hash)
+    
+    updated = await get_user_by_id(user["id"])
+    return UserResponse(
+        id=updated["id"],
+        email=updated["email"],
+        name=updated.get("name"),
+        role=updated["role"],
+        subscription_tier=updated.get("subscription_tier", "FREE"),
+        subscription_status=updated.get("subscription_status", "active"),
+        created_at=updated.get("created_at", ""),
+    )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(user: dict = Depends(get_current_user)):
+    return UserResponse(
+        id=user["id"],
+        email=user["email"],
+        name=user.get("name"),
+        role=user["role"],
+        subscription_tier=user.get("subscription_tier", "FREE"),
+        subscription_status=user.get("subscription_status", "active"),
+        created_at=user.get("created_at", ""),
+    )
+
+
+@router.post("/supabase", response_model=LoginResponse)
+async def supabase_login(req: SupabaseLoginRequest):
+    """Exchange a Supabase access token (Google / GitHub sign-in) for a session."""
+    settings = get_settings()
+    try:
+        supabase_user = await verify_supabase_token(req.access_token)
+    except SupabaseAuthError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid Supabase token: {exc}",
+        )
+
+    admin_emails = {
+        email.strip().lower()
+        for email in settings.supabase_admin_emails.split(",")
+        if email.strip()
+    }
+    role = "admin" if supabase_user.email in admin_emails else "user"
+    
+    user = await get_user_by_email(supabase_user.email)
+    if not user:
+        user_id = uuid.uuid4().hex
+        await create_user(
+            user_id=user_id,
+            email=supabase_user.email,
+            password_hash=_hash_password(uuid.uuid4().hex),
+            name=supabase_user.name,
+            role=role,
+        )
+        user = await get_user_by_email(supabase_user.email)
+
+    token = _issue_token(settings, user["id"], user["role"])
+    return LoginResponse(
+        token=token,
+        user=UserResponse(
+            id=user["id"],
+            email=user["email"],
+            name=user.get("name"),
+            role=user["role"],
+            subscription_tier=user.get("subscription_tier", "FREE"),
+            subscription_status=user.get("subscription_status", "active"),
+            created_at=user.get("created_at", ""),
+        ),
+    )
+
+
+@router.post("/admin/create", response_model=UserResponse)
+async def create_admin_user(req: RegisterRequest, admin: dict = Depends(require_admin)):
+    existing = await get_user_by_email(req.email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+    
+    user_id = uuid.uuid4().hex
+    password_hash = _hash_password(req.password)
+    await create_user(
+        user_id=user_id,
+        email=req.email.lower(),
+        password_hash=password_hash,
+        name=req.name,
+        role="admin",
+    )
+    
+    created = await get_user_by_id(user_id)
+    return UserResponse(
+        id=created["id"],
+        email=created["email"],
+        name=created.get("name"),
+        role=created["role"],
+        subscription_tier=created.get("subscription_tier", "FREE"),
+        subscription_status=created.get("subscription_status", "active"),
+        created_at=created.get("created_at", ""),
     )
