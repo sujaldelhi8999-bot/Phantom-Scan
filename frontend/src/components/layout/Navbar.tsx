@@ -39,6 +39,12 @@ export default function Navbar() {
           </NavLink>
         )}
 
+        {user?.role === 'admin' && (
+          <NavLink to="/quality" className={({ isActive }) => `${baseClass} ${isActive ? activeClass : inactiveClass}`}>
+            Scan Quality
+          </NavLink>
+        )}
+
         <NavLink to="/system-health" className={({ isActive }) => `${baseClass} ${isActive ? activeClass : inactiveClass}`}>
           System
         </NavLink>

@@ -193,15 +193,21 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function ModeBadge({ mode }: { mode: 'defend' | 'pentest' }) {
+export function ModeBadge({ mode }: { mode: 'defend' | 'pentest' | 'multi_agent' }) {
+  const labels: Record<string, { text: string; className: string }> = {
+    defend: { text: 'Defend', className: 'bg-[var(--info-soft)] text-[var(--info)]' },
+    pentest: { text: 'Pentest', className: 'bg-[var(--warning-soft)] text-[var(--warning)]' },
+    multi_agent: { text: 'Multi-Agent', className: 'bg-[var(--info-soft)] text-[var(--info)]' },
+  };
+  const label = labels[mode] ?? labels.pentest;
   return (
     <span
       className={cx(
         'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold',
-        mode === 'defend' ? 'bg-[var(--info-soft)] text-[var(--info)]' : 'bg-[var(--warning-soft)] text-[var(--warning)]',
+        label.className,
       )}
     >
-      {mode === 'defend' ? 'Defend' : 'Pentest'}
+      {label.text}
     </span>
   );
 }

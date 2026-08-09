@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Layout from './Layout';
+import UserMenu from './UserMenu';
 import {
   Activity,
   Bell,
@@ -11,6 +12,7 @@ import {
   Command,
   FileClock,
   FileText,
+  GitBranch,
   HeartPulse,
   History,
   Home,
@@ -24,7 +26,7 @@ import {
   ShieldAlert,
   Sparkles,
   Stethoscope,
-  UserCircle,
+  Workflow,
   Wrench,
   X,
 } from 'lucide-react';
@@ -50,6 +52,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { label: 'Dashboard', path: '/', icon: Home },
       { label: 'Defend Scan', path: '/scan', icon: Activity },
+      { label: 'Multi-Source', path: '/multi-source', icon: Layers3 },
     ],
   },
   {
@@ -59,6 +62,8 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { label: 'Assets', path: '/assets', icon: Layers3 },
       { label: 'Reports', path: '/history', icon: FileText },
       { label: 'Agents', path: '/agents', icon: Network },
+      { label: 'GitHub', path: '/github', icon: GitBranch },
+      { label: 'CI/CD', path: '/ci-cd', icon: Workflow },
     ],
   },
   {
@@ -73,6 +78,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     label: 'System',
     items: [
       { label: 'Attack Intelligence', path: '/intelligence', icon: BrainCircuit },
+      { label: 'Scan Quality', path: '/quality', icon: ClipboardList },
       { label: 'System Health', path: '/system-health', icon: HeartPulse },
       { label: 'Notifications', path: '/notifications', icon: Bell },
       { label: 'Settings', path: '/settings', icon: Settings },
@@ -96,6 +102,8 @@ const routeDetails: Record<string, { title: string; description: string }> = {
   '/settings': { title: 'Settings', description: 'Runtime configuration reference.' },
   '/authorized-testing': { title: 'Authorized Testing', description: 'Controlled security testing for approved targets.' },
   '/private/dos': { title: 'DoS Testing', description: 'Simulate Denial of Service attacks on authorized targets.' },
+  '/quality': { title: 'Scan Quality', description: 'Learning-driven accuracy and tuning recommendations.' },
+  '/profile': { title: 'Profile', description: 'Your account details and session information.' },
 };
 
 function currentRoute(pathname: string) {
@@ -619,7 +627,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const { user, logoutUser } = useAuth();
+  const { user } = useAuth();
   const details = currentRoute(location.pathname);
 
   const sidebarWidth = collapsed ? 56 : 232;
@@ -714,19 +722,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <SystemStatusPopover open={statusOpen} onClose={() => setStatusOpen(false)} />
             </div>
 
-            {user?.role === 'admin' ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 rounded-[var(--radius-control)] border border-red-500/40 bg-red-600/20 px-2.5 py-1.5 text-xs font-bold text-red-400">
-                  <UserCircle className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{user.username}</span>
-                </div>
-                <button
-                  onClick={() => { logoutUser(); window.location.reload(); }}
-                  className="rounded-[var(--radius-control)] border border-[var(--border-light)] px-2.5 py-1.5 text-xs text-[var(--text-subtle)] hover:bg-[var(--surface-hover)]"
-                >
-                  Logout
-                </button>
-              </div>
+            {user ? (
+              <UserMenu />
             ) : (
               <button
                 onClick={() => setShowLoginModal(true)}

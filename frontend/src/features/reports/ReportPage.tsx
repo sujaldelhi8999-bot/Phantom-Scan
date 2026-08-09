@@ -547,7 +547,7 @@ export default function ReportPage() {
       {/* Scan metadata badges */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <StatusBadge status={scan.status} />
-        <StatusBadge status={scan.mode === 'pentest' ? 'Authorized Testing' : 'Defend'} />
+        <StatusBadge status={scan.mode === 'pentest' ? 'Authorized Testing' : scan.mode === 'multi_agent' ? 'Multi-Agent' : 'Defend'} />
         <span className="text-[var(--text-muted)]">Scan #{scan.scan_id}</span>
         <span className="text-[var(--text-muted)]">·</span>
         <span className="text-[var(--text-muted)]">{new Date(scan.created_at).toLocaleString()}</span>

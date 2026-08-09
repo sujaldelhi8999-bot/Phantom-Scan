@@ -25,6 +25,7 @@ import {
   verifyFindingFix,
 } from '../../services/api';
 import { formatDateTime, relativeTime, severityOrder, targetName } from '../../utils/derived';
+import { AITutorChat } from './AITutorChat';
 
 function checklist(finding: Finding) {
   const fix = finding.recommended_fix || finding.recommendation || finding.fix || 'Review and remediate this finding.';
@@ -208,6 +209,11 @@ function FindingDrawer({ finding, onClose }: { finding: Finding | null; onClose:
             <p className="whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-muted)]">
               {language === 'en' ? finding.how_exploited || finding.impact || 'Not persisted.' : hindiText || 'Not available.'}
             </p>
+          </div>
+
+          {/* AI Tutor Chat */}
+          <div>
+            <AITutorChat finding={finding} />
           </div>
 
           {/* AI Security Analyst */}

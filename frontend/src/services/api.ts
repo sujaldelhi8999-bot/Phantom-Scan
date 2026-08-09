@@ -8,6 +8,8 @@ import type {
   ActiveRunRequest,
   AskPhantomScanResponse,
   ActiveScoreResponse,
+  AITutorRequest,
+  AITutorResponse,
   AuditLog,
   AuthorizedTestJobResponse,
   AuthorizedTestJobResultsResponse,
@@ -15,10 +17,19 @@ import type {
   AuthorizationChallengeRequest,
   AuthorizationChallengeResponse,
   AuthorizationStatusResponse,
+  ComplianceReportRequestPayload,
+  ComplianceReportResponse,
+  ComplexityResult,
   ExecutionStatusResponse,
   Finding,
   FindingAIExplanation,
   FindingVerificationResponse,
+  GitHubActionsWorkflowResponse,
+  GitHubConnectResponse,
+  GitHubInstallation,
+  GitHubInstallationListResponse,
+  GitHubRepoListResponse,
+  GitHubStatusResponse,
   HealthResponse,
   JobEvent,
   JobEventsResponse,
@@ -26,13 +37,22 @@ import type {
   LabScenarioRequest,
   LabScenarioResponse,
   LabStatusResponse,
+  LearningInsight,
+  MultiSourceScanHistoryItem,
+  MultiSourceScanPayload,
+  MultiSourceScanResponse,
+  PRCommentRecord,
+  PRDescriptionRequest,
+  PRDescriptionResponse,
   RemediationStatus,
   RiskStatus,
   ScanArtifactsResponse,
   ScanHistoryItem,
+  ScanQualityReport,
   ScanRequestPayload,
   ScanResponse,
   SelfAuditStatusResponse,
+  SourceCorrelationsResponse,
   StopScanResponse
 } from '../types';
 
@@ -52,6 +72,32 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// Auth interceptor - add token to requests
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('phantom_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor - handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth state and redirect to login
+      localStorage.removeItem('phantom_token');
+      localStorage.removeItem('phantom_user_role');
+      localStorage.removeItem('phantom_username');
+      localStorage.removeItem('phantom_user_name');
+      localStorage.removeItem('phantom_user_email');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export function apiErrorMessage(error: unknown, fallback = 'PhantomScan could not complete the request.'): string {
   if (axios.isAxiosError(error)) {
@@ -110,6 +156,91 @@ export async function askPhantomScan(id: number | string, question: string): Pro
 
 export async function explainFinding(findingId: number, language: 'en' | 'hi' = 'en'): Promise<FindingAIExplanation> {
   const response = await apiClient.get<FindingAIExplanation>(`/api/ai/findings/${findingId}/explain`, { params: { language } });
+  return response.data;
+}
+
+export async function tutorChat(payload: AITutorRequest): Promise<AITutorResponse> {
+  const response = await apiClient.post<AITutorResponse>('/api/ai/tutor/chat', payload);
+  return response.data;
+}
+
+export async function generatePRDescription(scanId: number, payload: PRDescriptionRequest): Promise<PRDescriptionResponse> {
+  const response = await apiClient.post<PRDescriptionResponse>(`/api/scan/${scanId}/pr-description`, payload);
+  return response.data;
+}
+
+export async function getGitHubStatus(): Promise<GitHubStatusResponse> {
+  const response = await apiClient.get<GitHubStatusResponse>('/api/github/status');
+  return response.data;
+}
+
+export async function connectGitHub(): Promise<GitHubConnectResponse> {
+  const response = await apiClient.post<GitHubConnectResponse>('/api/github/connect');
+  return response.data;
+}
+
+export async function listGitHubRepos(): Promise<GitHubRepoListResponse> {
+  const response = await apiClient.get<GitHubRepoListResponse>('/api/github/repos');
+  return response.data;
+}
+
+export async function listGitHubInstallations(): Promise<GitHubInstallation[]> {
+  const response = await apiClient.get<GitHubInstallationListResponse>('/api/github/installations');
+  return response.data.installations;
+}
+
+export async function disconnectGitHub(): Promise<{ status: string }> {
+  const response = await apiClient.delete<{ status: string }>('/api/github/disconnect');
+  return response.data;
+}
+
+export async function startMultiSourceScan(payload: MultiSourceScanPayload): Promise<MultiSourceScanResponse> {
+  const response = await apiClient.post<MultiSourceScanResponse>('/api/multi-source/scan', payload);
+  return response.data;
+}
+
+export async function getMultiSourceHistory(): Promise<MultiSourceScanHistoryItem[]> {
+  const response = await apiClient.get<MultiSourceScanHistoryItem[]>('/api/multi-source/history');
+  return response.data;
+}
+
+export async function getMultiSourceStatus(scanId: number): Promise<MultiSourceScanResponse> {
+  const response = await apiClient.get<MultiSourceScanResponse>(`/api/multi-source/${scanId}`);
+  return response.data;
+}
+
+export async function getSourceCorrelations(scanId: number): Promise<SourceCorrelationsResponse> {
+  const response = await apiClient.get<SourceCorrelationsResponse>(`/api/multi-source/${scanId}/correlations`);
+  return response.data;
+}
+
+export async function stopMultiSourceScan(scanId: number): Promise<{ scan_id: string; status: string }> {
+  const response = await apiClient.post<{ scan_id: string; status: string }>(`/api/multi-source/${scanId}/stop`);
+  return response.data;
+}
+
+export async function getSARIF(scanId: number, download = false): Promise<unknown> {
+  const response = await apiClient.get(`/api/ci/scan/${scanId}/sarif`, { params: download ? { download: true } : undefined });
+  return response.data;
+}
+
+export async function getWorkflowTemplate(): Promise<string> {
+  const response = await apiClient.get<string>('/api/ci/workflow/template', { responseType: 'text' });
+  return response.data;
+}
+
+export async function createComplianceReport(payload: ComplianceReportRequestPayload): Promise<ComplianceReportResponse> {
+  const response = await apiClient.post<ComplianceReportResponse>('/api/ci/reports/compliance', payload);
+  return response.data;
+}
+
+export async function getPRCommentPreview(scanId: number): Promise<{ scan_id: number; comment: string }> {
+  const response = await apiClient.get<{ scan_id: number; comment: string }>(`/api/ci/scan/${scanId}/pr-comment`);
+  return response.data;
+}
+
+export async function listPRComments(scanId: number): Promise<PRCommentRecord[]> {
+  const response = await apiClient.get<PRCommentRecord[]>(`/api/ci/scan/${scanId}/pr-comments`);
   return response.data;
 }
 
@@ -287,5 +418,37 @@ export async function getJobEvidence(jobId: string, findingId?: number): Promise
   const response = await apiClient.get(`/api/active/jobs/${jobId}/evidence`, {
     params: findingId ? { finding_id: findingId } : {}
   });
+  return response.data;
+}
+
+export async function activeComplexity(payload: ActiveMapRequest): Promise<ComplexityResult> {
+  const response = await apiClient.post<ComplexityResult>('/api/active/complexity', payload);
+  return response.data;
+}
+
+export async function getLearningInsights(scanId?: number, status?: string): Promise<LearningInsight[]> {
+  const response = await apiClient.get<LearningInsight[]>('/api/learning/insights', {
+    params: { scan_id: scanId ?? undefined, status: status ?? undefined }
+  });
+  return response.data;
+}
+
+export async function applyLearningInsight(
+  insightId: number,
+  appliedSettings?: Record<string, unknown>
+): Promise<LearningInsight> {
+  const response = await apiClient.post<LearningInsight>(`/api/learning/insights/${insightId}/apply`, {
+    applied_settings: appliedSettings
+  });
+  return response.data;
+}
+
+export async function dismissLearningInsight(insightId: number): Promise<LearningInsight> {
+  const response = await apiClient.post<LearningInsight>(`/api/learning/insights/${insightId}/dismiss`);
+  return response.data;
+}
+
+export async function getScanQualityReport(): Promise<ScanQualityReport> {
+  const response = await apiClient.get<ScanQualityReport>('/api/learning/quality');
   return response.data;
 }

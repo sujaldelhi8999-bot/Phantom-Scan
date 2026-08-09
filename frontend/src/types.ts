@@ -1,4 +1,4 @@
-export type ScanMode = 'defend' | 'pentest';
+export type ScanMode = 'defend' | 'pentest' | 'multi_agent';
 export type ScanIntensity = 'low' | 'medium' | 'high';
 export type ScanStatus = 'queued' | 'running' | 'cancelling' | 'cancelled' | 'complete' | 'error';
 export type AgentState = 'idle' | 'active' | 'complete' | 'error';
@@ -187,6 +187,228 @@ export interface FindingAIExplanation {
   can_start_active_test: boolean;
 }
 
+export type TutorUserLevel = 'beginner' | 'intermediate' | 'expert';
+
+export interface AITutorRequest {
+  finding_id?: number | null;
+  question: string;
+  context?: Record<string, unknown>;
+  language?: 'en' | 'hi' | null;
+  user_level?: TutorUserLevel;
+}
+
+export interface AITutorCodeExample {
+  language: string;
+  title?: string;
+  code: string;
+}
+
+export interface AITutorResponse {
+  answer: string;
+  explanation?: string | null;
+  code_examples: AITutorCodeExample[];
+  references: string[];
+  follow_up_questions: string[];
+  confidence: number;
+}
+
+export interface TutorChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  code_examples?: AITutorCodeExample[];
+  references?: string[];
+  follow_up_questions?: string[];
+  timestamp: string;
+}
+
+export interface PRDescriptionRequest {
+  finding_ids: number[];
+  base_branch: string;
+  head_branch: string;
+  repo_url: string;
+  include_fix_details?: boolean;
+  include_verification_steps?: boolean;
+}
+
+export interface PRDescriptionResponse {
+  title: string;
+  body: string;
+  labels: string[];
+  reviewers: string[];
+  related_issues: string[];
+}
+
+export interface GitHubRepo {
+  id: number;
+  full_name: string;
+  name: string;
+  owner: Record<string, unknown>;
+  private: boolean;
+  html_url: string;
+  clone_url: string;
+  ssh_url: string;
+  default_branch: string;
+  permissions: Record<string, boolean>;
+  language: string | null;
+  topics: string[];
+  updated_at: string;
+  pushed_at: string | null;
+}
+
+export interface GitHubInstallation {
+  id: number;
+  account: Record<string, unknown>;
+  repository_selection: string;
+  permissions: Record<string, string>;
+  events: string[];
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GitHubStatusResponse {
+  connected: boolean;
+  login?: string;
+  connected_at?: string | null;
+}
+
+export interface GitHubConnectResponse {
+  authorize_url: string;
+  state: string;
+}
+
+export interface GitHubRepoListResponse {
+  connected: boolean;
+  repos: GitHubRepo[];
+  total: number;
+}
+
+export interface GitHubInstallationListResponse {
+  installations: GitHubInstallation[];
+  total: number;
+}
+
+export type MultiSourceSourceType = 'local' | 'github' | 'gitlab' | 'bitbucket' | 'live' | 'api_spec' | 'docker' | 'kubernetes' | 'terraform';
+
+export interface MultiSourceSourceResult {
+  source_type: string;
+  source_identifier: string;
+  status: string;
+  findings_count: number;
+  findings_by_severity: Record<string, number>;
+  scan_duration_seconds: number;
+  error_message: string | null;
+  artifacts: Record<string, unknown>;
+}
+
+export interface MultiSourceScanResponse {
+  scan_id: number;
+  name: string;
+  mode: string;
+  overall_status: string;
+  overall_progress: number;
+  sources: MultiSourceSourceResult[];
+  total_findings: number;
+  findings_by_severity: Record<string, number>;
+  correlated_findings_count: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  total_duration_seconds: number;
+  sarif_export_url: string | null;
+  pdf_report_url: string | null;
+}
+
+export interface MultiSourceScanHistoryItem {
+  scan_id: number;
+  name: string;
+  mode: string;
+  overall_status: string;
+  sources: string[];
+  total_findings: number;
+  correlated_findings: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface MultiSourceScanPayload {
+  name?: string;
+  mode?: string;
+  intensity?: 'low' | 'medium' | 'high';
+  sources: Record<string, unknown>[];
+  correlate_findings?: boolean;
+  data_flow_tracing?: boolean;
+  generate_sarif?: boolean;
+  generate_pdf?: boolean;
+  compliance_frameworks?: string[];
+  max_cost_usd?: number | null;
+  max_duration_minutes?: number;
+  notify_on_critical?: boolean;
+  notify_on_complete?: boolean;
+  webhook_url?: string | null;
+}
+
+export interface SourceCorrelationGroup {
+  unified_id: string;
+  title: string;
+  severity: string;
+  confidence: number;
+  sources: string[];
+  correlation_type: string;
+  related_findings: Finding[];
+  evidence: Record<string, unknown>;
+}
+
+export interface SourceCorrelationSummary {
+  total_correlations: number;
+  by_type: Record<string, number>;
+  by_source_pair: Record<string, number>;
+  high_confidence: number;
+  data_flow_traces: number;
+  vulnerability_chains: number;
+}
+
+export interface SourceCorrelationsResponse {
+  scan_id: number;
+  summary: SourceCorrelationSummary;
+  groups: SourceCorrelationGroup[];
+}
+
+export interface GitHubActionsWorkflowResponse {
+  workflow_yaml: string;
+  file_name: string;
+}
+
+export interface ComplianceReportRequestPayload {
+  scan_id: number;
+  frameworks: Array<'pci_dss' | 'soc2' | 'iso27001' | 'hipaa' | 'gdpr' | 'nist_csf' | 'cis'>;
+  format: 'pdf' | 'html' | 'json' | 'markdown';
+  include_evidence?: boolean;
+  include_remediation?: boolean;
+}
+
+export interface ComplianceReportResponse {
+  report_id: string;
+  scan_id: number;
+  frameworks: string[];
+  format: string;
+  download_url: string;
+  generated_at: string;
+  expires_at: string;
+  summary: Record<string, unknown>;
+}
+
+export interface PRCommentRecord {
+  id: number;
+  scan_id: number;
+  pr_number: number;
+  repo_full_name: string;
+  comment: string;
+  status: string;
+  created_at: string;
+}
+
 export interface ActiveGateContext {
   allowed: boolean;
   target_url: string;
@@ -255,6 +477,7 @@ export interface ActiveMapResponse {
   surfaces: ActiveSurface[];
   plan: ActivePlan;
   score: ActiveScore;
+  complexity?: ComplexityResult;
   limits: ActiveLimits;
 }
 
@@ -262,7 +485,71 @@ export interface ActiveScoreResponse {
   gate: ActiveGateContext;
   score: ActiveScore;
   module_count: number;
+  complexity?: ComplexityResult;
   limits: ActiveLimits;
+}
+
+export interface ComplexityResult {
+  target_url?: string;
+  score: number;
+  band: 'simple' | 'medium' | 'complex' | 'critical' | string;
+  band_label: string;
+  breakdown: {
+    ports: { web_ports: number[]; extra_web_ports: number[]; database_ports: number[]; admin_ports: number[]; points: number };
+    tech_stack: { detected: string[]; points: number };
+    authentication: { mechanisms: string[]; has_admin_surface: boolean; points: number };
+    api_surface: { endpoints: number; graphql: boolean; openapi: boolean; points: number };
+    waf: boolean;
+    security_headers: { present: string[]; missing: string[]; points: number };
+    scale: { endpoints: number; subdomains: number; points: number };
+  };
+  source?: 'recon' | 'live' | 'fallback';
+}
+
+export interface AdaptivePlan {
+  band: ComplexityResult['band'];
+  score: number;
+  requests_per_second: number;
+  intensity: ScanIntensity;
+  modules: string[];
+  excluded_modules: string[];
+  excluded_reasons: Record<string, string>;
+  depth: string;
+  deeper: boolean;
+  limits: Record<string, number>;
+  rationale: string[];
+}
+
+export interface LearningInsight {
+  id: number;
+  scan_id: number | null;
+  module: string | null;
+  kind: 'module' | 'scan' | string;
+  total_count: number;
+  true_positives: number;
+  false_positives: number;
+  unrated_count: number;
+  true_positive_rate: number;
+  false_positive_rate: number;
+  recommendation: string | null;
+  recommendation_data: { action?: 'disable' | 'tune' | 'review' | 'keep'; rationale?: string; fp_rate?: number; tp_rate?: number; sample_count?: number } | null;
+  status: 'pending' | 'applied' | 'dismissed' | string;
+  applied_settings: Record<string, unknown> | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ScanQualityReport {
+  modules: Array<{
+    module: string;
+    total_count: number;
+    true_positives: number;
+    false_positives: number;
+    unrated_count: number;
+    true_positive_rate: number;
+    false_positive_rate: number;
+  }>;
+  scans: Array<Record<string, unknown>>;
 }
 
 export interface ActiveSecurityOutput {
@@ -349,6 +636,7 @@ export interface ScanArtifactsResponse {
   active_security_output: ActiveSecurityOutput | null;
   browser_security_output: BrowserSecurityOutput | null;
   ai_analyst_output: AISecurityAnalystOutput | null;
+  tci_output: ComplexityResult | null;
   updated_at: string | null;
 }
 

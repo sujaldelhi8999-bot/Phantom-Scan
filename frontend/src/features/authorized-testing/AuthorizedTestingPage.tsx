@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Trash2,
 } from 'lucide-react';
+import { Gauge } from 'lucide-react';
 import {
   Button,
   cx,
@@ -33,6 +34,7 @@ import {
 import { usePhantomData } from '../../hooks/usePhantomData';
 import {
   API_BASE_URL,
+  activeComplexity,
   activeMap,
   addToPrivateScope,
   apiErrorMessage,
@@ -56,6 +58,7 @@ import type {
   AuthorizationStatusResponse,
   AuthorizedJobStatus,
   AuthorizedTestJobResponse,
+  ComplexityResult,
   LabStatusResponse,
   PrivateScopeEntry,
   ScanIntensity,
@@ -69,6 +72,7 @@ import LiveActivityConsole from './LiveActivityConsole';
 import EventDetailDrawer from './EventDetailDrawer';
 import AttackFlowAnimation from './AttackFlowAnimation';
 import EvidencePanel from './EvidencePanel';
+import ComplexityCard, { ComplexitySkeleton } from './ComplexityCard';
 
 const labTarget = `${API_BASE_URL}/lab/phantombank`;
 const defaultModules: TestModule[] = [
@@ -155,6 +159,8 @@ export default function AuthorizedTestingPage() {
   const [profile, setProfile] = useState<ScanIntensity>('medium');
   const [confirmation, setConfirmation] = useState(true);
   const [mapResult, setMapResult] = useState<ActiveMapResponse | null>(null);
+  const [complexity, setComplexity] = useState<ComplexityResult | null>(null);
+  const [complexityLoading, setComplexityLoading] = useState(false);
   const [labStatus, setLabStatus] = useState<LabStatusResponse | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -310,6 +316,7 @@ export default function AuthorizedTestingPage() {
     setChallenge(null);
     setConfirmation(true);
     setMapResult(null);
+    setComplexity(null);
     setError(null);
     setJobId(null);
     setJobData(null);
@@ -390,6 +397,7 @@ export default function AuthorizedTestingPage() {
     try {
       setAuthorization(await revokeAuthorization(authorization.id));
       setMapResult(null);
+      setComplexity(null);
       toast.success('Authorization revoked');
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Unable to revoke.'));
@@ -421,6 +429,27 @@ export default function AuthorizedTestingPage() {
       toast.error('Mapping blocked');
     } finally {
       setLoadingAction(null);
+    }
+  };
+
+  const analyzeComplexity = async () => {
+    if (!target.trim()) return;
+    setComplexityLoading(true);
+    setError(null);
+    try {
+      const result = await activeComplexity({
+        target_url: target,
+        authorization_id: authorization?.id ?? null,
+        authorization_confirmed: confirmation,
+      });
+      setComplexity(result);
+      toast.success(`Complexity ${result.score}/100 (${result.band})`);
+    } catch (err) {
+      const msg = apiErrorMessage(err, 'Complexity analysis blocked by backend gate.');
+      setError(msg);
+      toast.error('Complexity analysis failed');
+    } finally {
+      setComplexityLoading(false);
     }
   };
 
@@ -610,6 +639,7 @@ export default function AuthorizedTestingPage() {
                   onChange={(e) => {
                     setTarget(e.target.value);
                     setMapResult(null);
+                    setComplexity(null);
                     removeMap();
                   }}
                   placeholder="https://staging.example.com"
@@ -858,6 +888,50 @@ export default function AuthorizedTestingPage() {
                 <EmptyState
                   title="Not mapped yet"
                   description="Map the attack surface to discover endpoints."
+                  compact
+                />
+              )}
+            </div>
+          </Panel>
+
+          {/* 03b — Target Complexity */}
+          <Panel>
+            <div className="p-3">
+              <SectionHeader
+                title="Target Complexity"
+                description="Live probe scoring the target before scanning."
+                action={
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-[var(--text-muted)]">
+                      {complexity ?? mapResult?.complexity
+                        ? `${(complexity ?? mapResult?.complexity)?.score}/100`
+                        : 'not analyzed'}
+                    </span>
+                  </div>
+                }
+              />
+              <div className="mb-3 flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={analyzeComplexity}
+                  disabled={!target.trim() || complexityLoading || isRunning}
+                >
+                  {complexityLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Gauge className="h-3.5 w-3.5" />
+                  )}
+                  {complexityLoading ? 'Analyzing…' : 'Analyze Complexity'}
+                </Button>
+              </div>
+              {complexityLoading ? (
+                <ComplexitySkeleton />
+              ) : complexity ?? mapResult?.complexity ? (
+                <ComplexityCard complexity={(complexity ?? mapResult?.complexity) as ComplexityResult} />
+              ) : (
+                <EmptyState
+                  title="No complexity analysis yet"
+                  description="Analyze the target to preview complexity-driven scan behavior."
                   compact
                 />
               )}
