@@ -56,6 +56,8 @@ def require_tier(required_tier: str):
     tier_order = {"FREE": 0, "PRO": 1}
 
     async def dependency(user: dict = Depends(get_current_user)) -> dict:
+        if user.get("role") == "admin":
+            return user
         user_tier = user.get("subscription_tier", "FREE")
         if tier_order.get(user_tier, 0) < tier_order.get(required_tier, 0):
             raise HTTPException(
