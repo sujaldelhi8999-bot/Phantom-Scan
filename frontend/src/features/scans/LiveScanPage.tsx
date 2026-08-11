@@ -45,14 +45,19 @@ export default function LiveScanPage() {
   const telemetry = useScanTelemetry(activeScan?.scan_id ?? null);
   const displayFindings = telemetry.findings.length ? telemetry.findings : activeScan?.findings ?? [];
   const counts = countBySeverity(displayFindings);
-  const terminal = telemetry.scanStatus
-    ? ['complete', 'error', 'cancelled'].includes(telemetry.scanStatus)
+  const currentStatus = telemetry.scanStatus ?? activeScan?.status;
+  const terminal = currentStatus
+    ? ['complete', 'error', 'cancelled'].includes(currentStatus)
     : false;
 
   useEffect(() => {
     const stored = localStorage.getItem('phantomscan:active-defend-scan');
     if (stored) {
-      try { setActiveScan(JSON.parse(stored) as ScanResponse); }
+      try {
+        const parsed = JSON.parse(stored) as ScanResponse;
+        setActiveScan(parsed);
+        if (parsed.target_url) setTarget(parsed.target_url);
+      }
       catch { localStorage.removeItem('phantomscan:active-defend-scan'); }
     }
   }, []);
@@ -61,13 +66,29 @@ export default function LiveScanPage() {
     if (activeScan) localStorage.setItem('phantomscan:active-defend-scan', JSON.stringify(activeScan));
   }, [activeScan]);
 
+  useEffect(() => {
+    if (telemetry.scanStatus && activeScan && activeScan.status !== telemetry.scanStatus) {
+      setActiveScan((prev) => (prev ? { ...prev, status: telemetry.scanStatus! } : null));
+    }
+  }, [telemetry.scanStatus]);
+
   const latestDefend = useMemo(() => scans.find((s) => s.mode === 'defend'), [scans]);
 
   const runScan = async () => {
     setError(null);
     setSubmitting(true);
+    let formattedTarget = target.trim();
+    if (formattedTarget && !formattedTarget.includes('://')) {
+      const host = formattedTarget.split('/')[0].split(':')[0].toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0' || host.startsWith('192.168.') || host.startsWith('10.')) {
+        formattedTarget = `http://${formattedTarget}`;
+      } else {
+        formattedTarget = `https://${formattedTarget}`;
+      }
+      setTarget(formattedTarget);
+    }
     try {
-      const scan = await startScan({ target_url: target, mode: 'defend', intensity: profile, enable_exploitation: enableExploitation });
+      const scan = await startScan({ target_url: formattedTarget, mode: 'defend', intensity: profile, enable_exploitation: enableExploitation });
       setActiveScan(scan);
       toast.success('Scan started');
       await refresh();
