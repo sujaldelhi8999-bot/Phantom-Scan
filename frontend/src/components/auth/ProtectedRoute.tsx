@@ -27,8 +27,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (requiredTier === 'PRO' && user.subscriptionTier !== 'PRO') {
-    return <Navigate to="/dashboard" replace state={{ from: location }} />;
+  if (requiredTier === 'PRO' && user.subscriptionTier !== 'PRO' && user.role !== 'admin') {
+    return <Navigate to="/pricing" replace state={{ from: location, message: 'Upgrade to Developer / Pro required' }} />;
   }
 
   return <>{children}</>;

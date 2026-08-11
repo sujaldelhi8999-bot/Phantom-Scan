@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Home, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
@@ -30,64 +30,75 @@ export default function UserMenu() {
 
   if (!user) return null;
 
-  const displayName = user.name || user.username || 'User';
-  const initial = displayName.charAt(0).toUpperCase();
+  const displayName = user.name || user.username || user.email || 'User';
+  const emailDisplay = user.email || user.username || '';
+  const initial = (displayName.charAt(0) || 'U').toUpperCase();
 
   return (
     <div className="relative ml-2" ref={containerRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--border-light)] bg-[var(--surface-secondary)] py-1 pl-1 pr-2 text-xs hover:bg-[var(--surface-hover)]"
+        className="flex items-center gap-2 rounded-full border border-[var(--border-light)] bg-white dark:bg-gray-800 py-1.5 px-3 text-xs shadow-sm hover:bg-[var(--surface-hover)] transition-all"
         aria-label="User menu"
         aria-expanded={open}
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--brand)] text-[11px] font-bold text-white">
-          {initial}
+        {/* Role / Plan Badge inside pill */}
+        {user.role === 'admin' ? (
+          <span className="flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+            👑 Admin
+          </span>
+        ) : user.subscriptionTier === 'PRO' ? (
+          <span className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+            ⚡ Pro
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
+            Free
+          </span>
+        )}
+
+        <span className="font-semibold text-gray-800 dark:text-gray-200 max-w-[150px] truncate sm:inline">
+          {emailDisplay}
         </span>
-        <span className="hidden max-w-[120px] truncate font-medium text-[var(--text-default)] sm:inline">{displayName}</span>
-        <ChevronDown className={cx('h-3 w-3 text-[var(--text-subtle)] transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cx('h-3.5 w-3.5 text-gray-400 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-10 z-30 w-64 overflow-hidden rounded-xl border border-[var(--border-light)] bg-[var(--surface-primary)] shadow-[var(--shadow-float)]">
-          <div className="border-b border-[var(--border-light)] px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">
-                {initial}
-              </span>
-              <div className="min-w-0">
-                <div className="truncate text-xs font-semibold text-[var(--text-strong)]">{displayName}</div>
-                <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{user.email || user.username}</div>
-              </div>
-            </div>
-            <div className="mt-2.5 text-[10px] font-semibold text-[var(--brand)]">
-              {user.role === 'admin' ? '👑 Admin' : 'User'}
-            </div>
+        <div className="absolute right-0 top-11 z-50 w-60 overflow-hidden rounded-2xl border border-[var(--border-light)] bg-white dark:bg-gray-900 p-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="border-b border-gray-100 dark:border-gray-800 px-3 py-2.5 mb-1">
+            <div className="truncate text-xs font-bold text-gray-900 dark:text-white">{displayName}</div>
+            <div className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{emailDisplay}</div>
           </div>
 
-          <div className="p-1.5">
+          <div className="space-y-0.5">
             <Link
-              to="/"
+              to="/dashboard"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[var(--text-default)] hover:bg-[var(--surface-hover)]"
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <Home className="h-3.5 w-3.5 text-[var(--text-subtle)]" />
-              Home Page
+              <LayoutDashboard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              Dashboard
             </Link>
+
             <Link
               to="/profile"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[var(--text-default)] hover:bg-[var(--surface-hover)]"
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <Settings className="h-3.5 w-3.5 text-[var(--text-subtle)]" />
+              <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               Profile Settings
             </Link>
+
             <button
-              onClick={() => { setOpen(false); void logoutUser(); }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-[var(--danger)] hover:bg-[var(--surface-hover)]"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                void logoutUser();
+              }}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
             >
-              <LogOut className="h-3.5 w-3.5" />
-              Logout
+              <LogOut className="h-4 w-4" />
+              Sign Out
             </button>
           </div>
         </div>

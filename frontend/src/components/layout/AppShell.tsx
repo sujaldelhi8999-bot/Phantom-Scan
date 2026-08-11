@@ -20,6 +20,7 @@ import {
   LockKeyhole,
   Menu,
   Network,
+  RefreshCw,
   Search,
   Settings,
   Shield,
@@ -129,7 +130,7 @@ function Sidebar({
     <div className="flex h-full flex-col bg-[var(--sidebar-canvas)]">
       {/* Logo area */}
       <div className="flex items-center justify-between px-4 py-4">
-        <Link to="/dashboard" className="min-w-0" onClick={onCloseMobile}>
+        <Link to="/" className="min-w-0" onClick={onCloseMobile}>
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--brand)]">
               <Shield className="h-3.5 w-3.5 text-white" />
@@ -685,12 +686,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ) : null}
 
-            <Link
-              to="/"
-              className="hidden rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)] sm:inline-flex"
-            >
-              Home
-            </Link>
+
 
             {/* Command palette trigger */}
             <button
@@ -742,11 +738,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
             <button
               onClick={() => void refresh()}
-              className="rounded-[var(--radius-control)] p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
+              className="rounded-[var(--radius-control)] p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)] transition-colors"
               disabled={refreshing}
               aria-label="Refresh data"
+              title="Refresh Data"
             >
-              <Sparkles className={cx('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+              <RefreshCw className={cx('h-3.5 w-3.5', refreshing && 'animate-spin')} />
             </button>
           </div>
         </header>
