@@ -72,7 +72,11 @@ def hash_token(token: str) -> str:
 def canonicalize_target(target_url: str) -> CanonicalTarget:
     candidate = target_url.strip()
     if "://" not in candidate:
-        candidate = f"https://{candidate}"
+        raw_host = candidate.split("/")[0].split(":")[0].lower()
+        if raw_host in {"localhost", "127.0.0.1", "::1", "0.0.0.0"} or raw_host.startswith(("192.168.", "10.", "172.")):
+            candidate = f"http://{candidate}"
+        else:
+            candidate = f"https://{candidate}"
     parsed = urlsplit(candidate)
     if parsed.scheme.lower() not in {"http", "https"}:
         raise TargetValidationError("Target must use HTTP or HTTPS")
