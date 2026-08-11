@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, GitBranch, Shield, Sparkles, Workflow } from 
 
 import { cx } from '../../components/ui/Primitives';
 import { useAuth } from '../../context/AuthContext';
+import UniversalNavbar from '../../components/layout/UniversalNavbar';
 
 const features = [
   { title: 'Fast asset scanning', description: 'Find exposed services, weak headers, and common web risks before attackers do.', icon: Shield },
@@ -17,27 +18,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[var(--app-canvas)] text-[var(--text-default)]">
-      <header className="border-b border-[var(--border-light)] bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand)]">
-              <Shield className="h-4 w-4 text-white" />
-            </span>
-            <span className="text-sm font-bold text-[var(--text-strong)]">PhantomScan</span>
-          </Link>
-          <nav className="flex items-center gap-2 text-xs font-medium">
-            <Link to="/pricing" className="rounded-[var(--radius-control)] px-3 py-2 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]">Pricing</Link>
-            {user ? (
-              <Link to="/dashboard" className="rounded-[var(--radius-control)] bg-[var(--brand)] px-3.5 py-2 text-white hover:bg-[var(--brand-hover)]">Dashboard</Link>
-            ) : (
-              <>
-                <Link to="/login" className="rounded-[var(--radius-control)] px-3 py-2 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]">Login</Link>
-                <Link to="/register" className="rounded-[var(--radius-control)] bg-[var(--brand)] px-3.5 py-2 text-white hover:bg-[var(--brand-hover)]">Get started</Link>
-              </>
-            )}
-          </nav>
-        </div>
-      </header>
+      <UniversalNavbar />
 
       <main>
         <section className="mx-auto grid max-w-6xl gap-8 px-5 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-20">
