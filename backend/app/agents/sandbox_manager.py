@@ -284,6 +284,6 @@ class SandboxManagerAgent(Agent):
             except ProcessLookupError:
                 pass
         try:
-            await self.process.wait()
-        except ProcessLookupError:
+            await asyncio.wait_for(self.process.wait(), timeout=3.0)
+        except (ProcessLookupError, asyncio.TimeoutError):
             return

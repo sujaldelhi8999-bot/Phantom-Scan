@@ -173,7 +173,14 @@ class TargetComplexityIndex:
     # ------------------------------------------------------------------ scoring
 
     def analyze(self, signals: dict[str, Any]) -> dict[str, Any]:
-        ports = [int(port) for port in (signals.get("ports") or [])]
+        raw_ports = signals.get("ports") or []
+        ports = []
+        for port in raw_ports:
+            if isinstance(port, list):
+                ports.extend(int(p) for p in port if isinstance(p, (int, str)) and str(p).isdigit())
+            elif isinstance(port, (int, str)) and str(port).isdigit():
+                ports.append(int(port))
+
         web_ports = sorted(set(ports) & WEB_PORTS)
         extra_web = sorted(set(ports) & EXTRA_WEB_PORTS)
         database_ports = sorted(set(ports) & DATABASE_PORTS)

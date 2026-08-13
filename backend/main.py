@@ -364,7 +364,10 @@ async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
     except Exception as exc:
         logger.error("WebSocket /ws/scan/%d error: %s", scan_id, exc, exc_info=True)
         try:
-            await websocket.close(code=1011, reason="Internal error")
+            await websocket.send_json(
+                event_envelope(scan_id, {"event": "error", "payload": {"error": f"Internal server error: {str(exc)[:500]}"}})
+            )
+            await websocket.close(code=1011)
         except Exception:
             pass
     finally:

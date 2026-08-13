@@ -263,12 +263,12 @@ class IntelligenceService:
                 if not data["exposed"]["emails"]:
                     email_matches = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', all_text)
                     if email_matches:
-                        data["exposed"]["emails"] = sorted(set(email_matches[:10]))
+                        data["exposed"]["emails"] = sorted(set(str(m) for m in email_matches[:10] if isinstance(m, str)))
 
                 if not data["exposed"]["internal_ips"]:
                     ip_matches = re.findall(r'(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.1[6-9]\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})', all_text)
                     if ip_matches:
-                        data["exposed"]["internal_ips"] = sorted(set(ip_matches[:10]))
+                        data["exposed"]["internal_ips"] = sorted(set(str(m) for m in ip_matches[:10] if isinstance(m, str)))
 
                 sensitive_patterns = [r'\.git', r'\.env', r'config\.php', r'wp-config\.php', r'backup\.sql', r'\.htaccess', r'phpinfo\.php']
                 for pattern in sensitive_patterns:
@@ -458,14 +458,14 @@ class IntelligenceService:
                     if agent == "ShadowReconAgent":
                         email_matches = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', combined)
                         if email_matches and "leaked_emails" not in shadow_out:
-                            shadow_out["leaked_emails"] = list(set(email_matches))
+                            shadow_out["leaked_emails"] = list(set(str(m) for m in email_matches if isinstance(m, str)))
 
                         ip_matches = re.findall(
                             r'(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.1[6-9]\.\d{1,3}\.\d{1,3}|'
                             r'192\.168\.\d{1,3}\.\d{1,3})', combined
                         )
                         if ip_matches and "internal_ips" not in shadow_out:
-                            shadow_out["internal_ips"] = list(set(ip_matches))
+                            shadow_out["internal_ips"] = list(set(str(m) for m in ip_matches if isinstance(m, str)))
 
                         sensitive_patterns = [r'\.git', r'\.env', r'config\.php', r'wp-config\.php',
                                               r'backup\.sql', r'\.htaccess', r'phpinfo\.php']

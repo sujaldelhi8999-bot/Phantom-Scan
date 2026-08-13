@@ -63,23 +63,29 @@ class OpenRouterAnalysisProvider:
         if isinstance(tech_stack, dict):
             for category, items in tech_stack.items():
                 if isinstance(items, list):
-                    tech.update(items)
+                    for item in items:
+                        if isinstance(item, str):
+                            tech.add(item)
                 elif isinstance(items, str):
                     tech.add(items)
         
         # From findings
         for finding in prompt.get("findings", []):
             if isinstance(finding, dict):
-                category = finding.get("category", "").lower()
-                module = finding.get("module", "").lower()
-                tech.update([category, module])
+                category = finding.get("category", "")
+                module = finding.get("module", "")
+                if isinstance(category, str):
+                    tech.add(category.lower())
+                if isinstance(module, str):
+                    tech.add(module.lower())
         
         # From browser observations
         api_inventory = prompt.get("api_inventory", [])
         for api in api_inventory:
             if isinstance(api, dict):
                 endpoint = api.get("endpoint", "")
-                tech.add(endpoint.split("/")[1] if "/" in endpoint else endpoint)
+                if isinstance(endpoint, str):
+                    tech.add(endpoint.split("/")[1] if "/" in endpoint else endpoint)
         
         return list(tech)[:20]
     
@@ -88,16 +94,20 @@ class OpenRouterAnalysisProvider:
         vulns = set()
         for finding in prompt.get("findings", []):
             if isinstance(finding, dict):
-                category = finding.get("category", "").lower()
-                title = finding.get("title", "").lower()
-                module = finding.get("module", "").lower()
-                vulns.update([category, module])
+                category = finding.get("category", "")
+                title = finding.get("title", "")
+                module = finding.get("module", "")
+                if isinstance(category, str):
+                    vulns.add(category.lower())
+                if isinstance(module, str):
+                    vulns.add(module.lower())
+                title_lower = title.lower() if isinstance(title, str) else ""
                 # Map common terms
-                if "sql" in title or "injection" in title:
+                if "sql" in title_lower or "injection" in title_lower:
                     vulns.add("sql_injection")
-                if "xss" in title or "cross-site" in title:
+                if "xss" in title_lower or "cross-site" in title_lower:
                     vulns.add("xss")
-                if "ssrf" in title:
+                if "ssrf" in title_lower:
                     vulns.add("ssrf")
                 if "idor" in title or "object reference" in title:
                     vulns.add("idor")
