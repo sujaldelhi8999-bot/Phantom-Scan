@@ -258,26 +258,37 @@ class DoSAgent:
         try:
             start = time.perf_counter()
             deadline = start + self.duration
-            window = 0.1
+            window = 0.05  # 50ms tick for smoother pacing
             batch = max(1, int(self.rps * window))
+            in_flight: set[asyncio.Task] = set()
+            max_in_flight = max(self.rps * 2, self._worker_count * 4)
+            sent_count = 0
 
             while self.running and time.perf_counter() < deadline:
-                if not self.running:
-                    break
+                tick_start = time.perf_counter()
 
-                tasks = []
-                for _ in range(batch):
+                # Prune completed tasks from the in-flight set
+                done = {t for t in in_flight if t.done()}
+                in_flight -= done
+
+                # Fire a batch of requests without waiting for responses
+                to_send = min(batch, max_in_flight - len(in_flight))
+                for _ in range(to_send):
                     if not self.running:
                         break
-                    tasks.append(self._measure_request())
+                    task = asyncio.create_task(self._measure_request())
+                    in_flight.add(task)
+                    sent_count += 1
 
-                if tasks:
-                    await asyncio.gather(*tasks, return_exceptions=True)
+                # Pace: sleep until the next tick
+                elapsed = time.perf_counter() - tick_start
+                sleep_time = max(0, window - elapsed)
+                if sleep_time > 0:
+                    await asyncio.sleep(sleep_time)
 
-                next_slot = start + (self.stats["requests_sent"] / self.rps)
-                now = time.perf_counter()
-                if next_slot > now:
-                    await asyncio.sleep(next_slot - now)
+            # Wait for all remaining in-flight requests to finish (up to timeout)
+            if in_flight:
+                await asyncio.wait(in_flight, timeout=REQUEST_TIMEOUT + 2)
 
             self.stats["end_time"] = datetime.utcnow().isoformat()
             if self.measurements:
