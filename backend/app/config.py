@@ -77,6 +77,7 @@ class Settings:
     # Supabase Auth (Google / GitHub login)
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY", "")
     supabase_admin_emails = os.getenv("SUPABASE_ADMIN_EMAILS", "")
 
     # Redis
