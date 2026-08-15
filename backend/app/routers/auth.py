@@ -44,6 +44,12 @@ class UserResponse(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     user: UserResponse
+    refresh_token: str | None = None
+    expires_at: str | None = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 def _hash_password(password: str) -> str:
@@ -54,13 +60,100 @@ def _verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
 
 
+ACCESS_TOKEN_TTL_HOURS = 24
+REFRESH_TOKEN_TTL_DAYS = 7
+
+
 def _issue_token(settings, user_id: str, role: str) -> str:
     payload = {
         "sub": user_id,
         "role": role,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=24),
+        "typ": "access",
+        "jti": uuid.uuid4().hex,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_TTL_HOURS),
     }
     return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+
+
+def _issue_refresh_token(settings, user_id: str) -> str:
+    payload = {
+        "sub": user_id,
+        "typ": "refresh",
+        "jti": uuid.uuid4().hex,
+        "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_TTL_DAYS),
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+
+
+def _build_login_response(settings, user: dict) -> LoginResponse:
+    token = _issue_token(settings, user["id"], user["role"])
+    return LoginResponse(
+        token=token,
+        refresh_token=_issue_refresh_token(settings, user["id"]),
+        expires_at=(datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_TTL_HOURS)).isoformat(),
+        user=UserResponse(
+            id=user["id"],
+            email=user["email"],
+            name=user.get("name"),
+            role=user["role"],
+            subscription_tier=user.get("subscription_tier", "FREE"),
+            subscription_status=user.get("subscription_status", "active"),
+            created_at=user.get("created_at", ""),
+        ),
+    )
+
+
+@router.post("/refresh", response_model=LoginResponse)
+async def refresh(req: RefreshRequest):
+    """Exchange a valid refresh token for a fresh access token (with rotation).
+
+    The returned refresh token supersedes the presented one. The refresh
+    token must carry a ``typ == "refresh"`` claim and belong to a user that
+    still exists.
+    """
+    settings = get_settings()
+    if not settings.secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server not configured: SECRET_KEY not set",
+        )
+    if not req.refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing refresh token",
+        )
+    try:
+        payload = jwt.decode(req.refresh_token, settings.secret_key, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired. Please log in again.",
+        ) from exc
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        ) from exc
+
+    if payload.get("typ") != "refresh" or not payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    user = await get_user_by_id(payload["sub"])
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists. Please log in again.",
+        )
+    if user.get("subscription_status") == "canceled":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Subscription canceled",
+        )
+
+    return _build_login_response(settings, user)
 
 
 @router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
@@ -89,20 +182,17 @@ async def register(req: RegisterRequest):
         name=req.name,
         role="user",
     )
-    
-    token = _issue_token(settings, user_id, "user")
-    return LoginResponse(
-        token=token,
-        user=UserResponse(
-            id=user_id,
-            email=req.email.lower(),
-            name=req.name,
-            role="user",
-            subscription_tier="FREE",
-            subscription_status="active",
-            created_at=datetime.now(timezone.utc).isoformat(),
-        ),
-    )
+
+    user = {
+        "id": user_id,
+        "email": req.email.lower(),
+        "name": req.name,
+        "role": "user",
+        "subscription_tier": "FREE",
+        "subscription_status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return _build_login_response(settings, user)
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -121,20 +211,8 @@ async def login(req: LoginRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    
-    token = _issue_token(settings, user["id"], user["role"])
-    return LoginResponse(
-        token=token,
-        user=UserResponse(
-            id=user["id"],
-            email=user["email"],
-            name=user.get("name"),
-            role=user["role"],
-            subscription_tier=user.get("subscription_tier", "FREE"),
-            subscription_status=user.get("subscription_status", "active"),
-            created_at=user.get("created_at", ""),
-        ),
-    )
+
+    return _build_login_response(settings, user)
 
 
 @router.post("/change-password", response_model=UserResponse)
@@ -204,19 +282,7 @@ async def supabase_login(req: SupabaseLoginRequest):
         )
         user = await get_user_by_email(supabase_user.email)
 
-    token = _issue_token(settings, user["id"], user["role"])
-    return LoginResponse(
-        token=token,
-        user=UserResponse(
-            id=user["id"],
-            email=user["email"],
-            name=user.get("name"),
-            role=user["role"],
-            subscription_tier=user.get("subscription_tier", "FREE"),
-            subscription_status=user.get("subscription_status", "active"),
-            created_at=user.get("created_at", ""),
-        ),
-    )
+    return _build_login_response(settings, user)
 
 
 @router.post("/admin/create", response_model=UserResponse)
