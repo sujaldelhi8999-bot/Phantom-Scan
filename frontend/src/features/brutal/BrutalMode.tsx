@@ -61,6 +61,8 @@ interface BrutalSession {
   actor: string;
   created_at: number;
   status: string;
+  simulation?: boolean;
+  sim_findings?: any[];
   timeline: TimelineEvent[];
   loot_count: number;
   loot: LootItem[];
@@ -87,6 +89,17 @@ const statusColor: Record<string, string> = {
   pending: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
   denied: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
 };
+
+const LAB_HOSTNAMES = ['localhost', '127.0.0.1', '::1'];
+
+function isLabTarget(url: string): boolean {
+  try {
+    const host = new URL(url.includes('://') ? url : `https://${url}`).hostname.toLowerCase();
+    return LAB_HOSTNAMES.includes(host);
+  } catch {
+    return false;
+  }
+}
 
 const actionLabel: Record<string, string> = {
   session_established: 'Session established',
@@ -122,6 +135,7 @@ export default function BrutalMode() {
   const [target, setTarget] = useState('');
   const [ack, setAck] = useState(false);
   const [session, setSession] = useState<BrutalSession | null>(null);
+  const [simulation, setSimulation] = useState(false);
   const [busy, setBusy] = useState('');
   const [shell, setShell] = useState<ShellInfo | null>(null);
   const [shellOpen, setShellOpen] = useState(false);
@@ -162,8 +176,12 @@ export default function BrutalMode() {
     setTimeout(() => setBanner(''), 6000);
   };
 
+  const isAdmin = user?.role === 'admin';
+  const targetInScope = scope.some((entry) => entry.target_url === target.trim()) || isLabTarget(target);
+  const autoConfirm = isAdmin && targetInScope;
+
   const establishSession = async () => {
-    if (!ack) {
+    if (!ack && !autoConfirm) {
       toast.error('You must confirm target ownership before establishing a session');
       return;
     }
@@ -172,10 +190,11 @@ export default function BrutalMode() {
       const response = await apiClient.post<BrutalSession>('/api/brutal/sessions', {
         target_url: target.trim(),
         ownership_ack: true,
+        simulation,
       });
       setSession(response.data);
       setExfilResult(null);
-      flashBanner('SESSION ESTABLISHED — target is in scope');
+      flashBanner(`SESSION ESTABLISHED — ${simulation ? 'simulation' : 'lab'} mode`);
       toast.success(`Session ${response.data.session_id.slice(0, 8)} established`);
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to establish session'));
@@ -372,11 +391,35 @@ export default function BrutalMode() {
             </div>
 
             <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/10 p-3">
-              <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 accent-red-600" />
+              <input
+                type="checkbox"
+                checked={ack || autoConfirm}
+                onChange={(e) => setAck(e.target.checked)}
+                disabled={autoConfirm}
+                className="mt-0.5 accent-red-600"
+              />
               <span className="text-xs text-[var(--text-muted)]">
                 <span className="font-semibold text-red-500">Ownership confirmation.</span> I confirm that{' '}
                 <code className="font-mono">{target || 'this target'}</code> is owned by me or that I have explicit written
                 permission to perform active exploitation against it. Unauthorized exploitation is illegal.
+                {autoConfirm ? (
+                  <span className="mt-1 block text-[10px] font-semibold text-green-600 dark:text-green-400">
+                    Auto-confirmed — admin account, target already in Private Scope (or PhantomBank Lab).
+                  </span>
+                ) : null}
+              </span>
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-950/10 p-3">
+              <input
+                type="checkbox"
+                checked={simulation}
+                onChange={(e) => setSimulation(e.target.checked)}
+                className="mt-0.5 accent-amber-600"
+              />
+              <span className="text-xs text-[var(--text-muted)]">
+                <span className="font-semibold text-amber-500">Simulation Mode.</span> Run against any website in Private Scope — no real exploitation.
+                Generates realistic findings, a simulated shell, and fake loot based on the target's tech stack.
               </span>
             </label>
 

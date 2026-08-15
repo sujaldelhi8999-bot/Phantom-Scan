@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { getWebSocketUrl } from '../../services/api';
+import { expireSession, getWebSocketUrl, refreshSessionToken } from '../../services/api';
 import { Button } from '../../components/ui/Primitives';
 
 interface ShellConsoleProps {
@@ -21,8 +21,17 @@ export default function ShellConsole({ shellId, onClose }: ShellConsoleProps) {
   useEffect(() => {
     let socket: WebSocket | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let active = true;
+    let refreshCycles = 0;
 
-    try {
+    const connect = async () => {
+      if (!active) return;
+      const refreshed = await refreshSessionToken();
+      if (!active) return;
+      if (!refreshed) {
+        expireSession();
+        return;
+      }
       socket = new WebSocket(getWebSocketUrl(`/ws/brutal/shell/${shellId}`));
       socketRef.current = socket;
 
@@ -57,15 +66,37 @@ export default function ShellConsole({ shellId, onClose }: ShellConsoleProps) {
         setLines((prev) => [...prev, '[phantomscan] connection error']);
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event: CloseEvent) => {
         setConnected(false);
+        if (!active) return;
+        if (event.code === 4000 || event.code === 4001) {
+          refreshCycles += 1;
+          if (refreshCycles > 2) {
+            setLines((prev) => [...prev, '[phantomscan] session expired — please log in again']);
+            expireSession();
+            return;
+          }
+          setLines((prev) => [...prev, '[phantomscan] token refreshed — reconnecting...']);
+          void connect();
+          return;
+        }
+        if (event.code === 1008) {
+          setLines((prev) => [...prev, '[phantomscan] authentication failed — please log in again']);
+          expireSession();
+          return;
+        }
         setLines((prev) => [...prev, '[phantomscan] disconnected']);
       };
+    };
+
+    try {
+      void connect();
     } catch (err) {
       setLines((prev) => [...prev, `[phantomscan] failed to connect: ${String(err)}`]);
     }
 
     return () => {
+      active = false;
       if (timer) clearTimeout(timer);
       try {
         socket?.close();
