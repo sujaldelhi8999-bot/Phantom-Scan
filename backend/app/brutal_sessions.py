@@ -25,6 +25,9 @@ class BrutalSession:
     timeline: list[dict] = field(default_factory=list)
     loot: list[dict] = field(default_factory=list)
     op_ids: list[int] = field(default_factory=list)
+    simulation: bool = False
+    sim_intel: dict = field(default_factory=dict)
+    sim_findings: list[dict] = field(default_factory=list)
 
     def add_event(self, action: str, status: str, detail: str, payload: str | None = None) -> None:
         self.timeline.append(
@@ -79,6 +82,8 @@ class BrutalSession:
             "actor": self.actor,
             "created_at": self.created_at,
             "status": self.status,
+            "simulation": self.simulation,
+            "sim_findings": self.sim_findings,
             "timeline": self.timeline,
             "loot_count": len(self.loot),
             "loot": self.loot if with_loot else [{"kind": l["kind"], "name": l["name"], "source": l["source"]} for l in self.loot],
@@ -91,12 +96,13 @@ class BrutalSessionManager:
     _sessions: dict[str, BrutalSession] = {}
 
     @classmethod
-    def create(cls, target_url: str, actor: str) -> BrutalSession:
+    def create(cls, target_url: str, actor: str, *, simulation: bool = False) -> BrutalSession:
         session = BrutalSession(
             session_id=uuid.uuid4().hex[:16],
             target_url=target_url,
             actor=actor,
             created_at=time.time(),
+            simulation=simulation,
         )
         cls._sessions[session.session_id] = session
         return session

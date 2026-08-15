@@ -37,19 +37,28 @@ from app.websockets import scan_event_broker
 settings = get_settings()
 TERMINAL_SCAN_STATUSES = {"cancelled", "complete", "error"}
 
+# WebSocket close codes (see RFC 6455; 3000-4999 are application-defined).
+# 1008 (policy violation) means the credential itself is invalid — the client
+# must log in again. 4001 means the access token merely expired — the client
+# can refresh and reconnect. 4044 means the requested scan no longer exists.
+WS_CLOSE_AUTH_FAILED = 1008
+WS_CLOSE_TOKEN_EXPIRED = 4001
+WS_CLOSE_SCAN_NOT_FOUND = 4044
+
 # Security
 security = HTTPBearer(auto_error=False)
 
 
-async def get_current_user_ws(websocket: WebSocket) -> dict | None:
+async def get_current_user_ws(websocket: WebSocket) -> tuple[dict | None, int | None]:
     """Validate WebSocket connection via token in query params or headers.
-    
-    Returns the authenticated user dict, or None if auth is disabled/bypassed.
-    Does NOT call websocket.close() — the caller must handle acceptance/rejection.
+
+    Returns ``(user, close_code)`` where ``close_code`` is ``None`` on success
+    and the close code to use on rejection. Does NOT call ``websocket.close()``
+    — the caller must handle acceptance/rejection.
     """
     # When WebSocket auth is disabled, allow all connections
     if not settings.require_auth_on_websocket:
-        return {"id": "ws-anonymous", "role": "user"}
+        return {"id": "ws-anonymous", "role": "user"}, None
 
     token = websocket.query_params.get("token")
     if not token:
@@ -60,15 +69,15 @@ async def get_current_user_ws(websocket: WebSocket) -> dict | None:
 
     if not token:
         logger.warning("WebSocket connection rejected: no token provided")
-        return None
+        return None, WS_CLOSE_AUTH_FAILED
 
     # API key mode: accept the configured API key value
     if settings.api_key_enabled and settings.api_key_value and token == settings.api_key_value:
-        return {"id": "ws-user", "role": "user"}
+        return {"id": "ws-user", "role": "user"}, None
 
     # Secret key mode: accept matching secret_key (development / simple auth)
     if settings.secret_key and token == settings.secret_key:
-        return {"id": "ws-user", "role": "user"}
+        return {"id": "ws-user", "role": "user"}, None
 
     # JWT mode: decode and validate normal JWT
     if settings.secret_key:
@@ -82,16 +91,21 @@ async def get_current_user_ws(websocket: WebSocket) -> dict | None:
                 if not exp or datetime.fromtimestamp(exp, tz=timezone.utc) >= datetime.now(timezone.utc):
                     user = await get_user_by_id(user_id)
                     if user and user.get("subscription_status") != "canceled":
-                        return user
+                        return user, None
+                    logger.warning("WebSocket connection rejected: token did not match any credential")
                 else:
                     logger.warning("WebSocket connection rejected: token expired for user %s", user_id)
+                    return None, WS_CLOSE_TOKEN_EXPIRED
             else:
                 logger.warning("WebSocket connection rejected: token missing subject claim")
+        except jwt.ExpiredSignatureError as exc:
+            logger.warning("WebSocket connection rejected: token expired (%s)", exc)
+            return None, WS_CLOSE_TOKEN_EXPIRED
         except jwt.InvalidTokenError as exc:
             logger.warning("WebSocket connection rejected: invalid token (%s)", exc)
 
     logger.warning("WebSocket connection rejected: token did not match any credential")
-    return None
+    return None, WS_CLOSE_AUTH_FAILED
 
 
 async def verify_health_auth(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
@@ -208,6 +222,10 @@ app.include_router(sast.router)
 app.include_router(brutal.router)
 app.include_router(ci_cd.router)
 
+# The brutal router carries the /api/brutal prefix, so its WebSocket console is
+# registered here at the /ws/* path the frontend connects to.
+app.add_api_websocket_route("/ws/brutal/shell/{shell_id}", brutal.brutal_shell_ws)
+
 
 def scheduler_state() -> str:
     scheduler = getattr(app.state, "scheduler", None)
@@ -283,9 +301,10 @@ async def global_status(websocket: WebSocket) -> None:
     # Accept the connection first to complete the HTTP upgrade
     # (prevents "Pending" state in browser when auth fails)
     await websocket.accept()
-    user = await get_current_user_ws(websocket)
+    user, close_code = await get_current_user_ws(websocket)
     if not user:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+        reason = "Token expired" if close_code == WS_CLOSE_TOKEN_EXPIRED else "Authentication failed"
+        await websocket.close(code=close_code or status.WS_1008_POLICY_VIOLATION, reason=reason)
         return
 
     logger.info("WebSocket /ws/status connected (user=%s)", user.get("id"))
@@ -317,9 +336,10 @@ async def global_status(websocket: WebSocket) -> None:
 async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
     # Accept the connection first to complete the HTTP upgrade
     await websocket.accept()
-    user = await get_current_user_ws(websocket)
+    user, close_code = await get_current_user_ws(websocket)
     if not user:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+        reason = "Token expired" if close_code == WS_CLOSE_TOKEN_EXPIRED else "Authentication failed"
+        await websocket.close(code=close_code or status.WS_1008_POLICY_VIOLATION, reason=reason)
         return
 
     logger.debug("WebSocket /ws/scan/%d connected (user=%s)", scan_id, user.get("id"))
@@ -328,7 +348,7 @@ async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
         scan_record = await get_scan(scan_id)
         if scan_record is None:
             await websocket.send_json(event_envelope(scan_id, {"event": "error", "payload": {"error": "Scan not found"}}))
-            await websocket.close(code=1008, reason="Scan not found")
+            await websocket.close(code=WS_CLOSE_SCAN_NOT_FOUND, reason="Scan not found")
             return
 
         await websocket.send_json(await scan_snapshot(scan_id, scan_record))
@@ -346,13 +366,13 @@ async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
                     await websocket.send_json(
                         event_envelope(scan_id, {"event": "error", "payload": {"error": "Scan not found"}})
                     )
-                    await websocket.close(code=1008, reason="Scan not found")
+                    await websocket.close(code=WS_CLOSE_SCAN_NOT_FOUND, reason="Scan not found")
                     return
                 await websocket.send_json(await scan_snapshot(scan_id, scan_record))
 
             scan_record = await get_scan(scan_id)
             if scan_record is None:
-                await websocket.close(code=1008, reason="Scan not found")
+                await websocket.close(code=WS_CLOSE_SCAN_NOT_FOUND, reason="Scan not found")
                 return
             if scan_record["status"] in TERMINAL_SCAN_STATUSES:
                 await websocket.send_json(await scan_snapshot(scan_id, scan_record))
@@ -364,10 +384,7 @@ async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
     except Exception as exc:
         logger.error("WebSocket /ws/scan/%d error: %s", scan_id, exc, exc_info=True)
         try:
-            await websocket.send_json(
-                event_envelope(scan_id, {"event": "error", "payload": {"error": f"Internal server error: {str(exc)[:500]}"}})
-            )
-            await websocket.close(code=1011)
+            await websocket.close(code=1011, reason="Internal error")
         except Exception:
             pass
     finally:

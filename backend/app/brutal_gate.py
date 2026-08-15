@@ -7,7 +7,9 @@ Every Black Ops endpoint MUST pass through this gate. It enforces, in order:
 3. The target is either the PhantomBank Lab (localhost) or listed in the
    Private Scope table (admin override).
 4. The caller explicitly acknowledges ownership / written permission for the
-   target on every mutating call.
+   target when establishing a session; the acknowledgment is recorded in the
+   audit trail and the session's subsequent operations re-verify admin role
+   and target scope without re-asking for the acknowledgment.
 
 Denials and approvals are written to the ``audit_logs`` table so every
 activation is traceable.
