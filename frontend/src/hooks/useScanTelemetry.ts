@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { getAgentStatuses, getLogs, getScan, getWebSocketUrl } from '../services/api';
+import { expireSession, getAgentStatuses, getLogs, getScan, getWebSocketUrl, refreshSessionToken } from '../services/api';
 import type { AgentStatus, AuditLog, ConnectionState, Finding, ScanStatus, TimelineEvent } from '../types';
 
 interface ScanTelemetry {
@@ -158,11 +158,18 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
       }
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (!active) return;
       if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
         setConnectionState('error');
         setError('Realtime connection unavailable. Data updates via polling.');
+        return;
+      }
+      // Never dial with an expired token — refresh first (single-flight).
+      const refreshed = await refreshSessionToken();
+      if (!active) return;
+      if (!refreshed) {
+        expireSession();
         return;
       }
       setConnectionState('connecting');
@@ -175,7 +182,7 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
           setConnectionState('error');
           setError('WebSocket connection timed out');
           reconnectAttempts += 1;
-          reconnectTimer = window.setTimeout(connect, Math.min(1000 * 2 ** reconnectAttempts, 8000));
+          reconnectTimer = window.setTimeout(() => void connect(), Math.min(1000 * 2 ** reconnectAttempts, 8000));
         }
       }, CONNECT_TIMEOUT_MS);
 
@@ -191,23 +198,47 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
         if (connectTimer) { clearTimeout(connectTimer); connectTimer = undefined; }
         if (!active) return;
         setConnectionState('closed');
-        // Code 1008 = policy violation (auth failure) — stop retrying
+        // 4000/4001 = access token expired — refresh and reconnect with the fresh token.
+        if (event.code === 4000 || event.code === 4001) {
+          void refreshSessionToken().then((refreshed) => {
+            if (!active) return;
+            if (!refreshed) {
+              setConnectionState('error');
+              setError('Authentication failed. Please log in again.');
+              expireSession();
+              return;
+            }
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              reconnectAttempts += 1;
+              reconnectTimer = window.setTimeout(() => void connect(), 1000);
+            }
+          });
+          return;
+        }
+        // Code 1008 = policy violation (invalid credential) — session is dead.
         if (event.code === 1008) {
           setConnectionState('error');
           setError('Authentication failed. Please log in again.');
+          expireSession();
+          return;
+        }
+        // 4044 = scan no longer exists.
+        if (event.code === 4044) {
+          setConnectionState('error');
+          setError('Scan no longer exists');
           return;
         }
         if (latestStatus && terminalStatuses.includes(latestStatus)) return;
         void refreshFallback();
         if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttempts += 1;
-          reconnectTimer = window.setTimeout(connect, Math.min(1000 * 2 ** reconnectAttempts, 8000));
+          reconnectTimer = window.setTimeout(() => void connect(), Math.min(1000 * 2 ** reconnectAttempts, 8000));
         }
       };
     };
 
     void refreshFallback();
-    connect();
+    void connect();
 
     return () => {
       active = false;

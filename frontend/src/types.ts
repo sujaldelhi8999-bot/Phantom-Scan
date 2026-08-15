@@ -56,6 +56,7 @@ export interface ScanRequestPayload {
   authorization_confirmed?: boolean;
   business_logic_tests?: BusinessLogicTest[];
   enable_exploitation?: boolean;
+  enable_ai_exploitation?: boolean;
 }
 
 export interface Finding {

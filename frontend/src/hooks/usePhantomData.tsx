@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
+  expireSession,
   getAgentStatuses,
   getExecutionStatus,
   getFindings,
@@ -9,7 +10,8 @@ import {
   getScanArtifacts,
   getScanHistory,
   getSelfAuditStatus,
-  getWebSocketUrl
+  getWebSocketUrl,
+  refreshSessionToken
 } from '../services/api';
 import type {
   AgentStatus,
@@ -164,13 +166,22 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
     let connectTimeout: number | undefined;
     let active = true;
     let reconnectAttempts = 0;
+    let refreshCycles = 0;
     const MAX_RECONNECT_ATTEMPTS = 6;
+    const MAX_REFRESH_CYCLES = 2;
     const CONNECT_TIMEOUT_MS = 5000;
 
-    const connect = () => {
+    const connect = async () => {
       if (!active) return;
       if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
         setRealtimeState('error');
+        return;
+      }
+      // Never dial with an expired token — refresh first (single-flight).
+      const refreshed = await refreshSessionToken();
+      if (!active) return;
+      if (!refreshed) {
+        expireSession();
         return;
       }
       setRealtimeState('connecting');
@@ -179,7 +190,7 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
       } catch {
         setRealtimeState('error');
         reconnectAttempts += 1;
-        reconnect = window.setTimeout(connect, Math.min(5000 * reconnectAttempts, 30000));
+        reconnect = window.setTimeout(() => void connect(), Math.min(5000 * reconnectAttempts, 30000));
         return;
       }
 
@@ -189,7 +200,7 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
           socket.close();
           setRealtimeState('error');
           reconnectAttempts += 1;
-          reconnect = window.setTimeout(connect, Math.min(5000 * reconnectAttempts, 30000));
+          reconnect = window.setTimeout(() => void connect(), Math.min(5000 * reconnectAttempts, 30000));
         }
       }, CONNECT_TIMEOUT_MS);
 
@@ -213,18 +224,39 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
       socket.onclose = (event: CloseEvent) => {
         if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = undefined; }
         if (!active) return;
-        // Code 1008 = policy violation (auth failure) — stop retrying
+        // 4000/4001 = access token expired — refresh and reconnect with the fresh token.
+        if (event.code === 4000 || event.code === 4001) {
+          refreshCycles += 1;
+          if (refreshCycles > MAX_REFRESH_CYCLES) {
+            setRealtimeState('error');
+            expireSession();
+            return;
+          }
+          void refreshSessionToken().then((refreshed) => {
+            if (!active) return;
+            if (!refreshed) {
+              setRealtimeState('error');
+              expireSession();
+              return;
+            }
+            reconnectAttempts += 1;
+            reconnect = window.setTimeout(() => void connect(), 1000);
+          });
+          return;
+        }
+        // Code 1008 = policy violation (invalid credential) — session is dead.
         if (event.code === 1008) {
           setRealtimeState('error');
+          expireSession();
           return;
         }
         setRealtimeState('closed');
         reconnectAttempts += 1;
-        reconnect = window.setTimeout(connect, Math.min(5000 * reconnectAttempts, 30000));
+        reconnect = window.setTimeout(() => void connect(), Math.min(5000 * reconnectAttempts, 30000));
       };
     };
 
-    connect();
+    void connect();
     return () => {
       active = false;
       if (reconnect) window.clearTimeout(reconnect);

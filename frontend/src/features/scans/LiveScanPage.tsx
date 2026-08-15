@@ -6,7 +6,7 @@ import { Check, Loader2, RotateCcw, ShieldCheck, Square } from 'lucide-react';
 import { usePhantomData } from '../../hooks/usePhantomData';
 import { useScanTelemetry } from '../../hooks/useScanTelemetry';
 import { apiErrorMessage, startScan, stopScan } from '../../services/api';
-import type { ScanIntensity, ScanResponse } from '../../types';
+import type { ScanIntensity, ScanMode, ScanResponse } from '../../types';
 import { DEFEND_CHECKS } from '../../types';
 import {
   ActivityTimeline,
@@ -36,6 +36,9 @@ export default function LiveScanPage() {
   const { refresh, scans, executionStatus, executionActive } = usePhantomData();
   const [target, setTarget] = useState('');
   const [profile, setProfile] = useState<ScanIntensity>('medium');
+  const [mode, setMode] = useState<ScanMode>('defend');
+  const [enableExploitation, setEnableExploitation] = useState(false);
+  const [enableAIExploitation, setEnableAIExploitation] = useState(false);
   const [activeScan, setActiveScan] = useState<ScanResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,7 @@ export default function LiveScanPage() {
         const parsed = JSON.parse(stored) as ScanResponse;
         setActiveScan(parsed);
         if (parsed.target_url) setTarget(parsed.target_url);
+        if (parsed.mode) setMode(parsed.mode);
       }
       catch { localStorage.removeItem('phantomscan:active-defend-scan'); }
     }
@@ -85,7 +89,18 @@ export default function LiveScanPage() {
       setTarget(formattedTarget);
     }
     try {
-      const scan = await startScan({ target_url: formattedTarget, mode: 'defend', intensity: profile });
+      const scan = await startScan({
+        target_url: formattedTarget,
+        mode,
+        intensity: profile,
+        enable_exploitation: mode === 'pentest' ? enableExploitation : undefined,
+        enable_ai_exploitation: mode === 'pentest' ? enableAIExploitation : undefined,
+        selected_tests:
+          mode === 'pentest'
+            ? ['injection', 'xss', 'access_control', 'csrf', 'path_handling', 'security_headers']
+            : undefined,
+        authorization_confirmed: mode === 'pentest' ? true : undefined,
+      });
       setActiveScan(scan);
       toast.success('Scan started');
       await refresh();
@@ -112,8 +127,8 @@ export default function LiveScanPage() {
   return (
     <Page>
       <PageHeader
-        title="Defend Scan"
-        description={activeScan ? `Scanning ${targetName(activeScan.target_url)}` : 'Run passive security assessments against targets.'}
+        title={mode === 'pentest' ? 'Pentest Scan' : 'Defend Scan'}
+        description={activeScan ? `Scanning ${targetName(activeScan.target_url)}` : mode === 'pentest' ? 'Run active assessments with optional exploit verification against targets.' : 'Run passive security assessments against targets.'}
         action={
           activeScan ? (
             <div className="flex gap-2">
@@ -171,21 +186,84 @@ export default function LiveScanPage() {
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 opacity-70">
-                <input
-                  type="checkbox"
-                  id="enable_exploitation"
-                  checked={false}
-                  onChange={() => {}}
-                  disabled
-                  className="h-4 w-4 rounded border-[var(--border-default)] text-amber-600 focus:ring-amber-500"
-                />
-                <label htmlFor="enable_exploitation" className="cursor-not-allowed">
-                  <div className="text-xs font-semibold text-amber-400">⚡ Enable Exploitation</div>
-                  <div className="text-[10px] text-amber-300/70">
-                    Available in Pentest mode on the Authorized Testing page (requires verification)
-                  </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-default)]">Assessment Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('defend');
+                      setEnableExploitation(false);
+                      setEnableAIExploitation(false);
+                    }}
+                    disabled={Boolean(activeScan && !terminal)}
+                    className={`rounded-lg border p-2.5 text-left text-xs transition-colors ${
+                      mode === 'defend'
+                        ? 'border-[var(--brand)] bg-[var(--brand-soft)]'
+                        : 'border-[var(--border-light)] hover:bg-[var(--surface-hover)]'
+                    }`}
+                  >
+                    <div className="font-semibold text-[var(--text-strong)]">Defend</div>
+                    <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">Passive detection only</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('pentest')}
+                    disabled={Boolean(activeScan && !terminal)}
+                    className={`rounded-lg border p-2.5 text-left text-xs transition-colors ${
+                      mode === 'pentest'
+                        ? 'border-[var(--brand)] bg-[var(--brand-soft)]'
+                        : 'border-[var(--border-light)] hover:bg-[var(--surface-hover)]'
+                    }`}
+                  >
+                    <div className="font-semibold text-[var(--text-strong)]">Pentest</div>
+                    <div className="mt-0.5 text-[10px] text-[var(--text-muted)]">Active + exploit verification</div>
+                  </button>
+                </div>
+              </div>
+              <div
+                className={`rounded-lg border p-3 space-y-2.5 transition-opacity ${
+                  mode === 'pentest'
+                    ? 'border-amber-500/30 bg-amber-500/10'
+                    : 'border-amber-500/30 bg-amber-500/10 opacity-70'
+                }`}
+              >
+                <label className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="enable_exploitation"
+                    checked={enableExploitation}
+                    onChange={(e) => {
+                      setEnableExploitation(e.target.checked);
+                      if (!e.target.checked) setEnableAIExploitation(false);
+                    }}
+                    disabled={Boolean(activeScan && !terminal) || mode !== 'pentest'}
+                    className="h-4 w-4 rounded border-[var(--border-default)] text-amber-600 focus:ring-amber-500 disabled:cursor-not-allowed"
+                  />
+                  <span className="text-xs font-semibold text-amber-400">⚡ Enable Exploitation</span>
                 </label>
+                {mode === 'pentest' && enableExploitation ? (
+                  <label className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="enable_ai_exploitation"
+                      checked={enableAIExploitation}
+                      onChange={(e) => setEnableAIExploitation(e.target.checked)}
+                      disabled={Boolean(activeScan && !terminal)}
+                      className="h-4 w-4 rounded border-[var(--border-default)] text-amber-600 focus:ring-amber-500 disabled:cursor-not-allowed"
+                    />
+                    <span className="text-xs font-medium text-amber-300/90">Enable AI Exploitation</span>
+                  </label>
+                ) : null}
+                {mode !== 'pentest' ? (
+                  <p className="text-[10px] text-amber-300/70">
+                    ⚠️ Exploitation is only available in Pentest mode.
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-amber-300/70">
+                    Runs exploit verification against critical and high-severity findings. Lab targets recommended.
+                  </p>
+                )}
               </div>
               <Button
                 variant="primary"

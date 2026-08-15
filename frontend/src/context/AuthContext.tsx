@@ -1,9 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { getStoredUser, login, loginWithSupabase, logout, getUserProfile, register } from '../services/auth';
+import { getStoredUser, login, loginWithSupabase, logout, getUserProfile, register, refreshToken as refreshTokenApi, getStoredRefreshToken, clearSession } from '../services/auth';
 import { signInWithProvider, signOutOfSupabase, supabaseConfigured } from '../services/supabase';
+import { isTokenExpired, tokenExpiresWithin } from '../utils/jwt';
 import type { Provider } from '@supabase/supabase-js';
+
+const REFRESH_WINDOW_MS = 5 * 60 * 1000;
+const REFRESH_CHECK_INTERVAL_MS = 60 * 1000;
 
 export interface PhantomUser {
   id: string;
@@ -25,6 +29,7 @@ interface AuthContextType {
   isLoading: boolean;
   supabaseConfigured: boolean;
   refreshUser: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,7 +84,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (stored) {
       const token = stored.token;
       if (token) {
-        fetchUserProfile(token);
+        if (isTokenExpired(token)) {
+          void refreshToken().then((refreshed) => {
+            if (refreshed) {
+              const fresh = localStorage.getItem('phantom_token');
+              if (fresh) void fetchUserProfile(fresh);
+            } else {
+              setIsLoading(false);
+            }
+          });
+        } else {
+          void fetchUserProfile(token);
+        }
       } else {
         setUser({
           id: stored.username,
@@ -97,9 +113,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const applySession = (response: { token: string; role: 'admin' | 'user'; username: string; name?: string | null; email?: string | null; subscription_tier?: string; subscription_status?: string }) => {
+  const applySession = (response: { token: string; role: 'admin' | 'user'; username: string; name?: string | null; email?: string | null; subscription_tier?: string; subscription_status?: string; refresh_token?: string | null }) => {
     const name = response.name || response.username;
     localStorage.setItem('phantom_token', response.token);
+    if (response.refresh_token) {
+      localStorage.setItem('phantom_refresh_token', response.refresh_token);
+    }
     localStorage.setItem('phantom_user_role', response.role);
     localStorage.setItem('phantom_username', response.username);
     localStorage.setItem('phantom_user_name', name);
@@ -116,6 +135,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       subscriptionStatus: (response.subscription_status || 'active') as 'active' | 'canceled' | 'past_due',
     });
   };
+
+  /**
+   * Silently rotate the access token before it expires. Returns false when
+   * the refresh token is missing/invalid, in which case the session is
+   * cleared and the user is sent back to the login page.
+   */
+  const refreshToken = async (): Promise<boolean> => {
+    const refreshValue = getStoredRefreshToken();
+    if (!refreshValue) {
+      clearSession();
+      setUser(null);
+      return false;
+    }
+    try {
+      const response = await refreshTokenApi(refreshValue);
+      applySession(response);
+      return true;
+    } catch (error) {
+      console.warn('Session refresh failed:', error);
+      clearSession();
+      setUser(null);
+      navigate('/login');
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Proactively refresh before the access token expires so sessions
+    // survive across long browser sessions without a re-login.
+    const tick = () => {
+      const token = localStorage.getItem('phantom_token');
+      if (!token) return;
+      if (tokenExpiresWithin(token, REFRESH_WINDOW_MS)) {
+        void refreshToken();
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, REFRESH_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   const loginUser = async (email: string, password: string) => {
     const response = await login(email, password);
@@ -152,7 +211,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider
-      value={{ user, loginUser, registerUser, loginWithProvider, exchangeSupabaseLogin, logoutUser, isLoading, supabaseConfigured, refreshUser }}
+      value={{ user, loginUser, registerUser, loginWithProvider, exchangeSupabaseLogin, logoutUser, isLoading, supabaseConfigured, refreshUser, refreshToken }}
     >
       {children}
     </AuthContext.Provider>

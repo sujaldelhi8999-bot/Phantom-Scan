@@ -1,4 +1,8 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
+
+import { clearSession, getStoredRefreshToken, refreshToken } from './auth';
+import { isTokenExpired } from '../utils/jwt';
 
 import type {
   AgentStatus,
@@ -82,19 +86,85 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/auth/supabase', '/api/auth/refresh'];
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+function persistSession(response: Awaited<ReturnType<typeof refreshToken>>) {
+  localStorage.setItem('phantom_token', response.token);
+  if (response.refresh_token) {
+    localStorage.setItem('phantom_refresh_token', response.refresh_token);
+  }
+  localStorage.setItem('phantom_user_role', response.role);
+  localStorage.setItem('phantom_username', response.username);
+  if (response.name) localStorage.setItem('phantom_user_name', response.name);
+  if (response.email) localStorage.setItem('phantom_user_email', response.email);
+  localStorage.setItem('phantom_subscription_tier', response.subscription_tier || 'FREE');
+  localStorage.setItem('phantom_subscription_status', response.subscription_status || 'active');
+}
+
+async function attemptRefresh(): Promise<boolean> {
+  const refreshValue = getStoredRefreshToken();
+  if (!refreshValue) return false;
+  try {
+    const response = await refreshToken(refreshValue);
+    persistSession(response);
+    return true;
+  } catch (error) {
+    console.warn('Token refresh failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Refresh the access token if it is expired. Resolves true when a valid
+ * token is present after the call. Safe to call from WebSocket hooks and
+ * from the axios interceptor (refresh is single-flight).
+ */
+export async function refreshSessionToken(): Promise<boolean> {
+  const token = localStorage.getItem('phantom_token');
+  if (!token) return false;
+  if (!isTokenExpired(token)) return true;
+  refreshInFlight = refreshInFlight ?? attemptRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+export function expireSession(message = 'Your session has expired. Please log in again.') {
+  clearSession();
+  toast.error(message);
+  const path = window.location.pathname;
+  if (!path.startsWith('/login') && !path.startsWith('/register')) {
+    window.location.href = '/login';
+  }
+}
+
 // Response interceptor - handle 401 errors
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Clear auth state and redirect to login
-      localStorage.removeItem('phantom_token');
-      localStorage.removeItem('phantom_user_role');
-      localStorage.removeItem('phantom_username');
-      localStorage.removeItem('phantom_user_name');
-      localStorage.removeItem('phantom_user_email');
-      window.location.href = '/';
+  async (error) => {
+    const status = error.response?.status;
+    const url: string = error.config?.url ?? '';
+    const isAuthRequest = AUTH_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+
+    if (status === 401 && !isAuthRequest) {
+      const token = localStorage.getItem('phantom_token');
+      const expired = isTokenExpired(token);
+
+      if (expired && getStoredRefreshToken()) {
+        const refreshed = await refreshSessionToken();
+        if (refreshed) {
+          const config = error.config;
+          config.headers = config.headers ?? {};
+          config.headers.Authorization = `Bearer ${localStorage.getItem('phantom_token')}`;
+          return apiClient(config);
+        }
+      }
+
+      expireSession();
     }
+
     return Promise.reject(error);
   }
 );

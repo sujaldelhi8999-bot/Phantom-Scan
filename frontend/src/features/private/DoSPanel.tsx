@@ -94,9 +94,6 @@ export default function DoSPanel() {
   const [notice, setNotice] = useState('');
   const [stats, setStats] = useState<LiveStats>({ requests_sent: 0, responses_received: 0, errors: 0, avg_latency: 0, error_rate: 0, jitter: 0 });
 
-  const INTENSITY_CAPS: Record<string, number> = { low: 300, medium: 120, high: 30, critical: 10, nuclear: 5 };
-  const maxDuration = INTENSITY_CAPS[intensity] || 300;
-
   if (!user || user.role !== 'admin') {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -220,19 +217,19 @@ export default function DoSPanel() {
             <select
               value={intensity}
               onChange={(e) => {
-                const newIntensity = e.target.value;
-                setIntensity(newIntensity);
-                const cap = INTENSITY_CAPS[newIntensity] || 300;
-                setDuration((d) => Math.min(d, cap));
+                setIntensity(e.target.value);
+                if (e.target.value === 'nuclear') {
+                  setDuration((d) => Math.min(d, 5));
+                }
               }}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={running}
             >
-              <option value="low">Low (2 req/s) — max 300s</option>
-              <option value="medium">Medium (10 req/s) — max 120s</option>
-              <option value="high">High (50 req/s) — max 30s</option>
-              <option value="critical">Critical (100 req/s) — max 10s — Lab only</option>
-              <option value="nuclear">🔴🔴 Nuclear (10,000 req/s) — max 5s — LAB ONLY</option>
+              <option value="low">Low (2 req/s) - Safe</option>
+              <option value="medium">Medium (10 req/s)</option>
+              <option value="high">High (50 req/s)</option>
+              <option value="critical">Critical (100 req/s) - Lab only</option>
+              <option value="nuclear">🔴🔴 Nuclear (10,000 req/s) - LAB ONLY</option>
             </select>
           </div>
           <div>
@@ -241,13 +238,11 @@ export default function DoSPanel() {
               <input
                 type="number"
                 value={duration}
-                min={1}
-                max={maxDuration}
-                onChange={(e) => setDuration(Math.min(maxDuration, Math.max(1, parseInt(e.target.value) || 1)))}
+                onChange={(e) => setDuration(Math.min(300, Math.max(5, parseInt(e.target.value) || 30)))}
                 className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={running}
               />
-              <span className="flex items-center text-gray-500">seconds <span className="ml-1 text-xs text-orange-500 font-medium">(max {maxDuration}s)</span></span>
+              <span className="flex items-center text-gray-500">seconds</span>
             </div>
           </div>
         </div>

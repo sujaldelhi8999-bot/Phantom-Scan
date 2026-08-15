@@ -93,6 +93,8 @@ const defaultModules: TestModule[] = [
   'sensitive_exposure',
 ];
 const terminalJobStatuses: AuthorizedJobStatus[] = ['COMPLETED', 'FAILED', 'CANCELLED'];
+const TERMINAL_LIFECYCLES = ['COMPLETED', 'FAILED', 'CANCELLED'];
+const STALE_JOB_AGE_MS = 60 * 60 * 1000;
 const STORAGE_KEY = 'phantomscan_active_test_job';
 const MAP_STORAGE_KEY = 'phantomscan_active_test_map';
 const POLL_INTERVAL = 2000;
@@ -234,6 +236,16 @@ export default function AuthorizedTestingPage() {
               /* ignore */
             }
           }
+        } else {
+          const updated = new Date(status.updated_at || status.started_at || 0).getTime();
+          if (updated && Date.now() - updated > STALE_JOB_AGE_MS) {
+            stopPolling();
+            removeTest();
+            setJobId(null);
+            setJobData(null);
+            setError('Previous test appears to have been interrupted. Start a new test.');
+            return;
+          }
         }
       } catch (err: any) {
         if (err?.response?.status === 404) {
@@ -283,9 +295,17 @@ export default function AuthorizedTestingPage() {
     if (storedMap) setMapResult(storedMap);
 
     if (executionStatus && executionStatus.lifecycle !== 'IDLE' && executionStatus.job_id) {
-      setTarget(executionStatus.target_url || stored?.target_url || target);
-      setJobId(executionStatus.job_id);
-      startPolling(executionStatus.job_id);
+      if (TERMINAL_LIFECYCLES.includes(executionStatus.lifecycle)) {
+        if (jobId !== executionStatus.job_id) {
+          removeTest();
+          setJobId(null);
+          setJobData(null);
+        }
+      } else {
+        setTarget(executionStatus.target_url || stored?.target_url || target);
+        setJobId(executionStatus.job_id);
+        startPolling(executionStatus.job_id);
+      }
     } else if (stored) {
       setTarget(stored.target_url);
       setJobId(stored.job_id);
@@ -1068,7 +1088,11 @@ export default function AuthorizedTestingPage() {
                     className="h-3.5 w-3.5 rounded border-[var(--border-default)] bg-[var(--bg-inset)] text-[var(--accent)]"
                   />
                   <span className="text-[var(--text-secondary)]">
-                    {gateStatus === 'VERIFIED' ? 'I confirm authorization for this target.' : 'Lab target — auto-confirmed.'}
+                    {gateStatus === 'VERIFIED'
+                      ? 'I confirm authorization for this target.'
+                      : gateStatus === 'ADMIN_OVERRIDE'
+                        ? 'Admin override — authorization on file.'
+                        : 'Lab target — auto-confirmed.'}
                   </span>
                 </label>
                 <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3">
