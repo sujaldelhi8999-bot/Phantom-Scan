@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import traceback
 from collections.abc import Awaitable, Callable
@@ -48,15 +49,17 @@ from app.database import (
     update_scan_status,
 )
 from app.models import FindingCreate, ScanRequest, MultiSourceScanRequest
+from app.config import get_settings
 from app.services.active_gate import ActiveTargetGate
 from app.services.adaptive_scan_planner import AdaptiveScanPlanner
 from app.services.ai_decision_maker import AIDecisionMaker
 from app.services.ai_exploitation import AIExploitationEngine
 from app.services.authorization import TargetAuthorizationService, VerifiedTarget, canonicalize_target
 from app.services.execution import SafetyLimits
-from app.services.execution_status import update_defend_scan_execution
 from app.services.tci import TargetComplexityIndex
 from app.websockets import scan_event_broker
+
+logger = logging.getLogger("phantomscan.orchestrator")
 
 
 def _safe_timestamp(value: Any) -> datetime:
@@ -67,7 +70,8 @@ def _safe_timestamp(value: Any) -> datetime:
         return value
     try:
         return datetime.fromisoformat(str(value))
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to parse timestamp %r: %s", value, e)
         return datetime.now(timezone.utc)
 
 
@@ -359,8 +363,25 @@ class OrchestratorAgent(Agent):
             persisted_findings = await self.persist_findings(scan_id, enriched_findings, target.url)
             await self.set_progress(scan_id, 86, "findings_persisted", request_count=request_count)
 
+            settings = get_settings()
+            exploitation_requested = (
+                scan_request.enable_exploitation and scan_request.mode == "pentest"
+            )
+            if exploitation_requested and not settings.exploitation_enabled:
+                logger.warning(
+                    "Exploitation requested for scan %d but EXPLOITATION_ENABLED is false - skipping",
+                    scan_id,
+                )
+                await add_audit_log(
+                    scan_id,
+                    "Exploitation Engine",
+                    "exploitation",
+                    "Exploitation requested but EXPLOITATION_ENABLED is false; skipping (safety kill-switch)",
+                )
+                exploitation_requested = False
+
             exploitation_result = None
-            if scan_request.enable_exploitation:
+            if exploitation_requested:
                 await self.set_progress(scan_id, 87, "exploitation_started", request_count=request_count)
                 exploiter = ExploitationAgent()
                 expl_event = await self.run_agent(
@@ -374,11 +395,24 @@ class OrchestratorAgent(Agent):
                     await set_scan_artifacts(scan_id, exploitation_output=exploitation_result)
                 await self.set_progress(scan_id, 89, "exploitation_complete", request_count=request_count)
 
-            if scan_request.enable_exploitation and exploitation_result:
+            if exploitation_requested and exploitation_result:
                 await self.run_sqli_exploitation(target.url, scan_id, persisted_findings)
 
             ai_exploitation_result = None
-            if scan_request.enable_exploitation:
+            ai_requested = exploitation_requested and scan_request.enable_ai_exploitation
+            if ai_requested and not settings.ai_exploitation_enabled:
+                logger.warning(
+                    "AI exploitation requested for scan %d but AI_EXPLOITATION_ENABLED is false - skipping",
+                    scan_id,
+                )
+                await add_audit_log(
+                    scan_id,
+                    "AIExploitationEngine",
+                    "exploitation",
+                    "AI exploitation requested but AI_EXPLOITATION_ENABLED is false; skipping",
+                )
+                ai_requested = False
+            if ai_requested:
                 ai_exploitation_result = await self.run_ai_exploitation(
                     target.url, scan_id, persisted_findings, sandbox_id=sandbox_id
                 )
@@ -457,16 +491,6 @@ class OrchestratorAgent(Agent):
             await self.set_progress(scan_id, 97, "notification_complete", request_count=request_count)
 
             await update_scan_status(scan_id, "complete")
-            try:
-                await update_defend_scan_execution(
-                    scan_id=scan_id,
-                    lifecycle="complete",
-                    target_url=target.url,
-                    progress_percent=100,
-                    findings_count=len(persisted_findings),
-                )
-            except Exception:
-                pass
             await self.run_learning(scan_id)
             self.status = "complete"
             await self.log_action("completed", f"Scan completed with {len(persisted_findings)} findings")
@@ -478,15 +502,6 @@ class OrchestratorAgent(Agent):
             traceback.print_exc()
             self.status = "error"
             await update_scan_status(scan_id, "error", str(exc)[:1000])
-            try:
-                await update_defend_scan_execution(
-                    scan_id=scan_id,
-                    lifecycle="error",
-                    target_url=target.url,
-                    error_message=str(exc)[:1000],
-                )
-            except Exception:
-                pass
             await self.log_action("error", str(exc)[:2000])
             await self.publish(scan_id, "scan_failed", {"status": "error", "error": str(exc)})
             return {"scan_id": scan_id, "status": "error", "error": str(exc)}
@@ -676,7 +691,7 @@ class OrchestratorAgent(Agent):
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            traceback.print_exc()
+            logger.exception("Learning engine failed for scan %d", scan_id)
             try:
                 await add_audit_log(
                     scan_id,
@@ -685,8 +700,8 @@ class OrchestratorAgent(Agent):
                     str(exc)[:1000],
                     user_id="local-user",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to log learning failure for scan %d: %s", scan_id, e)
             await self.publish(
                 scan_id,
                 "learning_failed",
@@ -743,11 +758,11 @@ class OrchestratorAgent(Agent):
             )
             return recommended
         except Exception as exc:
-            traceback.print_exc()
+            logger.exception("AI decision maker failed for %s", target_url)
             try:
                 await self.log_action("ai_decision_error", str(exc)[:2000])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to log AI decision error: %s", e)
             return None
 
     async def run_sqli_exploitation(
@@ -837,11 +852,11 @@ class OrchestratorAgent(Agent):
             await self.log_action("ai_exploitation", result.get("summary", ""))
             return result
         except Exception as exc:
-            traceback.print_exc()
+            logger.exception("AI exploitation failed for %s", target_url)
             try:
                 await self.log_action("ai_exploitation_error", str(exc)[:2000])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to log AI exploitation error: %s", e)
             return {
                 "status": "error",
                 "exploitation_results": [],
@@ -1159,10 +1174,20 @@ class OrchestratorAgent(Agent):
         target_url: str,
     ) -> list[dict[str, Any]]:
         existing = await get_findings(scan_id)
-        seen = {
-            self.finding_key(FindingCreate(**{name: row.get(name) for name in FindingCreate.model_fields}))
-            for row in existing
-        }
+        seen: set[tuple[Any, ...]] = set()
+        for row in existing:
+            try:
+                seen.add(
+                    self.finding_key(
+                        FindingCreate(**{name: row.get(name) for name in FindingCreate.model_fields})
+                    )
+                )
+            except Exception:
+                # DB rows may predate optional FindingCreate fields (exploited, sources,
+                # patch, ...) — build the key from present non-None values only.
+                data = {name: row.get(name) for name in FindingCreate.model_fields if row.get(name) is not None}
+                if data:
+                    seen.add(self.finding_key(FindingCreate(**data)))
         for finding in findings:
             try:
                 normalized = self.normalize_finding(finding, target_url)
@@ -1206,35 +1231,95 @@ class OrchestratorAgent(Agent):
         if risk_status not in {"ACTIVE", "FALSE_POSITIVE", "ACCEPTED_RISK"}:
             risk_status = "ACTIVE"
 
-        title = first_text("title", "name", "issue", "vulnerability")
-        category = first_text("category", "type", "module", default="Security")
-        agent = first_text("agent", "source", default="Orchestrator Agent")
+        type_label = str(finding.get("type") or "").lower()
+        tool = first_text("tool")
+        type_labels = {"sast": "SAST", "secret": "Secrets", "sca": "SCA", "iac": "IaC"}
+        category = first_text("category", "module", default="") or type_labels.get(type_label, type_label or "Security")
+        if tool and tool != "semgrep" and not first_text("category"):
+            category = f"{category} · {tool}"
+        category = category[:120]
+
+        title = first_text(
+            "title", "name", "issue", "vulnerability",
+            "rule_name", "rule_id", "misconfiguration_type", "detector_name",
+        )
+        if not title:
+            package = first_text("package_name")
+            if package:
+                vuln_id = first_text("vulnerability_id")
+                title = f"Vulnerable dependency: {package}" + (f" ({vuln_id})" if vuln_id else "")
+        if not title:
+            title = first_text("secret_type", "message")[:140] or None
         if not title:
             raise ValueError("Finding is missing a title")
+        agent = first_text("agent", "source", default="Orchestrator Agent")
+
+        evidence = first_text(
+            "evidence", "description", "details", "message", "code_snippet", "matched_content",
+        )
+        location = first_text("file_path")
+        if location:
+            line = finding.get("line_start") or finding.get("line_number") or finding.get("line_end")
+            evidence_parts = [evidence, f"Location: {location}" + (f":{line}" if line else "")]
+            evidence = "\n".join(p for p in evidence_parts if p)
+        if not evidence:
+            evidence = first_text("advisory_url")
+
+        recommendation = first_text("recommendation", "fix", "remediation")
+        if not recommendation:
+            fixed_version = first_text("fixed_version")
+            if fixed_version:
+                recommendation = f"Upgrade the dependency to a fixed version (e.g. {fixed_version})."
+        impact = first_text("impact", "how_exploited", "risk")
+        if not impact and first_text("message"):
+            impact = first_text("message")[:2000]
+
+        cve_id = str(finding["cve_id"])[:40] if finding.get("cve_id") else None
+        if not cve_id and type_label == "sca":
+            vuln_id = first_text("vulnerability_id")
+            if vuln_id:
+                cve_id = vuln_id[:40]
+
+        cwe_value = finding.get("cwe")
+        if not cwe_value and finding.get("cwe_ids"):
+            cwe_list = [c for c in finding["cwe_ids"] if isinstance(c, str)]
+            cwe_value = ", ".join(cwe_list)
+        if cwe_value:
+            cwe_value = str(cwe_value)[:200]
+        else:
+            cwe_value = None
+
+        if not finding.get("severity") and type_label in {"secret", "sca"}:
+            if type_label == "secret":
+                severity = "HIGH" if finding.get("verified") else "MEDIUM"
+            else:
+                severity = "HIGH"
+
+        module_value = first_text("module", "selected_module", "tool")[:120] or None
 
         return FindingCreate(
-            title=title[:300],
-            category=category[:120],
+            title=str(title)[:300],
+            category=category,
             severity=severity,
             confidence=confidence,
             target=first_text("target", "target_url", default=target_url)[:2048],
-            endpoint=first_text("endpoint", "url", "path", default=target_url)[:2048],
-            evidence=first_text("evidence", "description", "details", default="")[:12000],
-            impact=first_text("impact", "how_exploited", "risk", default="")[:4000],
-            recommendation=first_text("recommendation", "fix", "remediation", default="")[:6000],
+            endpoint=first_text("endpoint", "url", "path", "file_path", default=target_url)[:2048],
+            evidence=evidence[:12000],
+            impact=impact[:4000],
+            recommendation=recommendation[:6000],
             verification=first_text(
                 "verification",
                 default="Rerun the relevant PhantomScan analysis after remediation and confirm the evidence is absent.",
             )[:4000],
-             agent=agent[:120],
-             timestamp=_safe_timestamp(finding.get("timestamp")),
-            cve_id=str(finding["cve_id"])[:40] if finding.get("cve_id") else None,
+            agent=agent[:120],
+            timestamp=_safe_timestamp(finding.get("timestamp")),
+            cve_id=cve_id,
             cvss_score=finding.get("cvss_score"),
-            cwe=str(finding.get("cwe"))[:200] if finding.get("cwe") else None,
+            cwe=cwe_value,
             version_affected=str(finding.get("version_affected"))[:500] if finding.get("version_affected") else None,
             parameter=first_text("parameter", default="")[:200] or None,
-            module=first_text("module", "selected_module", default="")[:120] or None,
-            recommended_fix=first_text("recommended_fix", "recommendation", "fix", default="")[:6000] or None,
+            module=module_value,
+            recommended_fix=first_text("recommended_fix", "recommendation", "fix", default=recommendation)[:6000] or None,
             remediation_status=remediation_status,
             verification_status=verification_status,
             risk_status=risk_status,
@@ -1243,20 +1328,13 @@ class OrchestratorAgent(Agent):
     @staticmethod
     def finding_key(finding: FindingCreate) -> tuple[Any, ...]:
         data = finding.model_dump(mode="json")
-
-        def _make_hashable(value: Any) -> Any:
-            """Convert unhashable types (list, dict) to hashable representations."""
-            if isinstance(value, dict):
-                return json.dumps(value, sort_keys=True, default=str)
-            if isinstance(value, list):
-                return json.dumps(value, sort_keys=True, default=str)
-            return value
-
-        return tuple(
-            _make_hashable(data[name])
-            for name in FindingCreate.model_fields
-            if name != "timestamp"
-        )
+        # Dedup on stable identity fields only — derived/optional fields
+        # (recommended_fix, sources, remediation_status, ...) differ between
+        # DB rows and freshly normalized findings and would cause duplicates
+        # to be re-inserted. All identity fields are plain strings or None,
+        # so the tuple is always hashable.
+        identity = ("title", "category", "severity", "target", "endpoint", "parameter", "module", "cve_id")
+        return tuple(data[name] for name in identity)
 
     async def set_progress(
         self,
@@ -1273,15 +1351,6 @@ class OrchestratorAgent(Agent):
             request_count=request_count,
             sandbox_id=sandbox_id,
         )
-        try:
-            await update_defend_scan_execution(
-                scan_id=scan_id,
-                lifecycle="running",
-                progress_percent=progress,
-                current_phase=phase,
-            )
-        except Exception:
-            pass
         payload: dict[str, Any] = {"progress": progress, "phase": phase, "status": "running"}
         if request_count is not None:
             payload["request_count"] = request_count

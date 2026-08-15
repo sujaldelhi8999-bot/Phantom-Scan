@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -13,6 +14,8 @@ import psutil
 from app.agents import Agent
 from app.config import BASE_DIR
 from app.services.execution import SafetyLimits
+
+logger = logging.getLogger("phantomscan.sandbox_manager")
 
 
 class SandboxExecutionError(RuntimeError):
@@ -58,6 +61,21 @@ class SandboxManagerAgent(Agent):
         }
         await self.log_action("sandbox_created", self.sandbox_id)
 
+        try:
+            result = await self._run_subprocess(payload)
+        except NotImplementedError:
+            # asyncio.create_subprocess_exec raises NotImplementedError when the
+            # running event loop does not support subprocesses (e.g. a Selector
+            # loop on Windows, or a third-party loop such as uvloop). Fall back
+            # to executing the active worker in-process so scans still complete.
+            logger.warning(
+                "asyncio subprocess unsupported on this platform/loop; running active worker in-process (scan_id=%s)",
+                scan_id,
+            )
+            result = await self._run_inline(payload)
+        return await self._finalize(result)
+
+    async def _run_subprocess(self, payload: dict[str, Any]) -> dict[str, Any]:
         with tempfile.TemporaryDirectory(prefix="phantomscan-") as sandbox_directory:
             environment = self.restricted_environment()
             kwargs: dict[str, Any] = {}
@@ -102,9 +120,21 @@ class SandboxManagerAgent(Agent):
             result = json.loads(stdout.decode("utf-8"))
         except json.JSONDecodeError as exc:
             raise SandboxExecutionError("Active worker returned invalid structured output") from exc
-        if not isinstance(result, dict) or result.get("status") != "complete":
-            raise SandboxExecutionError(str(result.get("error", "Active worker did not complete")))
+        if not isinstance(result, dict):
+            raise SandboxExecutionError("Active worker returned invalid structured output")
+        return result
 
+    async def _run_inline(self, payload: dict[str, Any]) -> dict[str, Any]:
+        from app.workers.active_worker import execute
+
+        result = await execute(payload)
+        if not isinstance(result, dict):
+            raise SandboxExecutionError("Active worker returned invalid structured output")
+        return result
+
+    async def _finalize(self, result: dict[str, Any]) -> dict[str, Any]:
+        if result.get("status") != "complete":
+            raise SandboxExecutionError(str(result.get("error", "Active worker did not complete")))
         self.status = "complete"
         await self.log_action("sandbox_destroyed", self.sandbox_id)
         return {
@@ -284,6 +314,6 @@ class SandboxManagerAgent(Agent):
             except ProcessLookupError:
                 pass
         try:
-            await asyncio.wait_for(self.process.wait(), timeout=3.0)
-        except (ProcessLookupError, asyncio.TimeoutError):
+            await self.process.wait()
+        except ProcessLookupError:
             return
