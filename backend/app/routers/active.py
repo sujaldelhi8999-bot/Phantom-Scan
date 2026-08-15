@@ -233,6 +233,8 @@ async def active_run(
             sandbox_id=f"authorized-test-{job_id[:8]}",
             verified_target=decision.verified_target,
             transport=httpx.ASGITransport(app=request.app) if decision.is_lab else None,
+            enable_exploitation=run_request.enable_exploitation,
+            enable_ai_exploitation=run_request.enable_ai_exploitation,
         ),
         name=f"authorized-test-{job_id[:12]}",
     )

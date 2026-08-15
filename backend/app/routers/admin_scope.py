@@ -48,7 +48,7 @@ class ScopeRemoveResponse(BaseModel):
     message: str
 
 
-async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+async def _require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     if current_user.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -59,7 +59,7 @@ async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
 
 @router.post("/add", response_model=ScopeAddResponse)
 async def add_to_private_scope(
-    request: AddScopeRequest, current_user: dict = Depends(require_admin)
+    request: AddScopeRequest, current_user: dict = Depends(_require_admin)
 ) -> ScopeAddResponse:
     try:
         target = canonicalize_target(request.target_url)
@@ -87,7 +87,7 @@ async def add_to_private_scope(
 
 
 @router.get("/list", response_model=list[ScopeEntry])
-async def list_private_scope_endpoint(current_user: dict = Depends(require_admin)) -> list[ScopeEntry]:
+async def list_private_scope_endpoint(current_user: dict = Depends(_require_admin)) -> list[ScopeEntry]:
     rows = await list_private_scope()
     return [
         ScopeEntry(
@@ -104,7 +104,7 @@ async def list_private_scope_endpoint(current_user: dict = Depends(require_admin
 @router.delete("/remove", response_model=ScopeRemoveResponse)
 async def remove_from_private_scope(
     target_url: str = Query(min_length=4, max_length=2048),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(_require_admin),
 ) -> ScopeRemoveResponse:
     hostname = canonicalize_hostname(target_url)
     removed = await remove_private_scope(hostname)

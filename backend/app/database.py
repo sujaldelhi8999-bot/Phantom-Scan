@@ -704,6 +704,63 @@ async def _column_exists(connection: aiosqlite.Connection, table: str, column: s
     return any(row["name"] == column for row in await cursor.fetchall())
 
 
+async def _migrate_evidence_job_id_nullable(connection: aiosqlite.Connection) -> None:
+    """Rebuild evidence_records when job_id was created NOT NULL (stale schema).
+
+    The declared schema allows NULL job_id so scan-flow active tests (which
+    have no authorized-test job) can persist evidence records.
+    """
+    if not await _table_exists(connection, "evidence_records"):
+        return
+    cursor = await connection.execute("PRAGMA table_info(evidence_records)")
+    columns = {row["name"]: row for row in await cursor.fetchall()}
+    if "job_id" not in columns or columns["job_id"]["notnull"] == 0:
+        return
+    await connection.execute("PRAGMA foreign_keys = OFF")
+    await connection.executescript(
+        """
+        CREATE TABLE evidence_records_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL,
+            job_id TEXT,
+            scan_id INTEGER,
+            module TEXT NOT NULL DEFAULT '',
+            surface TEXT NOT NULL DEFAULT '',
+            method TEXT NOT NULL DEFAULT '',
+            request_url TEXT NOT NULL DEFAULT '',
+            safe_test_marker TEXT NOT NULL DEFAULT '',
+            request_timestamp TEXT NOT NULL,
+            response_status INTEGER,
+            response_time_ms INTEGER,
+            response_observed INTEGER NOT NULL DEFAULT 0,
+            detection_result TEXT NOT NULL DEFAULT 'INCONCLUSIVE',
+            evidence_summary TEXT NOT NULL DEFAULT '',
+            finding_id INTEGER,
+            error TEXT,
+            FOREIGN KEY (job_id) REFERENCES authorized_test_jobs (id),
+            FOREIGN KEY (finding_id) REFERENCES findings (id)
+        );
+        INSERT INTO evidence_records_new (
+            id, request_id, job_id, scan_id, module, surface, method, request_url,
+            safe_test_marker, request_timestamp, response_status, response_time_ms,
+            response_observed, detection_result, evidence_summary, finding_id, error
+        )
+        SELECT
+            id, request_id, job_id, scan_id, module, surface, method, request_url,
+            safe_test_marker, request_timestamp, response_status, response_time_ms,
+            response_observed, detection_result, evidence_summary, finding_id, error
+        FROM evidence_records;
+        DROP TABLE evidence_records;
+        ALTER TABLE evidence_records_new RENAME TO evidence_records;
+        CREATE INDEX IF NOT EXISTS idx_evidence_job_id ON evidence_records (job_id);
+        CREATE INDEX IF NOT EXISTS idx_evidence_request_id ON evidence_records (request_id);
+        CREATE INDEX IF NOT EXISTS idx_evidence_finding_id ON evidence_records (finding_id);
+        """
+    )
+    await connection.commit()
+    await connection.execute("PRAGMA foreign_keys = ON")
+
+
 async def _migrate_scans_mode_check(connection: aiosqlite.Connection) -> None:
     """Rebuild the scans table when its mode CHECK predates the multi_agent mode."""
     cursor = await connection.execute(
@@ -759,6 +816,7 @@ async def initialize_database() -> None:
         await _migrate_ai_columns(connection)
         await _migrate_authorized_test_jobs_table(connection)
         await _migrate_job_events_table(connection)
+        await _migrate_evidence_job_id_nullable(connection)
         await _migrate_execution_status_table(connection)
         await _migrate_shadow_recon_table(connection)
         await _migrate_shadow_recon_columns(connection)
@@ -780,6 +838,7 @@ async def initialize_database() -> None:
         await _migrate_pr_descriptions_table(connection)
         await _migrate_findings_correlation_columns(connection)
         await _migrate_compliance_report_columns(connection)
+        await _migrate_brutal_ops_table(connection)
         await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
         await connection.commit()
 
@@ -887,6 +946,34 @@ async def _migrate_exploitation_artifact_column(connection: aiosqlite.Connection
 async def _migrate_tci_artifact_column(connection: aiosqlite.Connection) -> None:
     if not await _column_exists(connection, "scan_artifacts", "tci_output"):
         await connection.execute("ALTER TABLE scan_artifacts ADD COLUMN tci_output TEXT")
+
+
+AUTHORIZED_TEST_JOBS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS authorized_test_jobs (
+    id TEXT PRIMARY KEY,
+    authorization_id INTEGER,
+    target_url TEXT NOT NULL,
+    normalized_target_origin TEXT NOT NULL,
+    selected_modules TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK (status IN ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED')),
+    progress_percent INTEGER NOT NULL DEFAULT 0 CHECK (progress_percent BETWEEN 0 AND 100),
+    current_module TEXT,
+    current_phase TEXT,
+    surfaces_total INTEGER NOT NULL DEFAULT 0,
+    surfaces_completed INTEGER NOT NULL DEFAULT 0,
+    findings_count INTEGER NOT NULL DEFAULT 0,
+    started_at TEXT,
+    completed_at TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    error_message TEXT,
+    error_code TEXT,
+    result_summary TEXT,
+    scan_id INTEGER,
+    FOREIGN KEY (authorization_id) REFERENCES authorized_targets (id)
+);
+CREATE INDEX IF NOT EXISTS idx_authorized_test_jobs_status ON authorized_test_jobs (status);
+CREATE INDEX IF NOT EXISTS idx_authorized_test_jobs_target ON authorized_test_jobs (normalized_target_origin, status);
+"""
 
 
 async def _migrate_authorized_test_jobs_table(connection: aiosqlite.Connection) -> None:
@@ -1206,6 +1293,29 @@ rule_name TEXT,
             );
             CREATE INDEX IF NOT EXISTS idx_sast_findings_file_path ON sast_findings (file_path);
             CREATE INDEX IF NOT EXISTS idx_sast_findings_rule_id ON sast_findings (rule_id);
+            """
+        )
+
+
+async def _migrate_brutal_ops_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "brutal_ops"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS brutal_ops (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                scan_id INTEGER,
+                target_url TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                action TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                detail TEXT,
+                payload TEXT,
+                output TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_brutal_ops_session ON brutal_ops (session_id);
+            CREATE INDEX IF NOT EXISTS idx_brutal_ops_created ON brutal_ops (created_at);
             """
         )
 
@@ -2597,6 +2707,83 @@ async def remove_private_scope(target_url: str) -> bool:
         )
         await connection.commit()
         return cursor.rowcount > 0
+
+
+async def create_brutal_op(
+    session_id: str,
+    target_url: str,
+    actor: str,
+    action: str,
+    *,
+    scan_id: int | None = None,
+    status: str = "pending",
+    detail: str | None = None,
+    payload: str | None = None,
+    output: str | None = None,
+) -> int:
+    async with get_connection() as connection:
+        cursor = await connection.execute(
+            """
+            INSERT INTO brutal_ops (
+                session_id, scan_id, target_url, actor, action, status, detail, payload, output
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                scan_id,
+                target_url[:2048],
+                actor,
+                action[:200],
+                status[:50],
+                (detail or "")[:4000],
+                (payload or "")[:8000],
+                (output or "")[:12000],
+            ),
+        )
+        await connection.commit()
+        return int(cursor.lastrowid)
+
+
+async def update_brutal_op(
+    op_id: int,
+    *,
+    status: str | None = None,
+    detail: str | None = None,
+    output: str | None = None,
+) -> None:
+    sets: list[str] = []
+    values: list[Any] = []
+    if status is not None:
+        sets.append("status = ?")
+        values.append(status[:50])
+    if detail is not None:
+        sets.append("detail = ?")
+        values.append((detail or "")[:4000])
+    if output is not None:
+        sets.append("output = ?")
+        values.append((output or "")[:12000])
+    if not sets:
+        return
+    values.append(op_id)
+    async with get_connection() as connection:
+        await connection.execute(
+            f"UPDATE brutal_ops SET {', '.join(sets)} WHERE id = ?", values
+        )
+        await connection.commit()
+
+
+async def list_brutal_ops(session_id: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
+    async with get_connection() as connection:
+        if session_id:
+            cursor = await connection.execute(
+                "SELECT * FROM brutal_ops WHERE session_id = ? ORDER BY id ASC",
+                (session_id,),
+            )
+        else:
+            cursor = await connection.execute(
+                "SELECT * FROM brutal_ops ORDER BY id DESC LIMIT ?", (limit,)
+            )
+        return [dict(row) for row in await cursor.fetchall()]
 
 
 async def get_job_events(job_id: str, after_sequence: int = 0) -> list[dict[str, Any]]:

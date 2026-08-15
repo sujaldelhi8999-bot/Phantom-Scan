@@ -25,6 +25,11 @@ def env_float(name: str, default: float) -> float:
         return default
 
 
+def env_bool(name: str, default: bool) -> bool:
+    val = os.getenv(name, str(default)).lower()
+    return val in ("1", "true", "yes", "on")
+
+
 class Settings:
     app_name = "PhantomScan API"
     database_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'phantomscan.db'}")
@@ -47,12 +52,12 @@ class Settings:
     verification_ttl_days = env_int("VERIFICATION_TTL_DAYS", 30)
     verification_challenge_minutes = env_int("VERIFICATION_CHALLENGE_MINUTES", 60)
     max_scan_duration = env_int("MAX_SCAN_DURATION", 300)
-    max_requests_per_second = env_float("MAX_REQUESTS_PER_SECOND", 2.0)
-    max_total_requests = env_int("MAX_TOTAL_REQUESTS", 300)
-    max_concurrent_scans = env_int("MAX_CONCURRENT_SCANS", 2)
-    max_redirect_depth = env_int("MAX_REDIRECT_DEPTH", 0)
+    max_requests_per_second = env_float("MAX_REQUESTS_PER_SECOND", 10.0)
+    max_total_requests = env_int("MAX_TOTAL_REQUESTS", 5000)
+    max_concurrent_scans = env_int("MAX_CONCURRENT_SCANS", 10)
+    max_redirect_depth = env_int("MAX_REDIRECT_DEPTH", 5)
     max_response_size = env_int("MAX_RESPONSE_SIZE", 1_048_576)
-    browser_page_limit = env_int("BROWSER_PAGE_LIMIT", 8)
+    browser_page_limit = env_int("BROWSER_PAGE_LIMIT", 16)
     active_target_allowlist = os.getenv("ACTIVE_TARGET_ALLOWLIST", "")
     deep_port_scan_enabled = os.getenv("DEEP_PORT_SCAN", "1") not in ("0", "false", "False")
     port_scan_concurrency = env_int("PORT_SCAN_CONCURRENCY", 64)
@@ -73,6 +78,63 @@ class Settings:
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
     supabase_admin_emails = os.getenv("SUPABASE_ADMIN_EMAILS", "")
+
+    # Redis
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    redis_max_connections = env_int("REDIS_MAX_CONNECTIONS", 50)
+    redis_socket_timeout = env_float("REDIS_SOCKET_TIMEOUT", 5.0)
+    redis_socket_connect_timeout = env_float("REDIS_SOCKET_CONNECT_TIMEOUT", 5.0)
+
+    # PostgreSQL connection pool
+    pg_pool_min_size = env_int("PG_POOL_MIN_SIZE", 5)
+    pg_pool_max_size = env_int("PG_POOL_MAX_SIZE", 20)
+    pg_pool_timeout = env_float("PG_POOL_TIMEOUT", 30.0)
+    pg_command_timeout = env_float("PG_COMMAND_TIMEOUT", 60.0)
+
+    # Rate limiting
+    rate_limit_enabled = env_bool("RATE_LIMIT_ENABLED", True)
+    rate_limit_requests = env_int("RATE_LIMIT_REQUESTS", 100)
+    rate_limit_window = env_int("RATE_LIMIT_WINDOW", 60)
+
+    # Observability
+    otel_enabled = env_bool("OTEL_ENABLED", False)
+    otel_endpoint = os.getenv("OTEL_ENDPOINT", "http://localhost:4317")
+    otel_service_name = os.getenv("OTEL_SERVICE_NAME", "phantomscan")
+    prometheus_metrics_enabled = env_bool("PROMETHEUS_METRICS_ENABLED", True)
+
+    # Security
+    require_auth_on_health = env_bool("REQUIRE_AUTH_ON_HEALTH", False)
+    require_auth_on_websocket = env_bool("REQUIRE_AUTH_ON_WEBSOCKET", True)
+    api_key_enabled = env_bool("API_KEY_ENABLED", False)
+    api_key_header = os.getenv("API_KEY_HEADER", "X-API-Key")
+    api_key_value = os.getenv("API_KEY_VALUE", "")
+
+    # Exploitation engine — OFF by default. A scan only exploits when BOTH
+    # this global kill-switch is enabled AND the user explicitly requests it
+    # per-scan (enable_exploitation / enable_ai_exploitation).
+    exploitation_enabled = env_bool("EXPLOITATION_ENABLED", False)
+    ai_exploitation_enabled = env_bool("AI_EXPLOITATION_ENABLED", False)
+    exploit_attempt_timeout = env_float("EXPLOIT_ATTEMPT_TIMEOUT", 30.0)
+    exploit_max_findings = env_int("EXPLOIT_MAX_FINDINGS", 10)
+
+    # Brutal Mode (Black Ops) — off by default. Enables active exploitation,
+    # shells, post-exploitation, lateral movement and exfiltration, strictly
+    # gated to admin + Private Scope targets + explicit ownership ack.
+    brutal_mode_enabled = env_bool("BRUTAL_MODE_ENABLED", False)
+    brutal_exfil_dir = os.getenv("BRUTAL_EXFIL_DIR", str(BASE_DIR / "brutal_exfil"))
+    brutal_max_commands_per_shell = env_int("BRUTAL_MAX_COMMANDS_PER_SHELL", 100)
+    brutal_command_timeout = env_float("BRUTAL_COMMAND_TIMEOUT", 12.0)
+
+    def validate_required(self, mode: str = "defend") -> list[str]:
+        """Validate required settings for a given scan mode. Returns list of missing keys."""
+        missing = []
+        if not self.secret_key:
+            missing.append("SECRET_KEY")
+        if mode in ("pentest", "multi_agent") and not self.openrouter_api_key:
+            missing.append("OPENROUTER_API_KEY")
+        if mode in ("pentest", "multi_agent") and not self.nvd_api_key:
+            missing.append("NVD_API_KEY")
+        return missing
 
 
 @lru_cache

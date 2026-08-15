@@ -15,6 +15,7 @@ from app.database import (
     update_authorized_test_job,
     update_evidence_finding,
 )
+from app.config import get_settings
 from app.models import FindingCreate
 from app.services.active_gate import ActiveTargetGate
 from app.services.active_security import (
@@ -62,6 +63,8 @@ async def run_authorized_test_job(
     verified_target: Any,
     limits: SafetyLimits | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
+    enable_exploitation: bool = False,
+    enable_ai_exploitation: bool = False,
 ) -> None:
     logger.info("Authorized test job %s started for %s", job_id, target_url)
     limits = limits or SafetyLimits.from_settings()
@@ -145,6 +148,7 @@ async def run_authorized_test_job(
             job_id, len(modules_list), raw_count, plan_surface_count, group_count, surfaces_total,
         )
         all_findings: list[dict[str, Any]] = []
+        persisted_findings: list[dict[str, Any]] = []
         module_failures: list[dict[str, Any]] = []
         total_modules = len(modules_list)
         for mod_index, module_plan in enumerate(modules_list):
@@ -184,6 +188,7 @@ async def run_authorized_test_job(
                 module_findings = await engine.run_module(module_name, surfaces)
                 for finding_data in module_findings:
                     finding_id = await create_finding(scan_id, FindingCreate(**finding_data))
+                    persisted_findings.append({**finding_data, "id": finding_id})
                     ev_ids = finding_data.get("_evidence_ids", []) or []
                     single_ev = finding_data.get("_evidence_id")
                     if single_ev is not None:
@@ -279,6 +284,62 @@ async def run_authorized_test_job(
                     progress_percent=progress,
                     findings_count=len(all_findings),
                 )
+        exploitation_summary: dict[str, Any] | None = None
+        if enable_exploitation:
+            if not get_settings().exploitation_enabled:
+                logger.warning(
+                    "Exploitation requested for job %s but EXPLOITATION_ENABLED is false - skipping",
+                    job_id,
+                )
+                await emit_event(job_id, "EXPLOITATION_SKIPPED",
+                                 "Exploitation requested but EXPLOITATION_ENABLED is false; skipping (safety kill-switch)",
+                                 status="SKIPPED")
+            else:
+                await emit_event(job_id, "EXPLOITATION_STARTED",
+                                 f"Exploitation enabled - attempting exploits on {len(persisted_findings)} confirmed findings",
+                                 status="RUNNING",
+                                 metadata={"confirmed_findings": len(persisted_findings)})
+                from app.agents.exploitation_engine import ExploitationAgent
+                try:
+                    exploiter = ExploitationAgent()
+                    exploitation_output = await exploiter.run(
+                        target_url, scan_id, findings=persisted_findings
+                    )
+                except Exception as exc:
+                    traceback.print_exc()
+                    exploitation_output = {
+                        "status": "error",
+                        "exploitation_results": [],
+                        "summary": f"Exploitation failed: {exc}",
+                    }
+                exploitation_summary = {"static": exploitation_output, "ai": None}
+                if enable_ai_exploitation and get_settings().ai_exploitation_enabled:
+                    from app.services.ai_exploitation import AIExploitationEngine
+                    try:
+                        ai_engine = AIExploitationEngine()
+                        ai_output = await ai_engine.run_for_scan(
+                            target_url, scan_id, persisted_findings, sandbox_id=sandbox_id
+                        )
+                    except Exception as exc:
+                        traceback.print_exc()
+                        ai_output = {
+                            "status": "error",
+                            "exploitation_results": [],
+                            "summary": f"AI exploitation failed: {exc}",
+                            "ai_available": False,
+                        }
+                    exploitation_summary["ai"] = ai_output
+                await emit_event(job_id, "EXPLOITATION_COMPLETED",
+                                 exploitation_output.get("summary", "Exploitation completed"),
+                                 status="COMPLETED",
+                                 metadata={
+                                     "exploited": sum(
+                                         1 for r in exploitation_output.get("exploitation_results", [])
+                                         if r.get("success")
+                                     ),
+                                     "ai": bool(exploitation_summary.get("ai")),
+                                 })
+
         evidence_records = await get_evidence_for_job(job_id)
         total_requests = len(evidence_records)
         responses_received = sum(1 for e in evidence_records if e.get("response_observed"))
@@ -305,6 +366,7 @@ async def run_authorized_test_job(
             "raw_surfaces_discovered": raw_count,
             "testable_surfaces": plan_surface_count,
             "surface_groups": group_count,
+            "exploitation": exploitation_summary,
         }
         await update_authorized_test_job(
             job_id,

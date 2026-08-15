@@ -69,7 +69,10 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
     let socket: WebSocket | null = null;
     let active = true;
     let reconnectTimer: number | undefined;
+    let connectTimer: number | undefined;
     let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 4;
+    const CONNECT_TIMEOUT_MS = 5000;
     let sequence = 0;
     let latestStatus: ScanStatus | null = null;
     const seenEvents = new Set<string>();
@@ -157,21 +160,46 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
 
     const connect = () => {
       if (!active) return;
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        setConnectionState('error');
+        setError('Realtime connection unavailable. Data updates via polling.');
+        return;
+      }
       setConnectionState('connecting');
       socket = new WebSocket(getWebSocketUrl(`/ws/scan/${scanId}`));
+
+      // Timeout: if connection doesn't open within CONNECT_TIMEOUT_MS, treat as failed
+      connectTimer = window.setTimeout(() => {
+        if (socket && socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+          setConnectionState('error');
+          setError('WebSocket connection timed out');
+          reconnectAttempts += 1;
+          reconnectTimer = window.setTimeout(connect, Math.min(1000 * 2 ** reconnectAttempts, 8000));
+        }
+      }, CONNECT_TIMEOUT_MS);
+
       socket.onopen = () => {
+        if (connectTimer) { clearTimeout(connectTimer); connectTimer = undefined; }
         reconnectAttempts = 0;
         setConnectionState('open');
         appendEvent({ timestamp: timestamp(), title: 'Realtime connected', detail: `Scan ${scanId}`, tone: 'green', agent: 'System' });
       };
       socket.onmessage = (event: MessageEvent<string>) => handleFrame(event.data);
       socket.onerror = () => setConnectionState('error');
-      socket.onclose = () => {
+      socket.onclose = (event: CloseEvent) => {
+        if (connectTimer) { clearTimeout(connectTimer); connectTimer = undefined; }
         if (!active) return;
         setConnectionState('closed');
+        // Code 1008 = policy violation (auth failure) — stop retrying
+        if (event.code === 1008) {
+          setConnectionState('error');
+          setError('Authentication failed. Please log in again.');
+          return;
+        }
         if (latestStatus && terminalStatuses.includes(latestStatus)) return;
         void refreshFallback();
-        if (reconnectAttempts < 4) {
+        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttempts += 1;
           reconnectTimer = window.setTimeout(connect, Math.min(1000 * 2 ** reconnectAttempts, 8000));
         }
@@ -184,6 +212,7 @@ export function useScanTelemetry(scanId: number | null): ScanTelemetry {
     return () => {
       active = false;
       if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (connectTimer) window.clearTimeout(connectTimer);
       socket?.close();
     };
   }, [scanId]);

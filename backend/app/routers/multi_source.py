@@ -197,7 +197,7 @@ async def _submit(request: MultiSourceScanRequest, scan_id: int, user_id: str, u
         ),
         name=f"phantomscan-multi-{scan_id}",
     )
-    scan_job_manager._tasks[scan_id] = task
+    await scan_job_manager.register_task(scan_id, task)
 
 
 @router.get("/history", response_model=list[MultiSourceScanHistoryItem])
@@ -217,7 +217,7 @@ async def multi_source_history(user: dict = Depends(get_current_user)) -> list[M
                 sources=[str(s.get("source_type")) for s in sources],
                 total_findings=len(findings),
                 correlated_findings=len(correlations),
-                created_at=str(row.get("created_at") or ""),
+                created_at=row.get("created_at") or "",
                 completed_at=row.get("completed_at"),
             )
         )

@@ -106,6 +106,49 @@ export interface ExploitationResult {
   error: string | null;
 }
 
+export interface ExploitationOutcome {
+  success: boolean;
+  status?: string;
+  type: string;
+  endpoint: string;
+  summary: string;
+  reason?: string;
+  error?: string;
+  severity?: string;
+  poc_url?: string;
+  poc_payload?: string;
+  extracted?: string[];
+  files?: Array<{ file?: string; payload_type?: string; content: string }>;
+  commands?: Array<{ command: string; output: string }>;
+  database_type?: string | null;
+  tables?: string[];
+  data?: ExploitationResultData[];
+}
+
+export interface AIExploitationOutcome {
+  finding_id?: number | null;
+  vulnerability_type?: string;
+  status?: string;
+  poc?: Record<string, unknown>;
+  validation?: Record<string, unknown>;
+  report?: string;
+  error?: string;
+}
+
+export interface ExploitationSummary {
+  static?: {
+    status?: string;
+    summary?: string;
+    exploitation_results?: ExploitationOutcome[];
+  } | null;
+  ai?: {
+    status?: string;
+    summary?: string;
+    ai_available?: boolean;
+    exploitation_results?: AIExploitationOutcome[];
+  } | null;
+}
+
 export interface AICitation {
   type?: string;
   id?: number | string | null;
@@ -810,6 +853,8 @@ export interface ActiveRunRequest {
   selected_modules: TestModule[];
   authorization_id: number | null;
   authorization_confirmed: boolean;
+  enable_exploitation?: boolean;
+  enable_ai_exploitation?: boolean;
 }
 
 export interface AuthorizedTestRunResponse {

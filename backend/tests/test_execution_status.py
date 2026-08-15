@@ -36,7 +36,7 @@ class AgentStateBuilderTests(IsolatedAsyncioTestCase):
 
     def test_default_agent_states_all_idle(self):
         states = default_agent_states()
-        self.assertEqual(len(states), 22)
+        self.assertEqual(len(states), 26)
         for s in states:
             self.assertEqual(s["applicability"], "IDLE")
             self.assertIn("name", s)
@@ -180,7 +180,7 @@ class ExecutionStatusEndpointTests(IsolatedAsyncioTestCase):
         payload = response.json()
         self.assertEqual(payload["lifecycle"], "IDLE")
         self.assertIsNone(payload["execution_type"])
-        self.assertEqual(len(payload["agents"]), 22)
+        self.assertEqual(len(payload["agents"]), 26)
 
     async def test_endpoint_returns_authorized_test_state(self):
         await update_authorized_test_execution(

@@ -2,16 +2,17 @@ import asyncio
 import logging
 import sys
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("phantomscan")
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -28,13 +29,84 @@ from app.database import (
     initialize_database,
 )
 from app.models import HealthResponse
-from app.routers import active, admin_scope, agents, ai, auth, authorization, ci_cd, dos, execution, findings, github, intelligence, lab, learning, logs, multi_source, scan, self_audit
+from app.routers import active, admin_scope, agents, ai, auth, authorization, brutal, ci_cd, dos, execution, findings, github, intelligence, lab, learning, logs, multi_source, sast, scan, self_audit
 from app.services.jobs import scan_job_manager
 from app.services.openrouter_client import get_ai_status
 from app.websockets import scan_event_broker
 
 settings = get_settings()
 TERMINAL_SCAN_STATUSES = {"cancelled", "complete", "error"}
+
+# Security
+security = HTTPBearer(auto_error=False)
+
+
+async def get_current_user_ws(websocket: WebSocket) -> dict | None:
+    """Validate WebSocket connection via token in query params or headers.
+    
+    Returns the authenticated user dict, or None if auth is disabled/bypassed.
+    Does NOT call websocket.close() — the caller must handle acceptance/rejection.
+    """
+    # When WebSocket auth is disabled, allow all connections
+    if not settings.require_auth_on_websocket:
+        return {"id": "ws-anonymous", "role": "user"}
+
+    token = websocket.query_params.get("token")
+    if not token:
+        # Try Authorization header
+        auth_header = websocket.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+    if not token:
+        logger.warning("WebSocket connection rejected: no token provided")
+        return None
+
+    # API key mode: accept the configured API key value
+    if settings.api_key_enabled and settings.api_key_value and token == settings.api_key_value:
+        return {"id": "ws-user", "role": "user"}
+
+    # Secret key mode: accept matching secret_key (development / simple auth)
+    if settings.secret_key and token == settings.secret_key:
+        return {"id": "ws-user", "role": "user"}
+
+    # JWT mode: decode and validate normal JWT
+    if settings.secret_key:
+        try:
+            import jwt
+            from app.database import get_user_by_id
+            payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+            user_id = payload.get("sub")
+            if user_id:
+                exp = payload.get("exp")
+                if not exp or datetime.fromtimestamp(exp, tz=timezone.utc) >= datetime.now(timezone.utc):
+                    user = await get_user_by_id(user_id)
+                    if user and user.get("subscription_status") != "canceled":
+                        return user
+                else:
+                    logger.warning("WebSocket connection rejected: token expired for user %s", user_id)
+            else:
+                logger.warning("WebSocket connection rejected: token missing subject claim")
+        except jwt.InvalidTokenError as exc:
+            logger.warning("WebSocket connection rejected: invalid token (%s)", exc)
+
+    logger.warning("WebSocket connection rejected: token did not match any credential")
+    return None
+
+
+async def verify_health_auth(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
+    """Verify authentication for health endpoint."""
+    if not settings.require_auth_on_health:
+        return True
+    if not credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authentication")
+    # In production, verify JWT token
+    # For now, check against secret_key or API key
+    if settings.api_key_enabled and settings.api_key_value and credentials.credentials == settings.api_key_value:
+        return True
+    if settings.secret_key and credentials.credentials == settings.secret_key:
+        return True
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 @asynccontextmanager
@@ -99,7 +171,7 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
-print("CORS ALLOWED:", settings.cors_origins)
+logger.info("CORS allowed origins: %s", settings.cors_origins)
 
 app.add_middleware(
     CORSMiddleware,
@@ -113,7 +185,7 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error("Unhandled exception on %s: %s", request.url.path, exc, exc_info=True)
-    return JSONResponse(status_code=500, content={"detail": str(exc)[:1000]})
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 app.include_router(scan.router)
 app.include_router(active.router)
@@ -132,6 +204,8 @@ app.include_router(intelligence.router)
 app.include_router(learning.router)
 app.include_router(github.router)
 app.include_router(multi_source.router)
+app.include_router(sast.router)
+app.include_router(brutal.router)
 app.include_router(ci_cd.router)
 
 
@@ -164,7 +238,7 @@ async def health_snapshot() -> HealthResponse:
 
 
 @app.get("/api/health", response_model=HealthResponse)
-async def health_check() -> HealthResponse:
+async def health_check(_: bool = Depends(verify_health_auth)) -> HealthResponse:
     return await health_snapshot()
 
 
@@ -206,7 +280,15 @@ async def scan_snapshot(scan_id: int, scan_record: dict[str, Any]) -> dict[str, 
 
 @app.websocket("/ws/status")
 async def global_status(websocket: WebSocket) -> None:
+    # Accept the connection first to complete the HTTP upgrade
+    # (prevents "Pending" state in browser when auth fails)
     await websocket.accept()
+    user = await get_current_user_ws(websocket)
+    if not user:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+        return
+
+    logger.info("WebSocket /ws/status connected (user=%s)", user.get("id"))
     event_name = "status"
     try:
         while True:
@@ -227,19 +309,26 @@ async def global_status(websocket: WebSocket) -> None:
             event_name = "heartbeat"
             await asyncio.sleep(5)
     except (WebSocketDisconnect, RuntimeError):
+        logger.debug("WebSocket /ws/status disconnected")
         return
 
 
 @app.websocket("/ws/scan/{scan_id}")
 async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
-    print(f"🔌 WEBSOCKET CONNECTION ATTEMPTED for scan {scan_id}")
+    # Accept the connection first to complete the HTTP upgrade
     await websocket.accept()
+    user = await get_current_user_ws(websocket)
+    if not user:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+        return
+
+    logger.debug("WebSocket /ws/scan/%d connected (user=%s)", scan_id, user.get("id"))
     queue = await scan_event_broker.subscribe(scan_id)
     try:
         scan_record = await get_scan(scan_id)
         if scan_record is None:
             await websocket.send_json(event_envelope(scan_id, {"event": "error", "payload": {"error": "Scan not found"}}))
-            await websocket.close(code=1008)
+            await websocket.close(code=1008, reason="Scan not found")
             return
 
         await websocket.send_json(await scan_snapshot(scan_id, scan_record))
@@ -257,19 +346,26 @@ async def scan_updates(websocket: WebSocket, scan_id: int) -> None:
                     await websocket.send_json(
                         event_envelope(scan_id, {"event": "error", "payload": {"error": "Scan not found"}})
                     )
-                    await websocket.close(code=1008)
+                    await websocket.close(code=1008, reason="Scan not found")
                     return
                 await websocket.send_json(await scan_snapshot(scan_id, scan_record))
 
             scan_record = await get_scan(scan_id)
             if scan_record is None:
-                await websocket.close(code=1008)
+                await websocket.close(code=1008, reason="Scan not found")
                 return
             if scan_record["status"] in TERMINAL_SCAN_STATUSES:
                 await websocket.send_json(await scan_snapshot(scan_id, scan_record))
                 await websocket.close(code=1000)
                 return
     except (WebSocketDisconnect, RuntimeError):
+        logger.debug("WebSocket /ws/scan/%d disconnected", scan_id)
         return
+    except Exception as exc:
+        logger.error("WebSocket /ws/scan/%d error: %s", scan_id, exc, exc_info=True)
+        try:
+            await websocket.close(code=1011, reason="Internal error")
+        except Exception:
+            pass
     finally:
         await scan_event_broker.unsubscribe(scan_id, queue)

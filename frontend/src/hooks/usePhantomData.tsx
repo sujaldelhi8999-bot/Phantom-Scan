@@ -24,7 +24,7 @@ import type {
   SelfAuditStatusResponse
 } from '../types';
 
-const EXECUTION_POLL_INTERVAL = 2000;
+const EXECUTION_POLL_INTERVAL = 5000;
 const TERMINAL_EXECUTION: ExecutionLifecycle[] = ['COMPLETED', 'FAILED', 'CANCELLED'];
 const ACTIVE_EXECUTION: ExecutionLifecycle[] = ['QUEUED', 'STARTING', 'RUNNING', 'PAUSED'];
 
@@ -52,6 +52,20 @@ function isHealthResponse(value: unknown): value is HealthResponse {
   return typeof value === 'object' && value !== null && 'database' in value && 'scheduler' in value;
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = window.setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) window.clearTimeout(timer);
+  }
+}
+
 export function PhantomDataProvider({ children }: { children: ReactNode }) {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [scans, setScans] = useState<ScanHistoryItem[]>([]);
@@ -68,12 +82,25 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
   const refreshInFlight = useRef(false);
   const execPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [hasToken, setHasToken] = useState(() => !!localStorage.getItem('phantom_token'));
+
+  useEffect(() => {
+    const check = () => setHasToken(!!localStorage.getItem('phantom_token'));
+    window.addEventListener('storage', check);
+    const id = window.setInterval(check, 2000);
+    return () => { window.removeEventListener('storage', check); window.clearInterval(id); };
+  }, []);
+
   const refresh = async () => {
+    if (!hasToken) {
+      setLoading(false);
+      return;
+    }
     if (refreshInFlight.current) return;
     refreshInFlight.current = true;
     setRefreshing(true);
     try {
-      const [healthResult, scansResult, findingsResult, logsResult, agentsResult, selfAuditResult] = await Promise.allSettled([
+      const requests = Promise.allSettled([
         getHealth(),
         getScanHistory(),
         getFindings(),
@@ -82,27 +109,40 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
         getSelfAuditStatus()
       ]);
 
-      if (healthResult.status === 'fulfilled') setHealth(healthResult.value);
-      if (scansResult.status === 'fulfilled') setScans(scansResult.value);
-      if (findingsResult.status === 'fulfilled') setFindings(findingsResult.value);
-      if (logsResult.status === 'fulfilled') setLogs(logsResult.value);
-      if (agentsResult.status === 'fulfilled') setAgents(agentsResult.value);
-      if (selfAuditResult.status === 'fulfilled') setSelfAudit(selfAuditResult.value);
+      const results = await withTimeout(requests, 8000);
 
-      const failures = [healthResult, scansResult, findingsResult, logsResult, agentsResult, selfAuditResult].filter(
-        (result) => result.status === 'rejected'
-      );
-      setError(failures.length ? 'Some PhantomScan backend data could not be refreshed.' : null);
+      if (results) {
+        const [healthResult, scansResult, findingsResult, logsResult, agentsResult, selfAuditResult] = results;
 
-      const artifactScans = scansResult.status === 'fulfilled' ? scansResult.value.slice(0, 8) : scans.slice(0, 8);
-      const artifactResults = await Promise.allSettled(artifactScans.map((scan) => getScanArtifacts(scan.id)));
-      const nextArtifacts: Record<number, ScanArtifactsResponse> = {};
-      for (const result of artifactResults) {
-        if (result.status === 'fulfilled') {
-          nextArtifacts[result.value.scan_id] = result.value;
+        if (healthResult.status === 'fulfilled') setHealth(healthResult.value);
+        if (scansResult.status === 'fulfilled') setScans(scansResult.value);
+        if (findingsResult.status === 'fulfilled') setFindings(findingsResult.value);
+        if (logsResult.status === 'fulfilled') setLogs(logsResult.value);
+        if (agentsResult.status === 'fulfilled') setAgents(agentsResult.value);
+        if (selfAuditResult.status === 'fulfilled') setSelfAudit(selfAuditResult.value);
+
+        const failures = [healthResult, scansResult, findingsResult, logsResult, agentsResult, selfAuditResult].filter(
+          (result) => result.status === 'rejected'
+        );
+        setError(failures.length ? 'Some PhantomScan backend data could not be refreshed.' : null);
+
+        const artifactScans = scansResult.status === 'fulfilled' ? scansResult.value.slice(0, 8) : scans.slice(0, 8);
+        const artifactResults = await withTimeout(
+          Promise.allSettled(artifactScans.map((scan) => getScanArtifacts(scan.id))),
+          5000
+        );
+        if (artifactResults) {
+          const nextArtifacts: Record<number, ScanArtifactsResponse> = {};
+          for (const result of artifactResults) {
+            if (result.status === 'fulfilled') {
+              nextArtifacts[result.value.scan_id] = result.value;
+            }
+          }
+          setArtifactsByScanId((current) => ({ ...current, ...nextArtifacts }));
         }
+      } else {
+        setError('Backend data refresh timed out. Check that the API is reachable.');
       }
-      setArtifactsByScanId((current) => ({ ...current, ...nextArtifacts }));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -111,41 +151,76 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!hasToken) return;
     void refresh();
     const id = window.setInterval(() => void refresh(), 15000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [hasToken]);
 
   useEffect(() => {
+    if (!hasToken) return;
     let socket: WebSocket | null = null;
     let reconnect: number | undefined;
+    let connectTimeout: number | undefined;
     let active = true;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 6;
+    const CONNECT_TIMEOUT_MS = 5000;
 
     const connect = () => {
       if (!active) return;
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        setRealtimeState('error');
+        return;
+      }
       setRealtimeState('connecting');
       try {
         socket = new WebSocket(getWebSocketUrl('/ws/status'));
       } catch {
         setRealtimeState('error');
-        reconnect = window.setTimeout(connect, 5000);
+        reconnectAttempts += 1;
+        reconnect = window.setTimeout(connect, Math.min(5000 * reconnectAttempts, 30000));
         return;
       }
-      socket.onopen = () => setRealtimeState('open');
-      socket.onerror = () => setRealtimeState('error');
+
+      // Timeout: if connection doesn't open within CONNECT_TIMEOUT_MS, treat as error
+      connectTimeout = window.setTimeout(() => {
+        if (socket && socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+          setRealtimeState('error');
+          reconnectAttempts += 1;
+          reconnect = window.setTimeout(connect, Math.min(5000 * reconnectAttempts, 30000));
+        }
+      }, CONNECT_TIMEOUT_MS);
+
+      socket.onopen = () => {
+        if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = undefined; }
+        reconnectAttempts = 0;
+        setRealtimeState('open');
+      };
+      socket.onerror = () => {
+        setRealtimeState('error');
+      };
       socket.onmessage = (event: MessageEvent<string>) => {
         try {
           const parsed = JSON.parse(event.data) as Record<string, unknown>;
           const payload = typeof parsed.payload === 'object' && parsed.payload !== null ? parsed.payload : parsed;
           if (isHealthResponse(payload)) setHealth(payload);
         } catch {
-          setRealtimeState('error');
+          // Ignore malformed frames
         }
       };
-      socket.onclose = () => {
+      socket.onclose = (event: CloseEvent) => {
+        if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = undefined; }
         if (!active) return;
+        // Code 1008 = policy violation (auth failure) — stop retrying
+        if (event.code === 1008) {
+          setRealtimeState('error');
+          return;
+        }
         setRealtimeState('closed');
-        reconnect = window.setTimeout(connect, 5000);
+        reconnectAttempts += 1;
+        reconnect = window.setTimeout(connect, Math.min(5000 * reconnectAttempts, 30000));
       };
     };
 
@@ -153,6 +228,7 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
       if (reconnect) window.clearTimeout(reconnect);
+      if (connectTimeout) window.clearTimeout(connectTimeout);
       socket?.close();
     };
   }, []);
@@ -179,6 +255,7 @@ export function PhantomDataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!hasToken) return;
     const startPolling = () => {
       if (execPollingRef.current) {
         clearInterval(execPollingRef.current);

@@ -236,6 +236,7 @@ class ScanRequest(BaseModel):
     authorization_confirmed: bool = False
     business_logic_tests: list[BusinessLogicTest] = Field(default_factory=list, max_length=10)
     enable_exploitation: bool = False
+    enable_ai_exploitation: bool = False
 
     @model_validator(mode="after")
     def normalize_test_selection(self) -> "ScanRequest":
@@ -609,6 +610,8 @@ class ActiveRunRequest(BaseModel):
     selected_modules: list[TestModule] = Field(default_factory=list, max_length=25)
     authorization_id: int | None = Field(default=None, ge=1)
     authorization_confirmed: bool = False
+    enable_exploitation: bool = False
+    enable_ai_exploitation: bool = False
 
 
 class AuthorizedTestRunResponse(BaseModel):

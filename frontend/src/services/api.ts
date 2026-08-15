@@ -101,13 +101,19 @@ apiClient.interceptors.response.use(
 
 export function apiErrorMessage(error: unknown, fallback = 'PhantomScan could not complete the request.'): string {
   if (axios.isAxiosError(error)) {
-    const detail = error.response?.data as unknown;
-    if (typeof detail === 'string') return detail;
-    if (detail && typeof detail === 'object') {
-      const record = detail as Record<string, unknown>;
+    const data = error.response?.data as unknown;
+    if (typeof data === 'string') return data;
+    if (data && typeof data === 'object') {
+      const record = data as Record<string, unknown>;
       const nested = record.detail;
       if (typeof nested === 'string') return nested;
-      if (nested && typeof nested === 'object') {
+      if (Array.isArray(nested) && nested.length > 0) {
+        const msgs = nested
+          .map((item: Record<string, unknown>) => (typeof item?.msg === 'string' ? item.msg : null))
+          .filter(Boolean);
+        if (msgs.length > 0) return msgs.join('; ');
+      }
+      if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
         const nestedRecord = nested as Record<string, unknown>;
         if (typeof nestedRecord.message === 'string') return nestedRecord.message;
         if (typeof nestedRecord.code === 'string') return nestedRecord.code;
@@ -121,7 +127,10 @@ export function apiErrorMessage(error: unknown, fallback = 'PhantomScan could no
 export function getWebSocketUrl(path: string): string {
   const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
   const webSocketBase = (configured || baseUrl.replace(/^http/, 'ws')).replace(/\/$/, '');
-  return `${webSocketBase}${path.startsWith('/') ? path : `/${path}`}`;
+  const token = localStorage.getItem('phantom_token');
+  const wsPath = path.startsWith('/') ? path : '/' + path;
+  const tokenParam = token ? (wsPath.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token) : '';
+  return webSocketBase + wsPath + tokenParam;
 }
 
 export async function getHealth(): Promise<HealthResponse> {

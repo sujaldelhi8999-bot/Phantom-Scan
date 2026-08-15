@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GitBranch, Globe, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../services/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       await loginUser(email, password);
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Try again.');
+      setError(apiErrorMessage(err, 'Login failed. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     try {
       await loginWithProvider(provider);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || `Could not start ${provider} login.`);
+      setError(apiErrorMessage(err, `Could not start ${provider} login.`));
       setSsoProvider(null);
     }
   };

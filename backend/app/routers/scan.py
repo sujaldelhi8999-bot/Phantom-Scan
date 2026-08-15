@@ -84,7 +84,7 @@ async def start_scan(
     scan_request: ScanRequest,
     user: dict = Depends(get_current_user),
 ) -> ScanResponse:
-    print("[SCAN] REQUEST RECEIVED")
+    logger.debug("[SCAN] REQUEST RECEIVED")
     logger.info("Scan request received for target=%s mode=%s user=%s", scan_request.target_url, scan_request.mode, user["id"])
     try:
         admission = await scan_policy.admit(scan_request, user["id"], user.get("role", "user"))

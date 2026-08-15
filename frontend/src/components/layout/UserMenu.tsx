@@ -42,6 +42,11 @@ export default function UserMenu() {
         aria-label="User menu"
         aria-expanded={open}
       >
+        {/* Avatar (first letter) */}
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)] to-indigo-600 text-[11px] font-bold text-white">
+          {initial}
+        </span>
+
         {/* Role / Plan Badge inside pill */}
         {user.role === 'admin' ? (
           <span className="flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
@@ -66,8 +71,15 @@ export default function UserMenu() {
       {open ? (
         <div className="absolute right-0 top-11 z-50 w-60 overflow-hidden rounded-2xl border border-[var(--border-light)] bg-white dark:bg-gray-900 p-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="border-b border-gray-100 dark:border-gray-800 px-3 py-2.5 mb-1">
-            <div className="truncate text-xs font-bold text-gray-900 dark:text-white">{displayName}</div>
-            <div className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{emailDisplay}</div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)] to-indigo-600 text-sm font-bold text-white">
+                {initial}
+              </span>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-bold text-gray-900 dark:text-white">{displayName}</div>
+                <div className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{emailDisplay}</div>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-0.5">

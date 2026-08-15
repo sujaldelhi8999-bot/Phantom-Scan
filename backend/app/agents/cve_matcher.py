@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from typing import Any
 from urllib.parse import quote_plus
@@ -8,6 +9,8 @@ from packaging.version import Version
 
 from app.agents import Agent
 from app.config import get_settings
+
+logger = logging.getLogger("phantomscan.cve_matcher")
 
 
 JS_VULN_CHECK = {
@@ -150,7 +153,8 @@ class CVEMatcherAgent(Agent):
         if match:
             try:
                 return Version(match.group(1))
-            except Exception:
+            except Exception as e:
+                logger.debug("Error: %s", e)
                 return None
         return None
 
@@ -180,7 +184,8 @@ class CVEMatcherAgent(Agent):
                     return False
 
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug("Error: %s", e)
             return True
 
     def _extract_technologies(self, tech_stack: dict[str, Any]) -> list[str]:
@@ -216,7 +221,8 @@ class CVEMatcherAgent(Agent):
                 try:
                     r = await client.get(url, headers={"apiKey": self.settings.nvd_api_key})
                     r.raise_for_status()
-                except Exception:
+                except Exception as e:
+                    logger.debug("Error: %s", e)
                     continue
 
                 data = r.json()
@@ -351,6 +357,7 @@ class CVEMatcherAgent(Agent):
                                 "version_affected": f"<{info['min_fixed']}",
                                 "cpe": f"cpe:2.3:a:{vendor}:{product}:{found_v}:*:*:*:*:*:*:*",
                             })
-                    except Exception:
+                    except Exception as e:
+                        logger.debug("Error: %s", e)
                         pass
         return matches

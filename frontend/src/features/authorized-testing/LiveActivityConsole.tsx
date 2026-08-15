@@ -66,6 +66,7 @@ export default function LiveActivityConsole({
 }) {
   const [events, setEvents] = useState<JobEvent[]>([]);
   const [latestSequence, setLatestSequence] = useState(0);
+  const latestSequenceRef = useRef(0);
   const [paused, setPaused] = useState(false);
   const [bufferedEvents, setBufferedEvents] = useState<JobEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -120,6 +121,7 @@ export default function LiveActivityConsole({
               });
             }
             setLatestSequence(response.latest_sequence);
+            latestSequenceRef.current = response.latest_sequence;
           }
         }
       } catch {
@@ -133,15 +135,16 @@ export default function LiveActivityConsole({
     (id: string) => {
       stopPolling();
       void fetchEvents(id, 0);
-      pollingRef.current = setInterval(() => void fetchEvents(id, latestSequence), POLL_INTERVAL);
+      pollingRef.current = setInterval(() => void fetchEvents(id, latestSequenceRef.current), POLL_INTERVAL);
     },
-    [fetchEvents, stopPolling, latestSequence],
+    [fetchEvents, stopPolling],
   );
 
   useEffect(() => {
     if (jobId && isRunning) {
       setEvents([]);
       setLatestSequence(0);
+      latestSequenceRef.current = 0;
       setBufferedEvents([]);
       setPaused(false);
       setModuleFilter(null);
@@ -155,6 +158,7 @@ export default function LiveActivityConsole({
     } else {
       setEvents([]);
       setLatestSequence(0);
+      latestSequenceRef.current = 0;
       stopPolling();
     }
     return () => stopPolling();

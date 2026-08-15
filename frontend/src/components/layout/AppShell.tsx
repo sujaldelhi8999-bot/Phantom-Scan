@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Command,
   FileClock,
+  FileSearch,
   FileText,
   GitBranch,
   HeartPulse,
@@ -25,6 +26,7 @@ import {
   Settings,
   Shield,
   ShieldAlert,
+  Skull,
   Sparkles,
   Stethoscope,
   Workflow,
@@ -72,6 +74,8 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { label: 'Authorized Testing', path: '/authorized-testing', icon: LockKeyhole },
       { label: 'DoS Testing', path: '/private/dos', icon: Bomb },
+      { label: 'Code Analysis', path: '/code-analysis', icon: FileSearch },
+      { label: 'Brutal Mode', path: '/brutal', icon: Skull },
       { label: 'Self Audit', path: '/self-audit', icon: Stethoscope },
     ],
   },
@@ -103,6 +107,8 @@ const routeDetails: Record<string, { title: string; description: string }> = {
   '/settings': { title: 'Settings', description: 'Runtime configuration reference.' },
   '/authorized-testing': { title: 'Authorized Testing', description: 'Controlled security testing for approved targets.' },
   '/private/dos': { title: 'DoS Testing', description: 'Simulate Denial of Service attacks on authorized targets.' },
+  '/code-analysis': { title: 'Code Analysis', description: 'Scan GitHub repositories for secrets, insecure patterns, and vulnerable dependencies.' },
+  '/brutal': { title: 'Brutal Mode', description: 'Active exploitation, interactive shells, post-exploitation, lateral movement & exfiltration.' },
   '/quality': { title: 'Scan Quality', description: 'Learning-driven accuracy and tuning recommendations.' },
   '/profile': { title: 'Profile', description: 'Your account details and session information.' },
 };
@@ -126,6 +132,7 @@ function Sidebar({
   onToggleCollapse: () => void;
 }) {
   const location = useLocation();
+  const { user } = useAuth();
   const sidebar = (
     <div className="flex h-full flex-col bg-[var(--sidebar-canvas)]">
       {/* Logo area */}
@@ -154,7 +161,12 @@ function Sidebar({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-compact">
-        {navGroups.map((group) => (
+        {navGroups.map((group) => {
+          const items = group.items.filter(
+            (item) => (item.path !== '/code-analysis' && item.path !== '/brutal') || user?.role === 'admin',
+          );
+          if (items.length === 0) return null;
+          return (
           <div key={group.label} className="mt-5 first:mt-0">
             {!collapsed ? (
               <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-subtle)]">
@@ -162,7 +174,7 @@ function Sidebar({
               </div>
             ) : null}
             <div className="space-y-0.5">
-              {group.items.map((item) => {
+              {items.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.path === '/'
                   ? location.pathname === '/'
@@ -191,7 +203,8 @@ function Sidebar({
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom area */}
@@ -748,8 +761,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Degraded banner */}
-        {health?.status === 'degraded' || realtimeState === 'error' ? (
+        {/* Degraded banner — only when backend health endpoint reports degraded */}
+        {health?.status === 'degraded' ? (
           <div className="mx-5 mt-4 rounded-xl border border-[var(--warning-soft)] bg-[var(--warning-soft)]/40 px-4 py-2.5 text-xs text-[var(--warning)]">
             Backend telemetry is degraded. Data reflects the latest reachable state.
           </div>

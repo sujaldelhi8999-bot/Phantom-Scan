@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import ssl
 import traceback
 import re
@@ -8,6 +9,8 @@ from typing import Any
 import httpx
 
 from app.agents import Agent
+
+logger = logging.getLogger("phantomscan.analyzer")
 
 
 SECURITY_HEADERS = {
@@ -65,46 +68,46 @@ class AnalyzerAgent(Agent):
 
         try:
             headers = await self._get_headers(target_url, scanner_output)
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to get headers for %s", target_url)
             raise
 
         findings: list[dict[str, Any]] = []
 
         try:
             findings.extend(self._check_headers(headers, target_url))
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to check headers for %s", target_url)
             raise
 
         try:
             findings.extend(await self._check_cors(target_url))
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to check CORS for %s", target_url)
             raise
 
         try:
             findings.extend(self._check_cookies(headers))
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to check cookies for %s", target_url)
             raise
 
         try:
             findings.extend(await self._check_tls(target_url))
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to check TLS for %s", target_url)
             raise
 
         try:
             findings.extend(self._check_info_leakage(headers))
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to check info leakage for %s", target_url)
             raise
 
         try:
             findings.extend(await self._check_http_methods(target_url))
-        except Exception:
-            traceback.print_exc()
+        except Exception as e:
+            logger.exception("Failed to check HTTP methods for %s", target_url)
             raise
 
         self.status = "complete"
@@ -131,7 +134,8 @@ class AnalyzerAgent(Agent):
             try:
                 r = await c.get(url)
                 return {k.lower(): v for k, v in r.headers.items()}
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to fetch headers from %s: %s", url, e)
                 return {}
 
     def _check_headers(self, headers: dict[str, str], target: str) -> list[dict[str, Any]]:
@@ -288,8 +292,8 @@ class AnalyzerAgent(Agent):
                         acao2 = r2.headers.get("access-control-allow-origin", "")
                         if acao2 == "https://attacker-different-test.com":
                             is_dynamic_reflection = True
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("CORS reflection test failed: %s", e)
 
                     if is_dynamic_reflection:
                         findings.append(self._finding(
@@ -316,8 +320,8 @@ class AnalyzerAgent(Agent):
                             acac3 = r3.headers.get("access-control-allow-credentials", "")
                             if acao3 == "https://another-test.com" and acac3.lower() == "true":
                                 is_wildcard_creds = True
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("CORS wildcard credentials test failed: %s", e)
 
                     if is_wildcard_creds:
                         findings.append(self._finding(
@@ -331,8 +335,8 @@ class AnalyzerAgent(Agent):
                             f"ACAO: {acao1}, ACAC: true", "CORS policy allows credentials from a specific non-wildcard origin",
                             "Verify the allowed origin is intentional and properly restricted", target_url
                         ))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("CORS check failed for %s: %s", target_url, e)
 
         return findings
 
@@ -453,8 +457,8 @@ class AnalyzerAgent(Agent):
                     try:
                         r = await c.get(f"https://{host}")
                         hsts_h = r.headers.get("strict-transport-security", "")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("HSTS preload check failed for %s: %s", host, e)
 
                 if hsts_h and "preload" in hsts_h:
                     findings.append(self._finding(
@@ -462,7 +466,8 @@ class AnalyzerAgent(Agent):
                         "HSTS includes preload", "Ready for preload list submission",
                         "Submit to https://hstspreload.org", target_url
                     ))
-        except Exception:
+        except Exception as e:
+            logger.debug("TLS connection check failed for %s:443: %s", host, e)
             findings.append(self._finding(
                 "Could not establish TLS connection", "TLS", "medium",
                 f"Failed to connect to {host}:443", "TLS may not be available",
@@ -546,8 +551,8 @@ class AnalyzerAgent(Agent):
                                 "Allow header only lists GET", "POST endpoints may be hidden or not implemented",
                                 "Verify POST endpoints are intentionally hidden or properly secured", target_url
                             ))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("HTTP methods check failed for %s: %s", target_url, e)
 
         return findings
 

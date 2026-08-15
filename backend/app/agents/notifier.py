@@ -1,9 +1,12 @@
+import logging
 from typing import Any
 
 import httpx
 
 from app.agents import Agent
 from app.config import get_settings
+
+logger = logging.getLogger("phantomscan.notifier")
 
 
 class NotifierAgent(Agent):
@@ -91,5 +94,6 @@ class NotifierAgent(Agent):
             try:
                 r = await client.post(dest, json=payload)
                 return {"delivered": 200 <= r.status_code < 300, "status_code": r.status_code}
-            except Exception:
+            except Exception as e:
+                logger.debug("Error: %s", e)
                 return {"delivered": False, "status_code": None}

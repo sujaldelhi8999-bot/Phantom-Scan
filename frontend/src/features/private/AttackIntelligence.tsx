@@ -6,12 +6,10 @@ import {
   Lock,
   Search,
   Shield,
-  Target,
   Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import type { Severity } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { apiClient, apiErrorMessage } from '../../services/api';
 import {

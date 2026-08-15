@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -8,6 +9,8 @@ import httpx
 import whois
 
 from app.agents import Agent
+
+logger = logging.getLogger("phantomscan.shadow_recon")
 
 SENSITIVE_PATHS = [
     "/.git/HEAD", "/.env", "/config.php", "/wp-config.php",
@@ -335,7 +338,10 @@ class ShadowReconAgent(Agent):
 
     async def _lookup_whois(self, domain: str) -> dict[str, Any]:
         try:
-            result = await asyncio.to_thread(whois.whois, domain)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(whois.whois, domain, quiet=True),
+                timeout=12,
+            )
             data = {}
             for k, v in dict(result).items():
                 if v is not None:
@@ -349,7 +355,7 @@ class ShadowReconAgent(Agent):
                 "raw": {k: v for k, v in data.items() if k in ("dnssec", "status", "emails", "country")},
             }
         except Exception as exc:
-            await self.log_action("whois_error", str(exc))
+            logger.debug("WHOIS lookup failed for %s: %s", domain, exc)
             return {}
 
     def _build_dorks(self, domain: str) -> list[str]:
@@ -361,7 +367,8 @@ class ShadowReconAgent(Agent):
             try:
                 r = await c.get(url, headers={"User-Agent": "PhantomScan/1.0"})
                 return {"url": url, "status_code": r.status_code, "body": r.text[:50000]}
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to fetch %s: %s", url, e)
                 return {"url": url, "status_code": None, "body": ""}
 
     async def _fetch_wayback_urls(self, domain: str) -> list[dict[str, Any]]:
@@ -388,32 +395,45 @@ class ShadowReconAgent(Agent):
                             "mime_type": row[3] if len(row) > 3 else None,
                             "source": "wayback",
                         })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Wayback Machine lookup failed for %s: %s", domain, e)
         return urls
 
     async def _fetch_crtsh_subdomains(self, domain: str) -> list[dict[str, Any]]:
         subdomains: list[dict[str, Any]] = []
-        try:
-            url = CRTSH_URL.format(domain=domain)
-            async with httpx.AsyncClient(timeout=15.0, verify=False) as c:
-                r = await c.get(url)
-                r.raise_for_status()
-                data = r.json()
-                for entry in data:
-                    name_value = entry.get("name_value", "")
-                    if name_value:
-                        for sub in name_value.split("\n"):
-                            sub = sub.strip().lower()
-                            if sub and sub.endswith(f".{domain}") and sub not in subdomains:
-                                subdomains.append({
-                                    "subdomain": sub,
-                                    "not_before": entry.get("not_before"),
-                                    "not_after": entry.get("not_after"),
-                                    "source": "crt.sh",
-                                })
-        except Exception:
-            pass
+        url = CRTSH_URL.format(domain=domain)
+        last_exc: Exception | None = None
+        # crt.sh is prone to transient 503s — retry with exponential backoff
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=15.0, verify=False) as c:
+                    r = await c.get(url)
+                    if r.status_code in (429, 503):
+                        raise httpx.HTTPStatusError(
+                            f"crt.sh returned {r.status_code}",
+                            request=r.request,
+                            response=r,
+                        )
+                    r.raise_for_status()
+                    data = r.json()
+                    for entry in data:
+                        name_value = entry.get("name_value", "")
+                        if name_value:
+                            for sub in name_value.split("\n"):
+                                sub = sub.strip().lower()
+                                if sub and sub.endswith(f".{domain}") and sub not in subdomains:
+                                    subdomains.append({
+                                        "subdomain": sub,
+                                        "not_before": entry.get("not_before"),
+                                        "not_after": entry.get("not_after"),
+                                        "source": "crt.sh",
+                                    })
+                    return subdomains
+            except Exception as exc:
+                last_exc = exc
+                if attempt < 2:
+                    await asyncio.sleep(1.5 * (attempt + 1))
+        logger.debug("crt.sh lookup failed for %s: %s", domain, last_exc)
         return subdomains
 
     def _parse_robots(self, body: str) -> list[str]:
@@ -506,8 +526,8 @@ class ShadowReconAgent(Agent):
                             "last_modified": headers.get("last-modified"),
                             "snippet": r.text[:200] if r.status_code in (200, 403) else "",
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Brute force check failed for %s: %s", url, e)
 
         chunk_size = 60
         for i in range(0, len(paths), chunk_size):
@@ -558,8 +578,8 @@ class ShadowReconAgent(Agent):
                         "allow": headers.get("allow", ""),
                         "schema": schema,
                     })
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("API discovery check failed for %s: %s", url, e)
 
         for pattern in patterns:
             await check(base_url + pattern, pattern)
@@ -576,8 +596,8 @@ class ShadowReconAgent(Agent):
                             if entry["endpoint"] == "/api":
                                 entry["allow"] = allow
                                 break
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("OPTIONS request failed for %s/api: %s", base_url, e)
 
         return sorted(found, key=lambda e: e["status"])
 
@@ -598,7 +618,8 @@ class ShadowReconAgent(Agent):
                 summary["paths_count"] = len(paths) if isinstance(paths, dict) else 0
                 summary["paths"] = list(paths.keys())[:50] if isinstance(paths, dict) else []
             return summary or None
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to extract schema from response: %s", e)
             return None
 
     async def _introspect_graphql(self, base: str) -> dict[str, Any] | None:
@@ -629,7 +650,8 @@ class ShadowReconAgent(Agent):
                         "types": types[:100],
                         "types_count": len(types),
                     }
-            except Exception:
+            except Exception as e:
+                logger.debug("GraphQL introspection failed for %s%s: %s", base_url, candidate, e)
                 continue
         return None
 
@@ -649,8 +671,8 @@ class ShadowReconAgent(Agent):
                             "status_code": r.status_code,
                             "snippet": body[:200],
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Sensitive path check failed for %s: %s", url, e)
 
         await asyncio.gather(*[check(p) for p in SENSITIVE_PATHS])
         return results

@@ -259,7 +259,7 @@ async def github_webhook(request: Request) -> dict[str, str]:
                 ),
                 name=f"phantomscan-pr-{repo_full_name}-{pr_number}",
             )
-            scan_job_manager._tasks[scan_id] = task
+            await scan_job_manager.register_task(scan_id, task)
             logger.info(
                 f"PR #{pr_number} in {repo_full_name} - {len(pr_data.get('files', []))} files changed, scan #{scan_id} started"
             )

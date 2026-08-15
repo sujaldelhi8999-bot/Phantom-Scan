@@ -168,6 +168,24 @@ class AIExplainerAgent(Agent):
 
         return enriched
 
+    def _find_template(self, title: str, category: str) -> dict[str, str] | None:
+        """Find a static template based on finding title/category."""
+        t = (title + " " + category).lower()
+        for key, template in STATIC_TEMPLATES.items():
+            if key in t:
+                return template
+                
+        # Additional mappings for common variations
+        if "sql" in t: return STATIC_TEMPLATES.get("sqli")
+        if "cross-site" in t: return STATIC_TEMPLATES.get("xss")
+        if "direct object reference" in t: return STATIC_TEMPLATES.get("idor")
+        if "command injection" in t: return STATIC_TEMPLATES.get("rce")
+        if "local file inclusion" in t or "directory traversal" in t or "path traversal" in t: return STATIC_TEMPLATES.get("lfi")
+        if "redirect" in t: return STATIC_TEMPLATES.get("open_redirect")
+        if "xml external entity" in t: return STATIC_TEMPLATES.get("xxe")
+        if "template injection" in t: return STATIC_TEMPLATES.get("ssti")
+        return None
+
     def _map_to_skill(self, title: str, category: str) -> str | None:
         """Map finding title/category to skill name."""
         t = (title + " " + category).lower()

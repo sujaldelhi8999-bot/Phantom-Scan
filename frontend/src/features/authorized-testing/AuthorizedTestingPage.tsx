@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   CheckCircle2,
   ClipboardCopy,
+  Download,
   Loader2,
   LockKeyhole,
   ShieldCheck,
@@ -59,6 +60,8 @@ import type {
   AuthorizedJobStatus,
   AuthorizedTestJobResponse,
   ComplexityResult,
+  ExploitationOutcome,
+  ExploitationSummary,
   LabStatusResponse,
   PrivateScopeEntry,
   ScanIntensity,
@@ -158,6 +161,8 @@ export default function AuthorizedTestingPage() {
   const [selectedTests, setSelectedTests] = useState<TestModule[]>(defaultModules);
   const [profile, setProfile] = useState<ScanIntensity>('medium');
   const [confirmation, setConfirmation] = useState(true);
+  const [enableExploitation, setEnableExploitation] = useState(false);
+  const [enableAIExploitation, setEnableAIExploitation] = useState(false);
   const [mapResult, setMapResult] = useState<ActiveMapResponse | null>(null);
   const [complexity, setComplexity] = useState<ComplexityResult | null>(null);
   const [complexityLoading, setComplexityLoading] = useState(false);
@@ -483,6 +488,8 @@ export default function AuthorizedTestingPage() {
         selected_modules: selectedTests,
         authorization_id: verifiedExternal ? mapResult.gate.authorization_id ?? authorization?.id ?? null : null,
         authorization_confirmed: verifiedExternal ? confirmation : false,
+        enable_exploitation: enableExploitation,
+        enable_ai_exploitation: enableAIExploitation,
       });
       setJobId(response.job_id);
       setJobData({
@@ -554,6 +561,58 @@ export default function AuthorizedTestingPage() {
   const findingsCount = jobData?.findings_count ?? 0;
   const surfacesTotal = jobData?.surfaces_total ?? 0;
   const surfacesCompleted = jobData?.surfaces_completed ?? 0;
+
+  const exploitationSummary = (jobResults?.resultSummary?.exploitation as ExploitationSummary | undefined) ?? null;
+  const staticExploitation = exploitationSummary?.static?.exploitation_results ?? [];
+  const aiExploitation = exploitationSummary?.ai?.exploitation_results ?? [];
+  const exploitedCount = staticExploitation.filter((r) => r.success).length;
+  const aiValidatedCount = aiExploitation.filter((r) => r.status === 'validated').length;
+  const hasExploitationResults = staticExploitation.length > 0 || aiExploitation.length > 0;
+
+  const downloadExploitationReport = () => {
+    const lines: string[] = [
+      '# PhantomScan Exploitation Report',
+      '',
+      `Target: ${target}`,
+      `Scan ID: ${jobData?.scan_id ?? 'N/A'}`,
+      `Generated: ${new Date().toISOString()}`,
+      '',
+      `## Static Exploitation (${exploitedCount}/${staticExploitation.length} confirmed)`,
+    ];
+    for (const r of staticExploitation) {
+      lines.push('', `### ${r.type.replace(/_/g, ' ').toUpperCase()} — ${r.endpoint}`);
+      lines.push(`- Status: ${r.success ? 'EXPLOITED' : (r.status ?? 'FAILED')}${r.reason ? ` (${r.reason})` : ''}`);
+      lines.push(`- Summary: ${r.summary}`);
+      if (r.database_type) lines.push(`- Database: ${r.database_type}`);
+      if (r.tables?.length) lines.push(`- Tables: ${r.tables.join(', ')}`);
+      if (r.extracted?.length) lines.push(`- Extracted: ${r.extracted.join(' | ')}`);
+      if (r.files?.length) lines.push(`- Files: ${r.files.map((f) => f.file ?? f.payload_type ?? 'unknown').join(', ')}`);
+      if (r.commands?.length) lines.push(`- Commands: ${r.commands.map((c) => c.command).join(', ')}`);
+      if (r.poc_url) lines.push(`- PoC URL: ${r.poc_url}`);
+      if (r.poc_payload) lines.push(`- PoC Payload: ${r.poc_payload}`);
+      if (r.error) lines.push(`- Error: ${r.error}`);
+    }
+    if (exploitationSummary?.ai) {
+      lines.push('', '## AI Exploitation');
+      lines.push(`- AI available: ${exploitationSummary.ai.ai_available ? 'yes' : 'no (template fallback)'}`);
+      lines.push(`- Summary: ${exploitationSummary.ai.summary ?? 'N/A'}`);
+      for (const r of aiExploitation) {
+        lines.push('', `### ${r.vulnerability_type ?? 'PoC'} (finding ${r.finding_id ?? 'N/A'})`);
+        lines.push(`- Status: ${r.status ?? 'unknown'}`);
+        if (r.error) lines.push(`- Error: ${r.error}`);
+        if (r.report) lines.push('', r.report);
+      }
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `phantomscan-exploitation-${jobData?.scan_id ?? 'report'}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const currentStage = mapResult ? (isRunning ? 6 : jobData ? 7 : (authorization?.status === 'VERIFIED' || isAdmin) ? 3 : 2) : 1;
   const stages = [
@@ -651,7 +710,6 @@ export default function AuthorizedTestingPage() {
     onClick={async () => {
       if (!target.trim()) return;
       try {
-        console.log('⚡ Adding to private scope:', target);
         const result = await addToPrivateScope(target);
         toast.success(result.message || 'Added to private scope ✅');
         void fetchPrivateScope();
@@ -1013,6 +1071,43 @@ export default function AuthorizedTestingPage() {
                     {gateStatus === 'VERIFIED' ? 'I confirm authorization for this target.' : 'Lab target — auto-confirmed.'}
                   </span>
                 </label>
+                <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={enableExploitation}
+                      onChange={(e) => {
+                        setEnableExploitation(e.target.checked);
+                        if (!e.target.checked) setEnableAIExploitation(false);
+                      }}
+                      disabled={isRunning}
+                      className="h-3.5 w-3.5 rounded border-[var(--border-default)] bg-[var(--bg-inset)] text-[var(--danger)]"
+                    />
+                    <span className="font-semibold text-[var(--danger)]">Enable Exploitation</span>
+                  </label>
+                  <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                    Actively exploit CRITICAL/HIGH findings (SQL injection, XSS, path traversal, command injection)
+                    against this authorized target.
+                  </p>
+                  {enableExploitation ? (
+                    <div className="mt-2 border-t border-red-500/20 pt-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={enableAIExploitation}
+                          onChange={(e) => setEnableAIExploitation(e.target.checked)}
+                          disabled={isRunning}
+                          className="h-3.5 w-3.5 rounded border-[var(--border-default)] bg-[var(--bg-inset)] text-[var(--danger)]"
+                        />
+                        <span className="text-[var(--text-secondary)]">Enable AI Exploitation</span>
+                      </label>
+                      <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-muted)]">
+                        Use OpenRouter to generate context-aware payloads. Falls back to deterministic templates
+                        when no API key is configured.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
                 <InfoCallout title="Safety is backend-enforced">
                   <p className="mt-0.5 text-[var(--text-muted)]">
                     Rate limits, timeout, and scope are enforced by the backend.
@@ -1133,6 +1228,116 @@ export default function AuthorizedTestingPage() {
               />
               <EvidencePanel jobId={jobId} isRunning={isRunning} />
             </div>
+
+            {/* Exploitation Results */}
+            {hasExploitationResults ? (
+              <div className="mt-4">
+                <SectionHeader
+                  title="Exploitation Results"
+                  description={
+                    terminalJobStatuses.includes(jobData.status)
+                      ? `${exploitedCount} exploited · ${aiValidatedCount} AI-validated PoCs`
+                      : 'Exploitation phase in progress'
+                  }
+                  action={
+                    <Button
+                      variant="secondary"
+                      onClick={downloadExploitationReport}
+                      disabled={!terminalJobStatuses.includes(jobData.status)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download Exploitation Report
+                    </Button>
+                  }
+                />
+                {staticExploitation.length > 0 ? (
+                  <div className="space-y-2">
+                    {staticExploitation.map((r, i) => (
+                      <div key={`static-${i}`} className="rounded-md border border-[var(--border-default)] p-3">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={r.success ? 'EXPLOITED' : (r.status ?? 'FAILED')} />
+                          <span className="text-xs font-medium capitalize text-[var(--text-primary)]">
+                            {r.type.replace(/_/g, ' ')}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[var(--text-muted)]">
+                            {r.endpoint}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs text-[var(--text-secondary)]">{r.summary}</p>
+                        {r.reason ? (
+                          <p className="mt-1 text-[10px] text-[var(--text-muted)]">Skipped: {r.reason}</p>
+                        ) : null}
+                        {r.database_type ? (
+                          <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                            Database: <span className="font-mono">{r.database_type}</span>
+                            {r.tables?.length ? ` · Tables: ${r.tables.join(', ')}` : ''}
+                          </p>
+                        ) : null}
+                        {r.poc_url || r.poc_payload ? (
+                          <details className="mt-1.5">
+                            <summary className="cursor-pointer text-[10px] text-[var(--text-muted)]">
+                              PoC details
+                            </summary>
+                            <div className="mt-1 space-y-1">
+                              {r.poc_url ? (
+                                <code className="block break-all rounded bg-[var(--bg-inset)] p-2 font-mono text-[10px] text-[var(--text-secondary)]">
+                                  {r.poc_url}
+                                </code>
+                              ) : null}
+                              {r.poc_payload ? (
+                                <code className="block break-all rounded bg-[var(--bg-inset)] p-2 font-mono text-[10px] text-[var(--text-secondary)]">
+                                  {r.poc_payload}
+                                </code>
+                              ) : null}
+                            </div>
+                          </details>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No exploitable outcomes"
+                    description="No CRITICAL/HIGH findings could be exploited on this target."
+                    compact
+                  />
+                )}
+                {aiExploitation.length > 0 ? (
+                  <div className="mt-3">
+                    <div className="mb-1.5 text-[11px] font-semibold text-[var(--text-secondary)]">
+                      AI-generated PoCs{' '}
+                      {exploitationSummary?.ai?.ai_available ? '' : '(template fallback — no OpenRouter key)'}
+                    </div>
+                    <div className="space-y-1.5">
+                      {aiExploitation.map((r, i) => (
+                        <div key={`ai-${i}`} className="rounded-md border border-[var(--border-default)] p-2.5">
+                          <div className="flex items-center gap-2">
+                            <StatusBadge status={r.status === 'validated' ? 'VALIDATED' : 'FAILED'} />
+                            <span className="text-xs font-medium capitalize text-[var(--text-primary)]">
+                              {(r.vulnerability_type ?? 'PoC').replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-muted)]">finding #{r.finding_id ?? 'N/A'}</span>
+                          </div>
+                          {r.report ? (
+                            <details className="mt-1.5">
+                              <summary className="cursor-pointer text-[10px] text-[var(--text-muted)]">
+                                PoC report
+                              </summary>
+                              <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-[var(--bg-inset)] p-2 font-mono text-[10px] text-[var(--text-secondary)]">
+                                {r.report}
+                              </pre>
+                            </details>
+                          ) : null}
+                          {r.error ? (
+                            <p className="mt-1 text-[10px] text-[var(--error)]">{r.error}</p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </Panel>
       ) : null}

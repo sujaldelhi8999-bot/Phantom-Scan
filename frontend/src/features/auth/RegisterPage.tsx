@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Mail, Lock, User, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { apiErrorMessage } from '../../services/api';
 
 const RegisterPage: React.FC = () => {
   const [name, setName] = useState('');
@@ -34,7 +35,7 @@ const RegisterPage: React.FC = () => {
       await registerUser(email, password, name.trim() || undefined);
       navigate('/scan', { replace: true });
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      setError(apiErrorMessage(err, 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -45,7 +46,7 @@ const RegisterPage: React.FC = () => {
     try {
       await loginWithProvider(provider);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || `Could not start ${provider} login.`);
+      setError(apiErrorMessage(err, `Could not start ${provider} login.`));
     }
   };
 

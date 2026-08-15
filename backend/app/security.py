@@ -38,11 +38,16 @@ def _get_fernet() -> Fernet:
     global _fernet
     if _fernet is None:
         settings = get_settings()
+        if not settings.secret_key:
+            raise RuntimeError(
+                "SECRET_KEY is not configured. Set the SECRET_KEY environment variable "
+                "before using encryption features."
+            )
         # Derive key from secret
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=b"phantomscan-salt",  # In production, use a proper salt
+            salt=b"phantomscan-salt-v1",  # TODO: Move to env-configurable per-deployment salt
             iterations=100000,
         )
         key = base64.urlsafe_b64encode(kdf.derive(settings.secret_key.encode()))

@@ -48,7 +48,7 @@ class ApplyPatchRequest(BaseModel):
     verify_after: bool = Field(default=True, description="Whether to run verification after applying patch")
 
 
-async def _verify_finding_ownership(finding_id: int, user_id: str) -> dict[str, Any]:
+async def _verify_finding_ownership(finding_id: int, user_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     finding = await get_finding(finding_id)
     if not finding:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")

@@ -76,7 +76,8 @@ class BackendStartupAndContractTests(TestCase):
             ]:
                 self.assertIn(path, paths)
 
-            with client.websocket_connect("/ws/status") as websocket:
+            headers = create_auth_headers(client)
+            with client.websocket_connect("/ws/status", headers=headers) as websocket:
                 message = websocket.receive_json()
                 self.assertIn(message["event"], {"status", "heartbeat"})
                 self.assertEqual(message["payload"]["database"], "available")

@@ -237,7 +237,7 @@ async def graphql(request: Request) -> JSONResponse:
 
 
 @router.get("/lab/phantombank/redirect")
-async def redirect(next: str = "/lab/phantombank") -> Response:
+async def lab_redirect(next: str = "/lab/phantombank") -> Response:
     if is_vulnerable("redirect"):
         return RedirectResponse(next, status_code=302, headers=lab_headers())
     if next.startswith("/lab/phantombank") and not next.startswith("//"):
@@ -280,6 +280,270 @@ async def prices_websocket(websocket: WebSocket) -> None:
     await websocket.accept()
     await websocket.send_text(json.dumps({"symbol": "PHB-DEMO", "price": "101.25", "training_only": True}))
     await websocket.close(code=1000)
+
+
+# ---------------------------------------------------------------------------
+# Brutal Mode lab simulation.
+#
+# These endpoints simulate the "compromised host / internal network" side of
+# an engagement. They only ever return FAKE training data, never touch real
+# files, processes, or network targets. Scenario-aware: when the lab is in
+# PATCHED state the simulated vulnerabilities are blocked, so the
+# exploit → patched → re-exploit-fails demo works.
+# ---------------------------------------------------------------------------
+
+LAB_INTERNAL_NETWORK = {
+    "hosts": [
+        {
+            "hostname": "db-01",
+            "ip": "10.0.0.2",
+            "ports": [22, 3306, 6379],
+            "services": ["ssh", "mysql", "redis"],
+            "os": "Ubuntu 22.04",
+        },
+        {
+            "hostname": "backup-01",
+            "ip": "10.0.0.3",
+            "ports": [22, 8080],
+            "services": ["ssh", "jenkins"],
+            "os": "Debian 11",
+        },
+        {
+            "hostname": "app-01",
+            "ip": "10.0.0.4",
+            "ports": [22, 80, 443],
+            "services": ["ssh", "nginx"],
+            "os": "Ubuntu 22.04",
+        },
+    ],
+    "training_only": True,
+}
+
+LAB_SIM_CREDS = {
+    "root": "toor",
+    "alice": "demo-password",
+    "bob": "P@ssw0rd!2024",
+    "backup": "backup-secret-01",
+}
+
+LAB_SIM_PASSWD = """root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+lab-service:x:1000:1000:PhantomBank App:/home/lab-service:/bin/bash
+alice:x:1001:1001:Alice:/home/alice:/bin/bash
+backup:x:1002:1002:Backup:/home/backup:/bin/bash"""
+
+LAB_SIM_DB_USERS = [
+    {"id": 1, "username": "alice", "password_hash": "5f4dcc3b5aa765d61d8327deb882cf99"},
+    {"id": 2, "username": "bob", "password_hash": "e10adc3949ba59abbe56e057f20f883e"},
+    {"id": 3, "username": "admin", "password_hash": "21232f297a57a5a743894a0e4a801fc3"},
+    {"id": 4, "username": "backup_service", "password_hash": "1a2b3c4d5e6f7a8b9c0d"},
+]
+
+LAB_SIM_CONFIG = """<?php
+$db_host = '10.0.0.2';
+$db_user = 'phb_app';
+$db_pass = 'PhantomBank!DB_Secret_2024';
+$redis_host = '10.0.0.2';
+$redis_port = 6379;
+$debug_mode = true;
+$aws_access_key = 'AKIAIOSFODNN7EXAMPLE';
+$aws_secret = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+?>"""
+
+
+def _lab_sim_open() -> bool:
+    return is_vulnerable("file_handling_path_handling") or is_vulnerable("injection")
+
+
+def _sim_command_output(cmd: str) -> tuple[str, int]:
+    """Map a command to canned simulated output. Returns (output, exit_code)."""
+    first = cmd.strip().split(" ")[0].lower()
+    if first in ("whoami", "id"):
+        return "lab-service\nuid=1000(lab-service) gid=1000(lab-service) groups=1000(lab-service)", 0
+    if first in ("uname",):
+        return "Linux db-01 5.15.0-91-generic #101-Ubuntu SMP x86_64 GNU/Linux", 0
+    if first in ("ifconfig", "ip"):
+        return "eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n        inet 10.0.0.4  netmask 255.255.255.0", 0
+    if first in ("hostname",):
+        return "app-01", 0
+    if first in ("netstat", "ss"):
+        return "Proto Recv-Q Send-Q Local Address           Foreign Address         State\n"
+        "tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN\n"
+        "tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN\n"
+        "tcp        0      0 0.0.0.0:6379            0.0.0.0:*               LISTEN\n"
+        "tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN", 0
+    if first in ("ls", "dir"):
+        return "app.py  config.php  uploads/  static/  .env  backup/", 0
+    if first in ("pwd",):
+        return "/opt/phantombank", 0
+    if first in ("cat",):
+        lowered = cmd.lower()
+        if "passwd" in lowered:
+            return LAB_SIM_PASSWD, 0
+        if "config" in lowered or "env" in lowered:
+            return LAB_SIM_CONFIG, 0
+        return "simulated file content (training only)", 0
+    if first in ("env",):
+        return "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\nDB_HOST=10.0.0.2\nDB_USER=phb_app\nREDIS_HOST=10.0.0.2", 0
+    if first in ("ps",):
+        return "PID TTY          TIME CMD\n1 ? 00:00:00 systemd\n420 ? 00:00:12 mysqld\n523 ? 00:00:03 redis-server\n", 0
+    if first in ("find",):
+        return "/usr/bin/passwd\n/usr/bin/sudo\n/opt/phantombank/backup/backup.sh", 0
+    if first in ("crontab", "schtasks"):
+        return "0 2 * * * /opt/phantombank/backup/backup.sh", 0
+    if first in ("sudo",):
+        return "User lab-service may run the following commands on app-01:\n    (ALL) NOPASSWD: /opt/phantombank/backup/backup.sh", 0
+    if first in ("help", "?"):
+        return "simulated shell: whoami, id, uname, hostname, ifconfig, netstat, ls, cat /etc/passwd, cat config.php, env, ps, find, crontab, sudo -l, exit", 0
+    return f"sh: {first}: command not found (simulated)", 127
+
+
+@router.post("/api/lab/brutal/exec")
+async def lab_brutal_exec(request: Request) -> JSONResponse:
+    """Simulated RCE / command injection target."""
+    body = await safe_json(request)
+    cmd = str(body.get("cmd") or body.get("command") or "")
+    if not _lab_sim_open():
+        return json_response({"error": "command execution blocked (patched scenario)", "simulated": True}, 403)
+    if not cmd:
+        return json_response({"error": "cmd is required"}, 400)
+    output, code = _sim_command_output(cmd)
+    return json_response({"output": output, "exit_code": code, "simulated": True})
+
+
+@router.post("/api/lab/brutal/sqli")
+async def lab_brutal_sqli(request: Request) -> JSONResponse:
+    """Simulated SQL injection target (UNION-based dump)."""
+    body = await safe_json(request)
+    query = str(body.get("query") or "")
+    if not _lab_sim_open():
+        return json_response({"error": "SQL execution blocked (patched scenario)", "simulated": True}, 403)
+    if "union" in query.lower():
+        return json_response({"rows": LAB_SIM_DB_USERS, "columns": ["id", "username", "password_hash"], "simulated": True})
+    if "os-shell" in query.lower():
+        return json_response({"os_shell": True, "hint": "Use /api/lab/brutal/exec for commands", "simulated": True})
+    return json_response({"rows": [], "simulated": True})
+
+
+@router.post("/api/lab/brutal/lfi")
+async def lab_brutal_lfi(request: Request) -> JSONResponse:
+    """Simulated LFI target."""
+    body = await safe_json(request)
+    path = str(body.get("path") or "")
+    if not _lab_sim_open():
+        return json_response({"error": "file read blocked (patched scenario)", "simulated": True}, 403)
+    if "passwd" in path:
+        return json_response({"content": LAB_SIM_PASSWD, "path": path, "simulated": True})
+    if "config" in path or "env" in path:
+        return json_response({"content": LAB_SIM_CONFIG, "path": path, "simulated": True})
+    if "log" in path:
+        return json_response(
+            {"content": "simulated apache access log with PHP markers", "log_poisoning": True, "simulated": True}
+        )
+    return json_response({"content": "no such file (simulated)", "path": path, "simulated": True})
+
+
+@router.post("/api/lab/brutal/ssrf")
+async def lab_brutal_ssrf(request: Request) -> JSONResponse:
+    """Simulated SSRF target (internal service probing)."""
+    body = await safe_json(request)
+    url = str(body.get("url") or "")
+    if not _lab_sim_open():
+        return json_response({"error": "internal fetch blocked (patched scenario)", "simulated": True}, 403)
+    if "metadata" in url:
+        return json_response(
+            {
+                "content": '{"accountId":"112233","accessKeyId":"ASIAEXAMPLE","secretAccessKey":"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"}',
+                "service": "cloud-metadata",
+                "simulated": True,
+            }
+        )
+    if "redis" in url:
+        return json_response({"content": "Redis 6.2.6 banner - NOAUTH Authentication required", "service": "redis", "simulated": True})
+    if "elastic" in url or "9200" in url:
+        return json_response({"content": '{"name":"es-01","version":{"number":"7.17.9"}}', "service": "elasticsearch", "simulated": True})
+    return json_response({"content": "connection refused (simulated)", "simulated": True})
+
+
+@router.get("/api/lab/brutal/network")
+async def lab_brutal_network() -> JSONResponse:
+    """Simulated internal network map for lateral movement."""
+    if not _lab_sim_open():
+        return json_response({"error": "network map blocked (patched scenario)", "simulated": True}, 403)
+    return json_response(LAB_INTERNAL_NETWORK)
+
+
+@router.post("/api/lab/brutal/ssh-login")
+async def lab_brutal_ssh_login(request: Request) -> JSONResponse:
+    """Simulated SSH login attempt against an internal host."""
+    body = await safe_json(request)
+    username = str(body.get("username") or "")
+    password = str(body.get("password") or "")
+    key = str(body.get("key") or "")
+    host = str(body.get("host") or "10.0.0.2")
+    if not _lab_sim_open():
+        return json_response({"error": "ssh blocked (patched scenario)", "simulated": True}, 403)
+    if key and "BEGIN OPENSSH PRIVATE KEY" in key:
+        return json_response({"authenticated": True, "host": host, "method": "key", "username": "backup", "simulated": True})
+    if LAB_SIM_CREDS.get(username) == password:
+        return json_response({"authenticated": True, "host": host, "method": "password", "username": username, "simulated": True})
+    return json_response({"authenticated": False, "host": host, "error": "permission denied", "simulated": True}, 403)
+
+
+@router.post("/api/lab/brutal/persist")
+async def lab_brutal_persist(request: Request) -> JSONResponse:
+    """Simulated persistence installation (cron / systemd / scheduled task)."""
+    body = await safe_json(request)
+    kind = str(body.get("kind") or "cron")
+    command = str(body.get("command") or "")
+    if not _lab_sim_open():
+        return json_response({"error": "persistence blocked (patched scenario)", "simulated": True}, 403)
+    if kind == "cron":
+        return json_response({"installed": True, "mechanism": "crontab", "entry": f"@reboot {command}", "simulated": True})
+    if kind == "systemd":
+        return json_response({"installed": True, "mechanism": "systemd unit", "entry": f"[Service] ExecStart={command}", "simulated": True})
+    if kind == "registry":
+        return json_response({"installed": True, "mechanism": "HKCU Run key", "entry": f"Run -> {command}", "simulated": True})
+    return json_response({"installed": True, "mechanism": kind, "entry": command, "simulated": True})
+
+
+@router.post("/api/lab/brutal/upload-shell")
+async def lab_brutal_upload_shell(request: Request) -> JSONResponse:
+    """Simulated webshell deployment via vulnerable file upload."""
+    body = await safe_json(request)
+    filename = str(body.get("filename") or "shell.php")
+    if not _lab_sim_open():
+        return json_response({"error": "upload blocked (patched scenario)", "simulated": True}, 403)
+    if filename.endswith((".php", ".jsp", ".asp", ".aspx")):
+        return json_response(
+            {
+                "deployed": True,
+                "url": f"/lab/phantombank/uploads/{filename}",
+                "note": "simulated webshell deployed — combine with /api/lab/brutal/exec for interactive access",
+                "simulated": True,
+            }
+        )
+    return json_response({"deployed": False, "error": "extension not allowed", "simulated": True}, 400)
+
+
+@router.post("/api/lab/brutal/xss-steal")
+async def lab_brutal_xss_steal(request: Request) -> JSONResponse:
+    """Simulated session theft via persistent XSS."""
+    body = await safe_json(request)
+    cookie = str(body.get("cookie") or "")
+    if not _lab_sim_open():
+        return json_response({"error": "session theft blocked (patched scenario)", "simulated": True}, 403)
+    if cookie:
+        return json_response(
+            {
+                "stolen": True,
+                "session": "eyJzdWIiOiJhbGljZSIsImxhYiI6dHJ1ZX0.demoSignature",
+                "user": "alice",
+                "hijackable": True,
+                "simulated": True,
+            }
+        )
+    return json_response({"stolen": False, "error": "no cookie captured", "simulated": True}, 400)
 
 
 async def safe_json(request: Request) -> dict[str, Any]:

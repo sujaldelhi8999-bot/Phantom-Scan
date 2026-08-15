@@ -10,7 +10,12 @@ from app.database import get_user_by_id
 settings = get_settings()
 
 
-async def get_current_user(authorization: Annotated[str, Header()]) -> dict:
+async def get_current_user(authorization: Annotated[str | None, Header()] = None) -> dict:
+    if not settings.secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server configuration error: SECRET_KEY is not configured.",
+        )
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

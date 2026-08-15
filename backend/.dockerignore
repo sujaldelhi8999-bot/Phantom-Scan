@@ -3,3 +3,11 @@ __pycache__/
 .venv/
 .env
 phantomscan.db
+test_debug.db
+*.db
+tests/
+scripts/
+reports/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

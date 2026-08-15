@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,8 @@ from app.database import (
 from app.services.execution_status import update_self_audit_execution
 from app.models import ScanRequest
 from app.services.authorization import canonicalize_target
+
+logger = logging.getLogger("phantomscan.self_audit")
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -155,7 +158,8 @@ class SelfAuditAgent(Agent):
             if SELF_AUDIT_LOG.exists():
                 with open(SELF_AUDIT_LOG) as f:
                     return json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.debug("Error: %s", e)
             pass
         return []
 
@@ -163,7 +167,8 @@ class SelfAuditAgent(Agent):
         try:
             with open(SELF_AUDIT_LOG, "w") as f:
                 json.dump(findings, f, indent=2, default=str)
-        except Exception:
+        except Exception as e:
+            logger.debug("Error: %s", e)
             pass
 
     def _diff_findings(

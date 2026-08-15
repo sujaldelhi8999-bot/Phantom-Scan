@@ -178,7 +178,8 @@ class DoSAgent:
         for client in self._clients:
             try:
                 await client.aclose()
-            except Exception:
+            except Exception as e:
+                logger.debug("Error: %s", e)
                 logger.exception("[DoSAgent] Error closing HTTP client")
 
     @staticmethod
@@ -288,12 +289,14 @@ class DoSAgent:
 
             await self._calculate_impact()
             await self._update_job("stopped" if self.stopped else "completed")
-        except Exception:
+        except Exception as e:
+            logger.debug("Error: %s", e)
             logger.exception("[DoSAgent] Attack loop failed for %s", self.target_url)
             self.stats["end_time"] = datetime.utcnow().isoformat()
             try:
                 await self._update_job("error")
-            except Exception:
+            except Exception as e:
+                logger.debug("Error: %s", e)
                 logger.exception("[DoSAgent] Failed to persist error state")
         finally:
             self.running = False

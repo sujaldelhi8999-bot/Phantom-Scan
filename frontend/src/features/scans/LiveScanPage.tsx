@@ -10,7 +10,6 @@ import type { ScanIntensity, ScanResponse } from '../../types';
 import { DEFEND_CHECKS } from '../../types';
 import {
   ActivityTimeline,
-  AgentCard,
   Button,
   EmptyState,
   ErrorState,
@@ -18,7 +17,6 @@ import {
   Page,
   PageHeader,
   Panel,
-  PanelSkeleton,
   ProgressBar,
   SectionHeader,
   SeverityBadge,
@@ -38,7 +36,6 @@ export default function LiveScanPage() {
   const { refresh, scans, executionStatus, executionActive } = usePhantomData();
   const [target, setTarget] = useState('');
   const [profile, setProfile] = useState<ScanIntensity>('medium');
-  const [enableExploitation, setEnableExploitation] = useState(false);
   const [activeScan, setActiveScan] = useState<ScanResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +85,7 @@ export default function LiveScanPage() {
       setTarget(formattedTarget);
     }
     try {
-      const scan = await startScan({ target_url: formattedTarget, mode: 'defend', intensity: profile, enable_exploitation: enableExploitation });
+      const scan = await startScan({ target_url: formattedTarget, mode: 'defend', intensity: profile });
       setActiveScan(scan);
       toast.success('Scan started');
       await refresh();
@@ -174,18 +171,20 @@ export default function LiveScanPage() {
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 opacity-70">
                 <input
                   type="checkbox"
                   id="enable_exploitation"
-                  checked={enableExploitation}
-                  onChange={(e) => setEnableExploitation(e.target.checked)}
-                  disabled={Boolean(activeScan && !terminal)}
+                  checked={false}
+                  onChange={() => {}}
+                  disabled
                   className="h-4 w-4 rounded border-[var(--border-default)] text-amber-600 focus:ring-amber-500"
                 />
-                <label htmlFor="enable_exploitation" className="cursor-pointer">
+                <label htmlFor="enable_exploitation" className="cursor-not-allowed">
                   <div className="text-xs font-semibold text-amber-400">⚡ Enable Exploitation</div>
-                  <div className="text-[10px] text-amber-300/70">Extract data, read files, execute commands on vulnerable targets</div>
+                  <div className="text-[10px] text-amber-300/70">
+                    Available in Pentest mode on the Authorized Testing page (requires verification)
+                  </div>
                 </label>
               </div>
               <Button

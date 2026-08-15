@@ -3,6 +3,7 @@ Source Coordinator Agent - Orchestrates multi-source scanning (SAST, DAST, SCA, 
 """
 
 import asyncio
+import logging
 import time
 from typing import Any
 
@@ -16,6 +17,8 @@ from app.services.active_gate import ActiveTargetGate
 from app.services.active_security import ActiveSecurityEngine, SafetyLimits
 from app.services.authorization import TargetAuthorizationService
 from app.services.execution import ExecutionBudget, SafetyLimits as ExecSafetyLimits
+
+logger = logging.getLogger("phantomscan.source_coordinator")
 
 
 class SourceCoordinatorAgent(Agent):
@@ -348,7 +351,8 @@ class SourceCoordinatorAgent(Agent):
                 p1 = urlparse(loc1).path
                 p2 = urlparse(loc2).path
                 return p1.split("/")[1] == p2.split("/")[1] if len(p1.split("/")) > 1 and len(p2.split("/")) > 1 else False
-        except Exception:
+        except Exception as e:
+            logger.debug("Error: %s", e)
             pass
         return False
 

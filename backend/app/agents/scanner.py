@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import random
 import re
 import socket
@@ -9,6 +10,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
+
+logger = logging.getLogger("phantomscan.scanner")
 
 import dns.asyncresolver
 import dns.query
@@ -471,7 +474,8 @@ class ScannerAgent(Agent):
             try:
                 answers = await resolver.resolve(hostname, rtype)
                 records[rtype] = [str(r) for r in answers]
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to resolve %s for %s: %s", rtype, hostname, e)
                 records[rtype] = []
 
         wildcard = await self._check_wildcard(hostname, resolver)
@@ -480,7 +484,8 @@ class ScannerAgent(Agent):
         try:
             dnskeys = await resolver.resolve(hostname, "DNSKEY")
             dnssec = len(dnskeys) > 0
-        except Exception:
+        except Exception as e:
+            logger.debug("DNSKEY resolution failed for %s: %s", hostname, e)
             dnssec = False
 
         zone_transfer = "not_attempted"
@@ -514,13 +519,16 @@ class ScannerAgent(Agent):
                 try:
                     await resolver.resolve(sub, "A")
                     return sub, True, ""
-                except Exception:
+                except Exception as e:
+                    logger.debug("A record resolution failed for %s after CNAME: %s", sub, e)
                     return sub, False, cname_target
-            except Exception:
+            except Exception as e:
+                logger.debug("CNAME resolution failed for %s: %s", sub, e)
                 try:
                     await resolver.resolve(sub, "A")
                     return sub, True, ""
-                except Exception:
+                except Exception as e2:
+                    logger.debug("A record resolution also failed for %s: %s", sub, e2)
                     return sub, False, ""
 
         tasks = [try_resolve(sub) for sub in candidates]
@@ -541,7 +549,8 @@ class ScannerAgent(Agent):
         try:
             await resolver.resolve(random_sub, "A")
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug("Wildcard check failed for %s: %s", hostname, e)
             return False
 
     async def scan_all_ports(self, target_host: str, max_ports: int = 0) -> dict[str, Any]:
@@ -623,10 +632,11 @@ class ScannerAgent(Agent):
                     w.close()
                     try:
                         await w.wait_closed()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Error closing connection for port %d: %s", port, e)
                     return port
-                except Exception:
+                except Exception as e:
+                    logger.debug("Connection check failed for port %d: %s", port, e)
                     return None
 
         results = await asyncio.gather(*[check(p) for p in ports])
@@ -655,10 +665,10 @@ class ScannerAgent(Agent):
                     w.close()
                     try:
                         await w.wait_closed()
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
+                    except Exception as e:
+                        logger.debug("Error closing connection for port %d: %s", port, e)
+                except Exception as e:
+                    logger.debug("Port check failed for %s:%d: %s", host, port, e)
 
         batch_size = max(concurrency * 4, 256)
         if batch_size > 512:
@@ -707,8 +717,8 @@ class ScannerAgent(Agent):
                             w.write(b"\r\n")
                             await w.drain()
                             banner = await asyncio.wait_for(r.read(2048), timeout=1.5)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("Banner retry failed for port %d: %s", port, e)
 
                     if port in (80, 8080, 8000, 8888, 3000, 9000, 9090, 9200, 28017, 10000):
                         if not banner or b"HTTP/" not in banner[:64]:
@@ -719,20 +729,20 @@ class ScannerAgent(Agent):
                                 )
                                 await w.drain()
                                 banner = await asyncio.wait_for(r.read(4096), timeout=2.5)
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.debug("HTTP HEAD banner grab failed for port %d: %s", port, e)
 
                     w.close()
                     try:
                         await w.wait_closed()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Error closing banner connection for port %d: %s", port, e)
 
                     if banner:
                         text = banner.decode("utf-8", errors="replace").strip()
                         banners[port] = text[:500]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Banner grab failed for %s:%d: %s", host, port, e)
 
         await asyncio.gather(*[grab(p) for p in ports])
         return banners
@@ -765,8 +775,8 @@ class ScannerAgent(Agent):
                 version_info = await self._probe_ssh_version(hostname, port)
             elif service in ("ftp", "smtp", "pop3", "imap"):
                 version_info = await self._probe_mail_version(hostname, port, service)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Service version probe failed for %s:%d: %s", hostname, port, e)
         return version_info
 
     async def _probe_http_version(
@@ -798,7 +808,8 @@ class ScannerAgent(Agent):
                     if version_match:
                         result["version"] = version_match.group(1)
                 return result
-        except Exception:
+        except Exception as e:
+            logger.debug("HTTP version probe failed for %s:%d: %s", hostname, port, e)
             return {"service": service, "version": None, "protocol": scheme}
 
     async def _probe_ssh_version(self, hostname: str, port: int) -> dict[str, Any]:
@@ -810,8 +821,8 @@ class ScannerAgent(Agent):
             w.close()
             try:
                 await w.wait_closed()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing SSH probe connection: %s", e)
             text = banner.decode("utf-8", errors="replace").strip()
             version_match = re.search(r"SSH-([\d.]+)-([^\s]+)", text)
             if version_match:
@@ -821,7 +832,8 @@ class ScannerAgent(Agent):
                     "protocol": f"SSH-{version_match.group(1)}",
                 }
             return {"service": "ssh", "banner": text[:200], "protocol": "SSH"}
-        except Exception:
+        except Exception as e:
+            logger.debug("SSH version probe failed for %s:%d: %s", hostname, port, e)
             return {"service": "ssh", "version": None, "protocol": None}
 
     async def _probe_mail_version(
@@ -835,8 +847,8 @@ class ScannerAgent(Agent):
             w.close()
             try:
                 await w.wait_closed()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing mail probe connection: %s", e)
             text = banner.decode("utf-8", errors="replace").strip()
             version_match = re.search(r"([\w.-]+)/([\d.]+)", text, re.I)
             if version_match:
@@ -846,7 +858,8 @@ class ScannerAgent(Agent):
                     "protocol": version_match.group(1),
                 }
             return {"service": service, "banner": text[:200], "protocol": None}
-        except Exception:
+        except Exception as e:
+            logger.debug("Mail version probe failed for %s:%d (%s): %s", hostname, port, service, e)
             return {"service": service, "version": None, "protocol": None}
 
     async def _fingerprint(self, target_url: str) -> dict[str, Any]:
@@ -1147,7 +1160,8 @@ class ScannerAgent(Agent):
             writer.close()
             try:
                 await writer.wait_closed()
-            except Exception:
+            except Exception as e:
+                logger.debug("Error: %s", e)
                 pass
         except Exception as exc:
             result["certificate"] = {"valid": None}
@@ -1192,7 +1206,8 @@ class ScannerAgent(Agent):
                     result["vulnerabilities"].append(f"Certificate expires soon ({days_left} days)")
                 if days_left < 0:
                     result["vulnerabilities"].append(f"Certificate EXPIRED {-days_left} days ago")
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to parse certificate expiry: %s", e)
                 pass
 
         return result
@@ -1229,7 +1244,8 @@ class ScannerAgent(Agent):
         try:
             context.minimum_version = version
             context.maximum_version = version
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to set TLS version to %s: %s", version, e)
             return False
         try:
             reader, writer = await asyncio.wait_for(
@@ -1239,10 +1255,11 @@ class ScannerAgent(Agent):
             writer.close()
             try:
                 await writer.wait_closed()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing TLS probe connection: %s", e)
             return True
-        except Exception:
+        except Exception as e:
+            logger.debug("TLS protocol probe failed for %s:%d (%s): %s", hostname, port, version, e)
             return False
 
     async def _probe_ciphers(self, hostname: str, port: int) -> list[str]:
@@ -1258,7 +1275,8 @@ class ScannerAgent(Agent):
                     context.minimum_version = ssl.TLSVersion.TLSv1_2
                     context.maximum_version = ssl.TLSVersion.TLSv1_2
                     context.set_ciphers(cipher)
-                except Exception:
+                except Exception as e:
+                    logger.debug("Failed to set cipher %s: %s", cipher, e)
                     return
                 try:
                     reader, writer = await asyncio.wait_for(
@@ -1269,10 +1287,10 @@ class ScannerAgent(Agent):
                     writer.close()
                     try:
                         await writer.wait_closed()
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
+                    except Exception as e:
+                        logger.debug("Error closing cipher probe connection for %s: %s", cipher, e)
+                except Exception as e:
+                    logger.debug("Cipher probe failed for %s:%d (%s): %s", hostname, port, cipher, e)
 
         await asyncio.gather(*[probe(c) for c in CIPHER_PROBES])
         return sorted(supported)
@@ -1299,8 +1317,8 @@ class ScannerAgent(Agent):
                     ),
                 )
                 await conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to save evidence record: %s", e)
 
     def _detect_framework(self, headers: dict[str, str], body: str) -> str:
         b = body.lower()

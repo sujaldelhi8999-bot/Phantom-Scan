@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { apiErrorMessage } from '../../services/api';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ const LoginPage: React.FC = () => {
       await loginUser(email, password);
       navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please try again.');
+      setError(apiErrorMessage(err, 'Login failed. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -35,7 +36,7 @@ const LoginPage: React.FC = () => {
     try {
       await loginWithProvider(provider);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || `Could not start ${provider} login.`);
+      setError(apiErrorMessage(err, `Could not start ${provider} login.`));
     }
   };
 

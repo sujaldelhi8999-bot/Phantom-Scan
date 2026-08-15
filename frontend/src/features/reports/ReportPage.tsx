@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronRight, Download, GitCompareArrows, RotateCcw, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, GitCompareArrows, Printer, RotateCcw, Sparkles } from 'lucide-react';
 
 import {
   Button,
@@ -453,6 +453,7 @@ export default function ReportPage() {
   useEffect(() => {
     if (!scan_id) return;
     let active = true;
+    let timer: number | undefined;
     const load = async () => {
       try {
         const [nextScan, nextArtifacts] = await Promise.all([getScan(scan_id), getScanArtifacts(scan_id)]);
@@ -467,13 +468,17 @@ export default function ReportPage() {
         setScan(nextScan);
         setArtifacts(hydrated);
         setError(null);
+        // Stop polling once the scan has reached a terminal state
+        if (nextScan.status === 'complete' || nextScan.status === 'error' || nextScan.status === 'cancelled') {
+          if (timer) window.clearInterval(timer);
+        }
       } catch (err) {
         if (active) setError(apiErrorMessage(err, 'Unable to load report.'));
       }
     };
     void load();
-    const timer = window.setInterval(() => void load(), 6000);
-    return () => { active = false; window.clearInterval(timer); };
+    timer = window.setInterval(() => void load(), 6000);
+    return () => { active = false; if (timer) window.clearInterval(timer); };
   }, [scan_id]);
 
   const counts = useMemo(() => countBySeverity(scan?.findings ?? []), [scan]);
@@ -529,6 +534,9 @@ export default function ReportPage() {
           <div className="flex gap-2">
             <Button variant="secondary" onClick={exportJson}>
               <Download className="h-3.5 w-3.5" />Export
+            </Button>
+            <Button variant="secondary" onClick={() => window.print()} title="Save as PDF via the print dialog">
+              <Printer className="h-3.5 w-3.5" />PDF
             </Button>
             <Button variant="secondary" onClick={rescan}>
               <RotateCcw className="h-3.5 w-3.5" />Rescan

@@ -22,6 +22,8 @@ import NotificationsPage from './features/system/NotificationsPage';
 import SystemHealthPage from './features/system/SystemHealthPage';
 import SettingsPage from './features/system/SettingsPage';
 import AttackIntelligence from './features/private/AttackIntelligence';
+import CodeAnalysis from './features/private/CodeAnalysis';
+import BrutalMode from './features/brutal/BrutalMode';
 import AuthorizedTestingPage from './features/authorized-testing/AuthorizedTestingPage';
 import ScanQualityPage from './features/learning/ScanQualityPage';
 import DoSPanel from './features/private/DoSPanel';
@@ -39,9 +41,7 @@ export default function App() {
   const isAuthCallback = window.location.pathname === '/auth/callback';
   const workspace = (children: ReactNode, requiredTier?: 'FREE' | 'PRO') => (
     <ProtectedRoute requiredTier={requiredTier}>
-      <PhantomDataProvider>
-        <AppShell>{children}</AppShell>
-      </PhantomDataProvider>
+      <AppShell>{children}</AppShell>
     </ProtectedRoute>
   );
 
@@ -55,6 +55,7 @@ export default function App() {
 
   return (
     <AuthProvider>
+        <PhantomDataProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<HomePage />} />
@@ -77,9 +78,11 @@ export default function App() {
           <Route path="/system-health" element={workspace(<SystemHealthPage />)} />
           <Route path="/settings" element={workspace(<SettingsPage />)} />
           <Route path="/intelligence" element={workspace(<AttackIntelligence />)} />
+          <Route path="/code-analysis" element={workspace(<CodeAnalysis />)} />
+          <Route path="/brutal" element={workspace(<BrutalMode />)} />
           <Route path="/quality" element={workspace(<ScanQualityPage />)} />
           <Route path="/github" element={workspace(<GitHubConnectPage />)} />
-          <Route path="/github/callback" element={workspace(<GitHubConnectPage />)} />
+          <Route path="/github/callback" element={<GitHubConnectPage />} />
           <Route path="/profile" element={workspace(<ProfilePage />)} />
           <Route path="/multi-source" element={workspace(<MultiSourceScanPage />)} />
           <Route path="/multi-source/:scan_id" element={workspace(<MultiSourceDetailPage />)} />
@@ -92,6 +95,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </PhantomDataProvider>
         <Toaster
           position="bottom-right"
           toastOptions={{

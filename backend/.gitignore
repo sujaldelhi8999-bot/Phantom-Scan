@@ -3,3 +3,4 @@ __pycache__/
 .venv/
 .env
 phantomscan.db
+brutal_exfil/

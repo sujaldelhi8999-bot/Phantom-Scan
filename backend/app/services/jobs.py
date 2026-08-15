@@ -159,6 +159,10 @@ class ScanJobManager:
             task = self._tasks.get(scan_id)
             return task is not None and not task.done()
 
+    async def register_task(self, scan_id: int, task: asyncio.Task[dict[str, Any]]) -> None:
+        async with self._lock:
+            self._tasks[scan_id] = task
+
     async def shutdown(self) -> None:
         async with self._lock:
             tasks = list(self._tasks.values())

@@ -36,6 +36,11 @@ class ScanPolicy:
                     "Defend mode cannot execute active test modules.",
                     "ACTIVE_MODULES_FORBIDDEN_IN_DEFEND",
                 )
+            if request.enable_exploitation:
+                raise ScanPolicyError(
+                    "Exploitation is only allowed in pentest mode.",
+                    "EXPLOITATION_FORBIDDEN_IN_MODE",
+                )
             if request.authorization_confirmed or request.authorization_id is not None:
                 raise ScanPolicyError(
                     "Defend mode does not accept Pentest authorization state.",
@@ -57,6 +62,17 @@ class ScanPolicy:
 
         if not request.selected_tests:
             raise ScanPolicyError("Pentest mode requires at least one selected test module.", "TEST_SELECTION_REQUIRED")
+        if request.enable_exploitation and request.mode != "pentest":
+            raise ScanPolicyError(
+                "Exploitation is only allowed in pentest mode.",
+                "EXPLOITATION_FORBIDDEN_IN_MODE",
+            )
+        if request.enable_exploitation and not settings.exploitation_enabled:
+            raise ScanPolicyError(
+                "Exploitation engine is disabled globally (EXPLOITATION_ENABLED=false).",
+                "EXPLOITATION_DISABLED",
+                403,
+            )
         if "business_logic" not in request.selected_tests and request.business_logic_tests:
             raise ScanPolicyError(
                 "Business logic definitions require the business_logic module to be selected.",

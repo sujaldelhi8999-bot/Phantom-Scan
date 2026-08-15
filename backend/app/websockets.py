@@ -25,5 +25,10 @@ class ScanEventBroker:
         for queue in subscribers:
             await queue.put(event)
 
+    def cleanup_stale(self) -> None:
+        empty_ids = [sid for sid, subs in self._subscribers.items() if not subs]
+        for sid in empty_ids:
+            self._subscribers.pop(sid, None)
+
 
 scan_event_broker = ScanEventBroker()
