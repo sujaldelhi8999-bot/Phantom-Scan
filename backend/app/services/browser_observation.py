@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 import time
 from dataclasses import asdict, dataclass, field
@@ -14,6 +15,8 @@ from app.security import build_finding, redact_sensitive, redact_url
 from app.services.authorization import canonicalize_target
 from app.services.execution import ExecutionBudget, ExecutionLimitError, SafetyLimits, ScanCancelled
 from app.services.redaction import SecretRedactionService, redaction_service
+
+logger = logging.getLogger("phantomscan.browser_observation")
 
 
 @dataclass
@@ -540,6 +543,12 @@ class BrowserObservationEngine:
             return self.empty_result(session, "cancelled", str(exc))
         except Exception as exc:
             if self.use_playwright:
+                logger.warning(
+                    "Playwright browser observation failed for %s (engine=%s); falling back to HTTP observation: %s",
+                    self.target.url,
+                    "playwright_chromium",
+                    redact_sensitive(str(exc), 1000),
+                )
                 session.security_events.append({"event": "browser_fallback", "reason": redact_sensitive(str(exc), 1000)})
                 result = await self.run_http_observation(session)
                 result["browser_engine"] = "http_fallback"

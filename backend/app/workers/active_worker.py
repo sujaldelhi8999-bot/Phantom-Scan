@@ -5,6 +5,9 @@ from typing import Any
 
 import httpx
 
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from app.agents.pentest import PentestAgent
 from app.models import BusinessLogicTest
 from app.services.authorization import TargetAuthorizationService

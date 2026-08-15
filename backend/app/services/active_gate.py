@@ -91,6 +91,21 @@ class ActiveTargetGate:
                 authorization_status="ALLOWLIST",
                 reason="Origin is in ACTIVE_TARGET_ALLOWLIST",
             )
+        # Private Scope: admins declare targets here (admin_scope router). A
+        # scoped target counts as authorized, so any authenticated user may run
+        # pentest scans against it without completing an ownership challenge.
+        # Verification via DNS/HTTP ownership remains the fallback below.
+        hostname = canonicalize_hostname(target_url)
+        scope_entry = await find_private_scope(hostname)
+        if scope_entry is not None:
+            await update_private_scope_last_used(hostname)
+            return ActiveTargetDecision(
+                allowed=True,
+                target_url=target.url,
+                target_origin=target.origin,
+                authorization_status="ALLOWLIST",
+                reason="Target is in Private Scope",
+            )
         try:
             verified = await self.authorization_service.require_verified(target.url, user_id, authorization_id)
         except PermissionError:

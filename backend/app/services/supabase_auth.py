@@ -39,14 +39,14 @@ def _decode_jwt(access_token: str, jwt_secret: str) -> dict:
     )
 
 
-async def _verify_via_api(access_token: str, supabase_url: str) -> dict:
+async def _verify_via_api(access_token: str, supabase_url: str, anon_key: str = "") -> dict:
     """Validate the token against Supabase's /auth/v1/user endpoint."""
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{supabase_url.rstrip('/')}/auth/v1/user",
             headers={
                 "Authorization": f"Bearer {access_token}",
-                "apikey": access_token,
+                "apikey": anon_key or access_token,
             },
         )
         if response.status_code != 200:
@@ -71,11 +71,11 @@ async def verify_supabase_token(access_token: str) -> SupabaseUser:
         except jwt.InvalidTokenError as exc:
             logger.warning("Supabase JWT decode failed, falling back to API: %s", exc)
             if settings.supabase_url:
-                claims = await _verify_via_api(access_token, settings.supabase_url)
+                claims = await _verify_via_api(access_token, settings.supabase_url, settings.supabase_anon_key)
             else:
                 raise SupabaseAuthError("Invalid Supabase token") from exc
     elif settings.supabase_url:
-        claims = await _verify_via_api(access_token, settings.supabase_url)
+        claims = await _verify_via_api(access_token, settings.supabase_url, settings.supabase_anon_key)
     else:
         raise SupabaseAuthError("Supabase is not configured (SUPABASE_URL / SUPABASE_JWT_SECRET)")
 
