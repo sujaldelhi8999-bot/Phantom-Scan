@@ -535,7 +535,10 @@ function NotificationDrawer({ open, onClose }: { open: boolean; onClose: () => v
 function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { scans, artifactsByScanId } = usePhantomData();
   const completedScans = useMemo(() => scans.filter((scan) => scan.status === 'complete'), [scans]);
-  const [scanId, setScanId] = useState<number>(completedScans[0]?.id ?? 0);
+  const [scanId, setScanId] = useState<number>(0);
+  useEffect(() => {
+    if (!scanId && completedScans[0]) setScanId(completedScans[0].id);
+  }, [completedScans, scanId]);
   const selectedScan = completedScans.find((scan) => scan.id === scanId) ?? completedScans[0];
   const prompts = selectedScan ? artifactsByScanId[selectedScan.id]?.ai_analyst_output?.suggested_prompts ?? [] : [];
   const [question, setQuestion] = useState('What should I update to fix these findings?');
@@ -543,6 +546,13 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const [citations, setCitations] = useState<Array<{ label?: string; title?: string; endpoint?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setLoading(false);
+      setError(null);
+    }
+  }, [open]);
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -567,7 +577,7 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
           </div>
           <div>
             <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">Scan</div>
-            <Select value={selectedScan.id} onChange={(value) => { setScanId(Number(value)); setAnswer(null); setCitations([]); }}>
+            <Select value={selectedScan.id} onChange={(e) => { setScanId(Number(e.target.value)); setAnswer(null); setCitations([]); }}>
               {completedScans.map((scan) => (
                 <option key={scan.id} value={scan.id}>
                   #{scan.id} — {targetName(scan.target_url)}
