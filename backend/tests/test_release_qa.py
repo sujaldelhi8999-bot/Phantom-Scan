@@ -4,6 +4,7 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest.mock import patch
 
 _db_fd, _db_path = tempfile.mkstemp(suffix=".release-qa.sqlite3")
 os.close(_db_fd)
@@ -498,6 +499,82 @@ class GitHubUnauthorizedFlowTests(TestCase):
             response = client.delete("/api/github/disconnect", headers=headers)
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["status"], "disconnected")
+
+
+class GitHubOAuthFlowTests(TestCase):
+    """The OAuth state->token handshake: /connect writes state, /callback stores the token."""
+
+    def _state_row(self, state: str) -> str | None:
+        async def fetch() -> str | None:
+            from app.database import get_connection
+            async with get_connection() as conn:
+                cursor = await conn.execute(
+                    "SELECT user_id FROM github_oauth_states WHERE state = ?", (state,)
+                )
+                row = await cursor.fetchone()
+            return row["user_id"] if row else None
+        return asyncio.run(fetch())
+
+    def test_connect_writes_state_for_authenticated_user(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            response = client.post("/api/github/connect", headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertTrue(payload["authorize_url"].startswith("https://github.com/login/oauth/authorize"))
+        self.assertIn(f"state={payload['state']}", payload["authorize_url"])
+        self.assertIsNotNone(self._state_row(payload["state"]))
+
+    def test_callback_stores_token_and_status_connected(self) -> None:
+        from app.routers import github as github_router
+        from app.models import GitHubTokenResponse, GitHubUserResponse
+
+        async def fake_exchange(callback):
+            return GitHubTokenResponse(access_token="tok-123", token_type="bearer", scope="repo")
+
+        async def fake_user_info(token):
+            return GitHubUserResponse(
+                id=12345, login="octocat", name="Octo Cat", avatar_url="https://avatars/1",
+                html_url="https://github.com/octocat", type="User",
+            )
+
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            state = client.post("/api/github/connect", headers=headers).json()["state"]
+
+            with patch.object(github_router.github_service, "exchange_code_for_token", fake_exchange), \
+                 patch.object(github_router.github_service, "get_user_info", fake_user_info):
+                callback = client.get(
+                    f"/api/github/callback?code=code-123&state={state}",
+                    follow_redirects=False,
+                )
+
+        self.assertEqual(callback.status_code, 302, callback.text)
+        self.assertIn("success=true&login=octocat", callback.headers["location"])
+        self.assertIsNone(self._state_row(state), "state must be single-use")
+
+        async def token_row() -> str | None:
+            from app.database import get_connection
+            async with get_connection() as conn:
+                cursor = await conn.execute(
+                    "SELECT github_login FROM github_oauth_tokens WHERE github_login = 'octocat'"
+                )
+                row = await cursor.fetchone()
+            return row["github_login"] if row else None
+        self.assertEqual(asyncio.run(token_row()), "octocat")
+
+    def test_callback_with_unknown_state_redirects_error(self) -> None:
+        with TestClient(app, base_url="http://localhost") as client:
+            headers = create_auth_headers(client)
+            callback = client.get(
+                "/api/github/callback?code=code-123&state=forged-state",
+                follow_redirects=False,
+            )
+            status = client.get("/api/github/status", headers=headers)
+
+        self.assertEqual(callback.status_code, 302, callback.text)
+        self.assertIn("error=invalid_state", callback.headers["location"])
+        self.assertEqual(status.json()["connected"], False)
 
 
 class SupabaseAuthEndpointTests(TestCase):

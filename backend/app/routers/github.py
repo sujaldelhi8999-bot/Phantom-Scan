@@ -4,6 +4,7 @@ GitHub OAuth and Webhook Router
 
 import json
 import logging
+import secrets
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -64,13 +65,14 @@ async def github_connect(
     user: dict = Depends(get_current_user),
 ) -> GitHubConnectResponse:
     """Initiate GitHub OAuth flow."""
+    state = secrets.token_urlsafe(32)
+    await github_service.store_oauth_state(user["id"], state)
     oauth_request = GitHubOAuthRequest(
         redirect_url=HttpUrl(resolve_oauth_redirect_uri(request)),
         scope=oauth.scope if oauth else "repo read:org read:user user:email",
+        state=state,
     )
     authorize_url = github_service.get_oauth_authorize_url(oauth_request)
-    # Extract state from URL
-    state = authorize_url.split("state=")[-1].split("&")[0]
     return GitHubConnectResponse(authorize_url=authorize_url, state=state)
 
 
@@ -82,10 +84,21 @@ async def github_callback(
     error: Optional[str] = Query(None),
 ) -> RedirectResponse:
     """Handle GitHub OAuth callback."""
+    frontend_url = settings.frontend_url or "http://localhost:5173"
+
     if error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"GitHub OAuth error: {error}",
+        )
+
+    # Consume the state row written by /connect to learn which user initiated the flow.
+    # The callback is a browser redirect with no Bearer header, so state is the only link.
+    user_id = await github_service.consume_oauth_state(state) if state else None
+    if not user_id:
+        return RedirectResponse(
+            url=f"{frontend_url}/github/callback?error=invalid_state",
+            status_code=status.HTTP_302_FOUND,
         )
 
     # Exchange code for token
@@ -102,9 +115,13 @@ async def github_callback(
     # Get user info
     user_info = await github_service.get_user_info(token_response.access_token)
 
-    # Store token - need to get user from state or session
-    # For now, we'll use a state-based approach to get the user
-    frontend_url = settings.frontend_url or "http://localhost:5173"
+    # Store token for the user who initiated the flow
+    await github_service.store_oauth_token(
+        user_id,
+        user_info.id,
+        user_info.login,
+        token_response,
+    )
     return RedirectResponse(
         url=f"{frontend_url}/github/callback?success=true&login={user_info.login}",
         status_code=status.HTTP_302_FOUND,

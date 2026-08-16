@@ -460,6 +460,15 @@ CREATE TABLE IF NOT EXISTS github_oauth_tokens (
 
 CREATE INDEX IF NOT EXISTS idx_github_oauth_user_id ON github_oauth_tokens (user_id);
 
+CREATE TABLE IF NOT EXISTS github_oauth_states (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    state TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_github_oauth_states_user_id ON github_oauth_states (user_id);
+
 CREATE TABLE IF NOT EXISTS github_app_installations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL,
@@ -815,6 +824,7 @@ async def initialize_database() -> None:
         # Multi-source scanning migrations
         await _migrate_scan_sources_table(connection)
         await _migrate_github_oauth_table(connection)
+        await _migrate_github_oauth_states_table(connection)
         await _migrate_github_app_table(connection)
         await _migrate_source_correlations_table(connection)
         await _migrate_finding_sources_table(connection)
@@ -1182,6 +1192,21 @@ async def _migrate_github_oauth_table(connection: aiosqlite.Connection) -> None:
                 UNIQUE (user_id, github_user_id)
             );
             CREATE INDEX IF NOT EXISTS idx_github_oauth_user_id ON github_oauth_tokens (user_id);
+            """
+        )
+
+
+async def _migrate_github_oauth_states_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "github_oauth_states"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS github_oauth_states (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                state TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_github_oauth_states_user_id ON github_oauth_states (user_id);
             """
         )
 

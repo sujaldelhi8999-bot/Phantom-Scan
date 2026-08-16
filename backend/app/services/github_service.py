@@ -21,7 +21,6 @@ from app.models import (
     GitHubTokenResponse,
     GitHubUserResponse,
     GitHubRepoResponse,
-    GitHubInstallationResponse,
     GitHubWebhookPayload,
     GitHubAppConfig,
 )
@@ -163,6 +162,36 @@ class GitHubService:
             return response.text
 
     # ============================================================
+    # OAuth State (state -> user mapping for the callback)
+    # ============================================================
+
+    async def store_oauth_state(self, user_id: str, state: str) -> None:
+        """Persist state->user so the callback can attribute the token. TTL 10 min."""
+        async with get_connection() as conn:
+            await conn.execute(
+                "DELETE FROM github_oauth_states WHERE created_at < datetime('now', '-10 minutes')"
+            )
+            await conn.execute(
+                "INSERT INTO github_oauth_states (user_id, state) VALUES (?, ?)",
+                (user_id, state),
+            )
+            await conn.commit()
+
+    async def consume_oauth_state(self, state: str | None) -> Optional[str]:
+        """Single-use lookup of the user who initiated the flow. Returns None if unknown/expired."""
+        if not state:
+            return None
+        async with get_connection() as conn:
+            cursor = await conn.execute(
+                "SELECT user_id FROM github_oauth_states WHERE state = ?",
+                (state,),
+            )
+            row = await cursor.fetchone()
+            await conn.execute("DELETE FROM github_oauth_states WHERE state = ?", (state,))
+            await conn.commit()
+        return row["user_id"] if row else None
+
+    # ============================================================
     # GitHub App
     # ============================================================
 
@@ -191,17 +220,6 @@ class GitHubService:
             )
             response.raise_for_status()
             return response.json()["token"]
-
-    async def get_app_installations(self) -> list[GitHubInstallationResponse]:
-        """Get all installations for the GitHub App."""
-        jwt_token = self._generate_jwt()
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.GITHUB_API_BASE}/app/installations",
-                headers={"Authorization": f"Bearer {jwt_token}", "Accept": "application/vnd.github+json"},
-            )
-            response.raise_for_status()
-            return [GitHubInstallationResponse(**i) for i in response.json()]
 
     async def get_installation_repos(self, installation_id: int, access_token: str) -> list[GitHubRepoResponse]:
         """Get repositories accessible by an installation."""
