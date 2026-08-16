@@ -27,13 +27,13 @@ from app.config import get_settings
 
 logger = logging.getLogger("phantomscan.reverse_shell")
 
-# Commands that could be destructive even on a lab VM — the gate warns but
-# does not block them (the lab API does its own sandboxing).
+# Destructive commands are blocked outright by run_command() and the simulated
+# shell — the request never reaches the target and the block is audited.
 _DANGEROUS_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"\brm\s+-rf\s+/\b"),
+    re.compile(r"\brm\s+-rf\s+/"),
     re.compile(r"\bmkfs\b"),
     re.compile(r"\bdd\s+if=.+of=/dev/\b"),
-    re.compile(r"\b:()\s*{\s*:\|\s*:\s*&\s*}\s*;"),  # fork bomb
+    re.compile(r":\(\)\s*{\s*:\|\s*:&\s*}\s*;"),  # fork bomb
     re.compile(r"\bshutdown\b"),
     re.compile(r"\breboot\b"),
     re.compile(r"\bhalt\b"),
@@ -198,10 +198,30 @@ class PayloadFactory:
         ]
 
 
+async def _audit_blocked(shell: ShellSession, command: str) -> None:
+    """Persist a blocked-destructive-command audit row directly to brutal_ops."""
+    try:
+        from app.database import create_brutal_op
+
+        await create_brutal_op(
+            shell.session_id,
+            shell.target_url,
+            getattr(shell, "actor", "unknown"),
+            "shell_command_blocked",
+            status="denied",
+            detail="Destructive command blocked",
+            payload=command[:2000],
+            output="",
+        )
+    except Exception:
+        logger.exception("Failed to audit blocked command")
+
+
 async def run_command(shell: ShellSession, command: str) -> dict[str, Any]:
     """Execute *command* via the lab's brutal exec API and track it.
 
     The command is sent as an HTTP POST to the lab target, not run locally.
+    Destructive commands are blocked outright and audited before any request.
     """
     settings = get_settings()
     timeout = settings.brutal_command_timeout
@@ -211,6 +231,23 @@ async def run_command(shell: ShellSession, command: str) -> dict[str, Any]:
         return {"output": "", "exit_code": -1, "error": "Shell is closed"}
     if shell.command_count >= max_commands:
         return {"output": "", "exit_code": -1, "error": f"Command budget exhausted ({max_commands})"}
+
+    command = command.strip()
+    if not command:
+        return {"output": "", "exit_code": -1, "error": "command is empty"}
+    if is_dangerous(command):
+        await _audit_blocked(shell, command)
+        shell.command_count += 1
+        shell.last_output = ""
+        shell.last_exit_code = -1
+        shell.commands.append({
+            "command": command,
+            "output": "",
+            "exit_code": -1,
+            "error": "Blocked: destructive command is not allowed",
+            "ts": time.time(),
+        })
+        return {"output": "", "exit_code": -1, "error": "Blocked: destructive command is not allowed"}
 
     base = shell.target_url
     if "://" in base:

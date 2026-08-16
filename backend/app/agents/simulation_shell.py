@@ -14,7 +14,9 @@ import time
 import uuid
 from typing import Any
 
+from app.brutal_sessions import BrutalSessionManager
 from app.config import get_settings
+from app.services.reverse_shell import is_dangerous
 
 PASSWD_FILE = (
     "root:x:0:0:root:/root:/bin/bash\n"
@@ -138,6 +140,17 @@ class SimulationShell:
             return {"output": "shell session is closed", "exit_code": -1, "duration_ms": 0}
         if self.command_count >= self.budget:
             return {"output": f"command budget exhausted ({self.budget})", "exit_code": -1, "duration_ms": 0}
+
+        if is_dangerous(command):
+            session = BrutalSessionManager.get(self.session_id)
+            if session is not None:
+                await session.log_op(
+                    "shell_command_blocked",
+                    "denied",
+                    "Destructive command blocked (simulated shell)",
+                    payload=command[:2000],
+                )
+            return {"output": "", "exit_code": -1, "duration_ms": 0, "error": "Blocked: destructive command is not allowed"}
 
         handler = self._dispatch(command)
         if handler is None:
