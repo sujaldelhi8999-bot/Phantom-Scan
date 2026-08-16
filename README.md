@@ -366,8 +366,6 @@ against authorized targets (PhantomBank Lab or Private Scope hosts):
 - **Evasion** — rotating user agents, request jitter and payload obfuscation,
   controlled by the `BRUTAL_EVASION_OBFUSCATE` / `BRUTAL_EVASION_SLOW_SCAN`
   toggles (both **off by default** so canned lab keyword-matching works).
-- **AI Payloads** — LLM-generated target-specific payloads with a
-  deterministic offline fallback and per-engagement caching.
 
 **Safety gates (server-enforced, non-negotiable):** `BRUTAL_MODE_ENABLED=1`
 kill switch (off by default) → admin role → target must be the lab or in
@@ -471,6 +469,14 @@ impact, and NVD CVE links.
 - **AI Security Analyst** — full scan-level analysis (summary, prioritized
   findings, root causes) shown on the Report page.
 - **AI Explainer** — per-finding explanations in English or Hindi.
+- **Ask PhantomScan** — the navbar **Ask** button opens a drawer where you pick
+  any completed scan and ask a remediation question (default: *"What should I
+  update to fix these findings?"*). OpenRouter answers using only that scan's
+  evidence (target, priorities, root causes, remediation plan, findings). When
+  the LLM is unavailable — free-tier rate limit, missing API key, HTTP error,
+  or an empty response — the answer falls back to a deterministic
+  evidence-based responder and the reason is shown in an "AI unavailable"
+  callout.
 - **AI Tutor** — chat panel on the Findings page that answers questions about a
   specific finding or general security topics.
 
@@ -619,7 +625,6 @@ API, showing relevant vulnerability intelligence next to each asset.
 | `POST` | `/api/brutal/sessions/{id}/persist` | Install persistence (lab-simulated templates only) |
 | `POST` | `/api/brutal/sessions/{id}/exfil` | Pack loot into a ZIP, then encrypt it with AES-256-GCM (`.enc`) |
 | `GET` | `/api/brutal/exfil/{file_id}` | Download the loot archive (admin only, traversal-safe, decrypted on download) |
-| `POST` | `/api/brutal/sessions/{id}/payload` | AI payload generation (OpenRouter, offline fallback) |
 | `GET` | `/api/brutal/ops` | `brutal_ops` audit trail |
 | `WS` | `/ws/brutal/shell/{shell_id}?token=...` | Interactive WebSocket shell console (admin token required) |
 
@@ -638,7 +643,7 @@ API, showing relevant vulnerability intelligence next to each asset.
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/ai/scan/{scan_id}/analysis` | Get/cached-generate AI security analyst analysis for a scan |
-| `POST` | `/api/ai/scan/{scan_id}/ask` | Ask PhantomScan a question about a scan's findings |
+| `POST` | `/api/ai/scan/{scan_id}/ask` | Ask PhantomScan about a scan's findings — OpenRouter answers grounded in that scan's evidence (priorities, root causes, remediation plan, findings); deterministic evidence-based fallback when the LLM is unavailable, with the failure reason returned in `ai_note` |
 | `GET` | `/api/ai/findings/{finding_id}/explain` | Explain a finding in en/hi via AI analyst |
 | `POST` | `/api/ai/tutor/chat` | Chat with the AI tutor about a finding or general security question |
 
