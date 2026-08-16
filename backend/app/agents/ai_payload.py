@@ -87,14 +87,19 @@ class AIPayloadGenerator:
                     timeout=25.0,
                 )
                 payload, explanation = self._parse_llm_output(generated)
-                result = {"payload": payload, "explanation": explanation, "cached": False}
+                if not payload.strip():
+                    logger.warning("AI payload empty, using offline fallback")
+                    result = {**self._offline(vuln_type, os_name), "cached": False}
+                else:
+                    result = {"payload": payload, "explanation": explanation, "cached": False}
             except Exception as exc:
                 logger.warning("AI payload generation failed, using offline fallback: %s", exc)
                 result = {**self._offline(vuln_type, os_name), "cached": False}
         else:
             result = {**self._offline(vuln_type, os_name), "cached": False}
 
-        self._cache[key] = result
+        if result.get("payload", "").strip():
+            self._cache[key] = result
         await self.session.log_op(
             "ai_payload",
             "success",
