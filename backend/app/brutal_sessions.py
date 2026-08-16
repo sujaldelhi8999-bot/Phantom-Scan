@@ -35,7 +35,6 @@ class BrutalSession:
     op_ids: list[int] = field(default_factory=list)
     simulation: bool = False
     sim_intel: dict = field(default_factory=dict)
-    sim_findings: list[dict] = field(default_factory=list)
     findings: list[dict] = field(default_factory=list)
     scan_id: int | None = None
 
@@ -59,7 +58,6 @@ class BrutalSession:
             simulation=self.simulation,
             findings=self.findings,
             sim_intel=self.sim_intel,
-            sim_findings=self.sim_findings,
             timeline=self.timeline,
             loot=self.loot,
         )
@@ -76,7 +74,6 @@ class BrutalSession:
             loot=self.loot,
             findings=self.findings,
             sim_intel=self.sim_intel,
-            sim_findings=self.sim_findings,
         )
 
     async def log_op(
@@ -124,7 +121,7 @@ class BrutalSession:
             "created_at": self.created_at,
             "status": self.status,
             "simulation": self.simulation,
-            "sim_findings": self.sim_findings,
+            "sim_intel": self.sim_intel if self.simulation else None,
             "findings_count": len(self.findings),
             "findings": self.findings if with_loot else self.findings[:5],
             "timeline": self.timeline,
@@ -179,7 +176,6 @@ class BrutalSessionManager:
                 simulation=bool(row.get("simulation")),
                 findings=row.get("findings") or [],
                 sim_intel=row.get("sim_intel") or {},
-                sim_findings=row.get("sim_findings") or [],
                 timeline=row.get("timeline") or [],
                 loot=row.get("loot") or [],
             )

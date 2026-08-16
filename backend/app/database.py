@@ -2822,7 +2822,6 @@ async def create_brutal_session_row(
     simulation: bool = False,
     findings: list[dict] | None = None,
     sim_intel: dict | None = None,
-    sim_findings: list[dict] | None = None,
     timeline: list[dict] | None = None,
     loot: list[dict] | None = None,
 ) -> None:
@@ -2831,8 +2830,8 @@ async def create_brutal_session_row(
             """
             INSERT INTO brutal_sessions (
                 session_id, target_url, actor, created_at, status, simulation,
-                findings, sim_intel, sim_findings, timeline, loot
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                findings, sim_intel, timeline, loot
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 session_id,
@@ -2843,7 +2842,6 @@ async def create_brutal_session_row(
                 1 if simulation else 0,
                 json.dumps(findings or []),
                 json.dumps(sim_intel or {}),
-                json.dumps(sim_findings or []),
                 json.dumps(timeline or []),
                 json.dumps(loot or []),
             ),
@@ -2859,7 +2857,6 @@ async def save_brutal_session_row(
     loot: list[dict] | None = None,
     findings: list[dict] | None = None,
     sim_intel: dict | None = None,
-    sim_findings: list[dict] | None = None,
     target_url: str | None = None,
     actor: str | None = None,
     created_at: float | None = None,
@@ -2872,7 +2869,6 @@ async def save_brutal_session_row(
         "loot": json.dumps(loot) if loot is not None else None,
         "findings": json.dumps(findings) if findings is not None else None,
         "sim_intel": json.dumps(sim_intel) if sim_intel is not None else None,
-        "sim_findings": json.dumps(sim_findings) if sim_findings is not None else None,
         "target_url": target_url[:2048] if target_url is not None else None,
         "actor": actor[:200] if actor is not None else None,
         "created_at": created_at if created_at is not None else None,
@@ -2898,7 +2894,7 @@ async def load_brutal_sessions() -> list[dict[str, Any]]:
         cursor = await connection.execute("SELECT * FROM brutal_sessions ORDER BY created_at ASC")
         rows = [dict(row) for row in await cursor.fetchall()]
     for row in rows:
-        for key in ("findings", "sim_intel", "sim_findings", "timeline", "loot"):
+        for key in ("findings", "sim_intel", "timeline", "loot"):
             raw = row.get(key)
             row[key] = json.loads(raw) if raw else ({} if key == "sim_intel" else [])
     return rows
