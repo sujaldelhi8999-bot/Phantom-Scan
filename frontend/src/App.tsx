@@ -31,7 +31,6 @@ import ReportPage from './features/reports/ReportPage';
 import GitHubConnectPage from './features/github/GitHubConnectPage';
 import MultiSourceScanPage from './features/multi-source/MultiSourceScanPage';
 import MultiSourceDetailPage from './features/multi-source/MultiSourceDetailPage';
-import CIIntegrationPage from './features/ci/CIIntegrationPage';
 import AuthCallbackPage from './features/auth/AuthCallbackPage';
 import ProfilePage from './features/auth/ProfilePage';
 import LoginPage from './features/auth/LoginPage';
@@ -86,7 +85,6 @@ export default function App() {
           <Route path="/profile" element={workspace(<ProfilePage />)} />
           <Route path="/multi-source" element={workspace(<MultiSourceScanPage />)} />
           <Route path="/multi-source/:scan_id" element={workspace(<MultiSourceDetailPage />)} />
-          <Route path="/ci-cd" element={workspace(<CIIntegrationPage />)} />
           <Route path="/report/:scan_id" element={workspace(<ReportPage />)} />
 
           {/* Protected workspace routes - PRO tier only */}

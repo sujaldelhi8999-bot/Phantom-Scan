@@ -27,7 +27,6 @@ from app.database_orm.models.iac_finding import IaCFinding, IaCPlatform
 from app.database_orm.models.sca_finding import SCAFinding
 from app.database_orm.models.ai_code_fix import AICodeFix, AIFixStatus, AIFixType
 from app.database_orm.models.ai_tutor_session import AITutorSession
-from app.database_orm.models.compliance_report import ComplianceReport
 from app.database_orm.models.pr_description import PRDescription, PRDescriptionStatus
 from app.database_orm.models.github_oauth import GitHubOAuthToken
 from app.database_orm.models.github_app import GitHubAppInstallation
@@ -77,7 +76,6 @@ __all__ = [
     "SCAFinding",
     "AICodeFix", "AIFixStatus", "AIFixType",
     "AITutorSession",
-    "ComplianceReport",
     "PRDescription", "PRDescriptionStatus",
     "GitHubOAuthToken",
     "GitHubAppInstallation",

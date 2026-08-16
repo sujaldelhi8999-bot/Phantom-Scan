@@ -29,7 +29,7 @@ from app.database import (
     initialize_database,
 )
 from app.models import HealthResponse
-from app.routers import active, admin_scope, agents, ai, auth, authorization, brutal, ci_cd, dos, execution, findings, github, intelligence, lab, learning, logs, multi_source, sast, scan, self_audit
+from app.routers import active, admin_scope, agents, ai, auth, authorization, brutal, dos, execution, findings, github, intelligence, lab, learning, logs, multi_source, sast, scan, self_audit
 from app.services.jobs import scan_job_manager
 from app.services.openrouter_client import get_ai_status
 from app.websockets import scan_event_broker
@@ -224,7 +224,6 @@ app.include_router(github.router)
 app.include_router(multi_source.router)
 app.include_router(sast.router)
 app.include_router(brutal.router)
-app.include_router(ci_cd.router)
 
 # The brutal router carries the /api/brutal prefix, so its WebSocket console is
 # registered here at the /ws/* path the frontend connects to.

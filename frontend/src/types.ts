@@ -419,40 +419,6 @@ export interface SourceCorrelationsResponse {
   groups: SourceCorrelationGroup[];
 }
 
-export interface GitHubActionsWorkflowResponse {
-  workflow_yaml: string;
-  file_name: string;
-}
-
-export interface ComplianceReportRequestPayload {
-  scan_id: number;
-  frameworks: Array<'pci_dss' | 'soc2' | 'iso27001' | 'hipaa' | 'gdpr' | 'nist_csf' | 'cis'>;
-  format: 'pdf' | 'html' | 'json' | 'markdown';
-  include_evidence?: boolean;
-  include_remediation?: boolean;
-}
-
-export interface ComplianceReportResponse {
-  report_id: string;
-  scan_id: number;
-  frameworks: string[];
-  format: string;
-  download_url: string;
-  generated_at: string;
-  expires_at: string;
-  summary: Record<string, unknown>;
-}
-
-export interface PRCommentRecord {
-  id: number;
-  scan_id: number;
-  pr_number: number;
-  repo_full_name: string;
-  comment: string;
-  status: string;
-  created_at: string;
-}
-
 export interface ActiveGateContext {
   allowed: boolean;
   target_url: string;

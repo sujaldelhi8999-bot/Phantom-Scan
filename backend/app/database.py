@@ -617,18 +617,6 @@ CREATE TABLE IF NOT EXISTS ai_tutor_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_ai_tutor_user_id ON ai_tutor_sessions (user_id);
 
-CREATE TABLE IF NOT EXISTS compliance_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    scan_id INTEGER NOT NULL,
-    frameworks TEXT NOT NULL,
-    format TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    summary TEXT,
-    generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    expires_at TEXT NOT NULL,
-    FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS pr_descriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id INTEGER NOT NULL,
@@ -836,10 +824,8 @@ async def initialize_database() -> None:
         await _migrate_sca_findings_table(connection)
         await _migrate_ai_code_fixes_table(connection)
         await _migrate_ai_tutor_sessions_table(connection)
-        await _migrate_compliance_reports_table(connection)
         await _migrate_pr_descriptions_table(connection)
         await _migrate_findings_correlation_columns(connection)
-        await _migrate_compliance_report_columns(connection)
         await _migrate_brutal_ops_table(connection)
         await _migrate_brutal_sessions_table(connection)
         await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
@@ -1460,25 +1446,6 @@ async def _migrate_ai_tutor_sessions_table(connection: aiosqlite.Connection) -> 
         )
 
 
-async def _migrate_compliance_reports_table(connection: aiosqlite.Connection) -> None:
-    if not await _table_exists(connection, "compliance_reports"):
-        await connection.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS compliance_reports (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                scan_id INTEGER NOT NULL,
-                frameworks TEXT NOT NULL,
-                format TEXT NOT NULL,
-                file_path TEXT NOT NULL,
-                summary TEXT,
-                generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                expires_at TEXT NOT NULL,
-                FOREIGN KEY (scan_id) REFERENCES scans (id) ON DELETE CASCADE
-            );
-            """
-        )
-
-
 async def _migrate_pr_descriptions_table(connection: aiosqlite.Connection) -> None:
     if not await _table_exists(connection, "pr_descriptions"):
         await connection.executescript(
@@ -1522,17 +1489,6 @@ async def _migrate_findings_correlation_columns(connection: aiosqlite.Connection
     for column, definition in columns:
         if not await _column_exists(connection, "findings", column):
             await connection.execute(f"ALTER TABLE findings ADD COLUMN {column} {definition}")
-
-
-async def _migrate_compliance_report_columns(connection: aiosqlite.Connection) -> None:
-    columns = [
-        ("report_id", "TEXT"),
-        ("download_url", "TEXT"),
-        ("content", "TEXT"),
-    ]
-    for column, definition in columns:
-        if not await _column_exists(connection, "compliance_reports", column):
-            await connection.execute(f"ALTER TABLE compliance_reports ADD COLUMN {column} {definition}")
 
 
 async def create_scan(

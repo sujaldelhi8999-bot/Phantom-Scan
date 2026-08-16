@@ -21,14 +21,11 @@ import type {
   AuthorizationChallengeRequest,
   AuthorizationChallengeResponse,
   AuthorizationStatusResponse,
-  ComplianceReportRequestPayload,
-  ComplianceReportResponse,
   ComplexityResult,
   ExecutionStatusResponse,
   Finding,
   FindingAIExplanation,
   FindingVerificationResponse,
-  GitHubActionsWorkflowResponse,
   GitHubConnectResponse,
   GitHubInstallation,
   GitHubInstallationListResponse,
@@ -45,7 +42,6 @@ import type {
   MultiSourceScanHistoryItem,
   MultiSourceScanPayload,
   MultiSourceScanResponse,
-  PRCommentRecord,
   PRDescriptionRequest,
   PRDescriptionResponse,
   RemediationStatus,
@@ -295,31 +291,6 @@ export async function getSourceCorrelations(scanId: number): Promise<SourceCorre
 
 export async function stopMultiSourceScan(scanId: number): Promise<{ scan_id: string; status: string }> {
   const response = await apiClient.post<{ scan_id: string; status: string }>(`/api/multi-source/${scanId}/stop`);
-  return response.data;
-}
-
-export async function getSARIF(scanId: number, download = false): Promise<unknown> {
-  const response = await apiClient.get(`/api/ci/scan/${scanId}/sarif`, { params: download ? { download: true } : undefined });
-  return response.data;
-}
-
-export async function getWorkflowTemplate(): Promise<string> {
-  const response = await apiClient.get<string>('/api/ci/workflow/template', { responseType: 'text' });
-  return response.data;
-}
-
-export async function createComplianceReport(payload: ComplianceReportRequestPayload): Promise<ComplianceReportResponse> {
-  const response = await apiClient.post<ComplianceReportResponse>('/api/ci/reports/compliance', payload);
-  return response.data;
-}
-
-export async function getPRCommentPreview(scanId: number): Promise<{ scan_id: number; comment: string }> {
-  const response = await apiClient.get<{ scan_id: number; comment: string }>(`/api/ci/scan/${scanId}/pr-comment`);
-  return response.data;
-}
-
-export async function listPRComments(scanId: number): Promise<PRCommentRecord[]> {
-  const response = await apiClient.get<PRCommentRecord[]>(`/api/ci/scan/${scanId}/pr-comments`);
   return response.data;
 }
 

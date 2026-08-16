@@ -940,49 +940,6 @@ class PRDescriptionResponse(BaseModel):
     related_issues: list[str] = Field(default_factory=list)
 
 
-class ComplianceReportRequest(BaseModel):
-    """Request for compliance report generation."""
-    model_config = ConfigDict(extra="forbid")
-
-    scan_id: int
-    frameworks: list[Literal["pci_dss", "soc2", "iso27001", "hipaa", "gdpr", "nist_csf", "cis"]]
-    format: Literal["pdf", "html", "json", "markdown"] = "pdf"
-    include_evidence: bool = True
-    include_remediation: bool = True
-
-
-class ComplianceReportResponse(BaseModel):
-    """Compliance report response."""
-    report_id: str
-    scan_id: int
-    frameworks: list[str]
-    format: str
-    download_url: str
-    generated_at: datetime
-    expires_at: datetime
-    summary: dict[str, Any]
-
-
-class GitHubActionsWorkflowRequest(BaseModel):
-    """Request for generating GitHub Actions workflow."""
-    model_config = ConfigDict(extra="forbid")
-
-    repo_url: HttpUrl
-    scan_config: MultiSourceScanRequest
-    trigger: Literal["push", "pull_request", "schedule", "workflow_dispatch"] = "pull_request"
-    schedule_cron: str | None = None  # For schedule trigger
-    fail_on_severity: list[Severity] = Field(default_factory=lambda: ["CRITICAL", "HIGH"])
-    upload_sarif: bool = True
-    comment_on_pr: bool = True
-
-
-class GitHubActionsWorkflowResponse(BaseModel):
-    """Generated GitHub Actions workflow."""
-    workflow_yaml: str
-    file_name: str = ".github/workflows/phantomscan.yml"
-    instructions: list[str] = Field(default_factory=list)
-
-
 class SupabaseLoginRequest(BaseModel):
     """Exchange a Supabase access token for a PhantomScan session."""
     model_config = ConfigDict(extra="forbid")

@@ -29,7 +29,6 @@ import {
   Skull,
   Sparkles,
   Stethoscope,
-  Workflow,
   Wrench,
   X,
 } from 'lucide-react';
@@ -66,7 +65,6 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { label: 'Reports', path: '/history', icon: FileText },
       { label: 'Agents', path: '/agents', icon: Network },
       { label: 'GitHub', path: '/github', icon: GitBranch },
-      { label: 'CI/CD', path: '/ci-cd', icon: Workflow },
     ],
   },
   {
