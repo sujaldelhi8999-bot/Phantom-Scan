@@ -55,8 +55,10 @@ phantomscan/
 │   │   ├── agents/            # Security agents (orchestrator, scanner, recon, analyzer...)
 │   │   │   └── exploitation/    # PoC exploitation modules (SQLi, XSS, etc.)
 │   │   ├── routers/           # REST API endpoints (scan, active, dos, findings, auth...)
-│   │   ├── services/          # Active gate, target authorization, AI client, browser obs
-│   │   ├── workers/           # Background worker for authorized tests
+│   │   ├── services/          # Active gate, authorization, AI client, evasion, shells, CI/CD, learning...
+│   │   ├── workers/           # Background workers (authorized tests, PoC sandbox, SAST)
+│   │   ├── brutal_sessions.py # Brutal Mode session store + persistence + audit ops
+│   │   ├── brutal_gate.py     # Brutal Mode kill-switch, admin, target-scope gate
 │   │   ├── config.py          # App configuration & settings
 │   │   ├── database.py        # SQLite storage engine, schema, migrations
 │   │   ├── lab.py             # Built-in vulnerable test lab endpoints
@@ -100,33 +102,60 @@ phantomscan/
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `OPENROUTER_API_KEY` | _none_ | OpenRouter API key for AI features (explainer, analyst, fixer) |
-| `OPENROUTER_MODEL` | `openrouter/free` | LLM model identifier |
-| `GROQ_API_KEY` | _none_ | Optional Groq API key |
-| `NVD_API_KEY` | _none_ | NVD API key for CVE lookup (increases rate limits) |
+| **Core** | | |
 | `DATABASE_URL` | `sqlite:///./phantomscan.db` | SQLite database path |
-| `SELF_AUDIT_WEBHOOK` | `http://localhost:8000/api/logs/alert` | Self-audit alert endpoint |
 | `FRONTEND_URL` | `http://localhost:5173` | Frontend origin (for CORS) |
-| `ACTIVE_TARGET_ALLOWLIST` | _none_ | Comma-separated allowed origins for active testing |
-| `ADMIN_USERNAME` | `admin` | Admin login username |
-| `ADMIN_PASSWORD` | `admin123` | Admin login password |
-| `SECRET_KEY` | `your-secret-key-change-this` | JWT signing secret |
-| `LOCAL_USER_ID` | `local-user` | Local user identifier |
-| `LOCAL_USER_ROLE` | `user` | Local user role (`admin` grants admin access) |
+| `SECRET_KEY` | _none_ (required) | JWT signing secret |
+| `PHANTOMSCAN_WEBHOOK_URL` | _none_ | External notification webhook URL (Slack/Discord/custom) |
+| `SELF_AUDIT_WEBHOOK` | `http://localhost:8000/api/logs/alert` | Self-audit alert endpoint |
+| **AI (OpenRouter) & NVD** | | |
+| `OPENROUTER_API_KEY` | _none_ | OpenRouter API key for AI features (analyst, explainer, fixer, tutor) |
+| `OPENROUTER_MODEL` | `openrouter/free` | LLM model identifier |
+| `AI_MAX_MODULES` | `10` | Max AI modules per scan |
+| `AI_POC_MAX_PER_SCAN` | `5` | Max AI-generated PoCs per scan |
+| `NVD_API_KEY` | _none_ | NVD API key for CVE lookup (increases rate limits) |
+| **Local Auth & Users** | | |
+| `ADMIN_USERNAME` | _none_ (required) | Admin login username |
+| `ADMIN_PASSWORD` | _none_ (required) | Admin login password |
+| `LOCAL_USER_ID` | `local-user` | Default user ID for local/embedded auth |
+| `LOCAL_USER_ROLE` | `user` | Default role for local auth (`admin` grants admin access) |
+| **Supabase Auth (Google / GitHub login)** | | |
+| `SUPABASE_URL` | _none_ | Supabase project URL |
+| `SUPABASE_ANON_KEY` | _none_ | Public anon key for the REST `/auth/v1/user` verification path |
+| `SUPABASE_JWT_SECRET` | _none_ | Supabase project JWT secret (Project Settings → API) |
+| `SUPABASE_ADMIN_EMAILS` | _none_ | Comma-separated emails that receive the `admin` role |
+| **GitHub OAuth + GitHub App** | | |
+| `GITHUB_CLIENT_ID` | _none_ | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | _none_ | GitHub OAuth app client secret |
+| `GITHUB_REDIRECT_URI` | _none_ | GitHub OAuth redirect URI |
+| `GITHUB_APP_ID` | _none_ | GitHub App ID (installation auth) |
+| `GITHUB_APP_PRIVATE_KEY` | _none_ | GitHub App private key (PEM) |
+| `GITHUB_WEBHOOK_SECRET` | _none_ | GitHub App webhook secret |
+| `GITHUB_TOKEN` | _none_ | Personal access token used to clone private GitHub repos (SAST worker) |
+| **Scan limits & rate control** | | |
 | `MAX_SCAN_DURATION` | `300` | Maximum scan duration in seconds |
-| `MAX_REQUESTS_PER_SECOND` | `2.0` | Rate limit for scan HTTP requests |
-| `MAX_TOTAL_REQUESTS` | `300` | Maximum total HTTP requests per scan |
-| `MAX_CONCURRENT_SCANS` | `2` | Maximum concurrent scans |
-| `MAX_REDIRECT_DEPTH` | `0` | Maximum redirect chain depth |
+| `MAX_REQUESTS_PER_SECOND` | `10.0` | Rate limit for scan HTTP requests |
+| `MAX_TOTAL_REQUESTS` | `5000` | Maximum total HTTP requests per scan |
+| `MAX_CONCURRENT_SCANS` | `10` | Maximum concurrent scans |
+| `MAX_REDIRECT_DEPTH` | `5` | Maximum redirect chain depth |
 | `MAX_RESPONSE_SIZE` | `1048576` | Maximum response body size (bytes) |
-| `BROWSER_PAGE_LIMIT` | `8` | Maximum browser pages for browser security agent |
+| `BROWSER_PAGE_LIMIT` | `16` | Maximum browser pages for browser security agent |
+| `ACTIVE_TARGET_ALLOWLIST` | _none_ | Comma-separated allowed origins for active testing |
+| `VERIFICATION_TTL_DAYS` | `30` | Findings verification TTL in days |
+| `VERIFICATION_CHALLENGE_MINUTES` | `60` | Verification challenge expiry in minutes |
+| **Port scanning** | | |
 | `DEEP_PORT_SCAN` | `1` | Enable deep port scanning (full 1-65535 range) |
 | `PORT_SCAN_CONCURRENCY` | `64` | Port scan concurrency |
 | `PORT_SCAN_MAX_PORTS` | `1024` | Maximum ports to scan |
 | `PORT_SCAN_SWEEP_TIMEOUT` | `75.0` | Port sweep timeout in seconds |
-| `SUPABASE_URL` | _none_ | Supabase project URL (Google / GitHub login) |
-| `SUPABASE_JWT_SECRET` | _none_ | Supabase project JWT secret (Project Settings → API) |
-| `SUPABASE_ADMIN_EMAILS` | _none_ | Comma-separated emails that receive the `admin` role |
+| **Exploitation engine** | | |
+| `EXPLOITATION_ENABLED` | `0` | Global kill-switch for the scan exploitation engine (SQLi, XSS, path traversal, command injection). **Off by default.** A scan only exploits when this is on **and** the user ticks "Enable Exploitation" on the Authorized Testing page. |
+| `AI_EXPLOITATION_ENABLED` | `0` | Global kill-switch for AI-driven PoC generation (OpenRouter). Falls back to deterministic templates when `OPENROUTER_API_KEY` is not set. |
+| `EXPLOIT_ATTEMPT_TIMEOUT` | `30.0` | Per-finding timeout (seconds) for each exploitation attempt |
+| `EXPLOIT_MAX_FINDINGS` | `10` | Maximum findings exploited per scan |
+| `EXPLOIT_SANDBOX` | `auto` | Sandbox mode for PoC/exploit execution (`auto`, docker, …) |
+| `EXPLOIT_DOCKER_IMAGE` | `python:3.12-slim` | Docker image used by the exploit sandbox |
+| **Brutal Mode (Black Ops)** | | |
 | `BRUTAL_MODE_ENABLED` | `0` | Master kill switch for Brutal Mode (active exploitation, shells, post-exploitation, lateral movement, exfiltration). **Off by default.** |
 | `BRUTAL_EXFIL_DIR` | `backend/brutal_exfil` | Directory where exfiltration loot archives are stored |
 | `BRUTAL_MAX_COMMANDS_PER_SHELL` | `100` | Per-shell interactive command budget |
@@ -134,10 +163,30 @@ phantomscan/
 | `BRUTAL_EXFIL_PASSWORD` | _none_ | Loot archive password; when empty the key is derived from `SECRET_KEY` + `session_id` |
 | `BRUTAL_EVASION_OBFUSCATE` | `0` | Payload obfuscation for exploit/shell traffic. **Off by default** (canned lab keyword-matching relies on it). |
 | `BRUTAL_EVASION_SLOW_SCAN` | `0` | Randomized request jitter/slow-scan cadence. **Off by default.** |
-| `EXPLOITATION_ENABLED` | `0` | Global kill-switch for the scan exploitation engine (SQLi, XSS, path traversal, command injection). **Off by default.** A scan only exploits when this is on **and** the user ticks "Enable Exploitation" on the Authorized Testing page. |
-| `AI_EXPLOITATION_ENABLED` | `0` | Global kill-switch for AI-driven PoC generation (OpenRouter). Falls back to deterministic templates when `OPENROUTER_API_KEY` is not set. |
-| `EXPLOIT_ATTEMPT_TIMEOUT` | `30.0` | Per-finding timeout (seconds) for each exploitation attempt |
-| `EXPLOIT_MAX_FINDINGS` | `10` | Maximum findings exploited per scan |
+| **Redis & PostgreSQL pool** | | |
+| `REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL |
+| `REDIS_MAX_CONNECTIONS` | `50` | Max Redis pool connections |
+| `REDIS_SOCKET_TIMEOUT` | `5.0` | Redis socket timeout (s) |
+| `REDIS_SOCKET_CONNECT_TIMEOUT` | `5.0` | Redis connect timeout (s) |
+| `PG_POOL_MIN_SIZE` | `5` | Asyncpg pool min connections |
+| `PG_POOL_MAX_SIZE` | `20` | Asyncpg pool max connections |
+| `PG_POOL_TIMEOUT` | `30.0` | Pool acquire timeout (s) |
+| `PG_COMMAND_TIMEOUT` | `60.0` | Per-command timeout (s) |
+| **Rate limiting** | | |
+| `RATE_LIMIT_ENABLED` | `1` | Toggles API rate limiting |
+| `RATE_LIMIT_REQUESTS` | `100` | Requests allowed per window |
+| `RATE_LIMIT_WINDOW` | `60` | Rate-limit window in seconds |
+| **Observability** | | |
+| `OTEL_ENABLED` | `0` | Enables OpenTelemetry export |
+| `OTEL_ENDPOINT` | `http://localhost:4317` | OTLP/gRPC collector endpoint |
+| `OTEL_SERVICE_NAME` | `phantomscan` | OTel service name |
+| `PROMETHEUS_METRICS_ENABLED` | `1` | Enables the `/metrics` Prometheus endpoint |
+| **Security / API key auth** | | |
+| `REQUIRE_AUTH_ON_HEALTH` | `0` | Require auth on health endpoint |
+| `REQUIRE_AUTH_ON_WEBSOCKET` | `1` | Require auth on WebSocket connections |
+| `API_KEY_ENABLED` | `0` | Enables static API-key auth |
+| `API_KEY_HEADER` | `X-API-Key` | Header name carrying the API key |
+| `API_KEY_VALUE` | _none_ | Static API key value |
 
 ### Frontend Environment Variables (`frontend/.env`)
 
@@ -242,8 +291,9 @@ PhantomScan orchestrates 20+ specialized agents to perform comprehensive securit
 
 ### 2. Real-Time WebSocket Console
 
-- **Global health**: `ws://localhost:8001/ws/status` — server health, scheduler status, agent availability
-- **Scan telemetry**: `ws://localhost:8001/ws/scan/{scan_id}` — live progress, log streaming, finding alerts
+- **Global health**: `ws://localhost:8000/ws/status` — server health, scheduler status, agent availability
+- **Scan telemetry**: `ws://localhost:8000/ws/scan/{scan_id}` — live progress, log streaming, finding alerts
+- **Brutal shell console**: `ws://localhost:8000/ws/brutal/shell/{shell_id}?token=...` — interactive shell (admin JWT required)
 
 ### 3. Controlled DoS & Load Stress Testing
 
@@ -381,6 +431,94 @@ Exploitation**) → **Run Authorized Test**. Backend logs will show
 panel shows the exploitation outcomes with a **Download Exploitation Report**
 button.
 
+### 8. CI/CD Integration
+
+Shift security left into your pipeline:
+
+- **GitHub Actions workflow** — one-click YAML template (`/api/ci/workflow`) that
+  runs a PhantomScan scan and gates the PR.
+- **SARIF export** — findings exportable as SARIF 2.1.0 (`/api/ci/scan/{id}/sarif`)
+  for GitHub Code Scanning or other SARIF consumers.
+- **Compliance reports** — generate and download per-scan compliance reports.
+- **PR comment bot** — the workflow can preview/post a PR comment summarizing
+  findings; the frontend **CI/CD** page shows the template, compliance report,
+  and comment preview.
+
+### 9. GitHub Integration
+
+Connect a GitHub account (OAuth) or install the PhantomScan GitHub App:
+
+- List repositories and app installations from the **GitHub** page.
+- PR/merge webhook events (`/api/github/webhook`) can trigger scans automatically.
+- Uses `GITHUB_CLIENT_ID`/`GITHUB_APP_*` env vars; private-repo SAST cloning
+  uses `GITHUB_TOKEN`.
+
+### 10. Multi-Source Scanning
+
+The **Multi-Source** wizard combines SAST + DAST + SCA + IaC + secrets against a
+live target **and/or** a GitHub repository in one coordinated scan, then
+correlates findings across sources (`/api/multi-source/{scan_id}/correlations`).
+
+### 11. Code Analysis (SAST)
+
+The **Code Analysis** page (admin) clones a public GitHub repo and scans it with
+Semgrep, TruffleHog, Gitleaks, pip-audit/npm-audit and IaC rules. Results show
+per-tool source phases plus expandable findings with CWE, CVSS, evidence,
+impact, and NVD CVE links.
+
+### 12. AI Analysis & Tutor
+
+- **AI Security Analyst** — full scan-level analysis (summary, prioritized
+  findings, root causes) shown on the Report page.
+- **AI Explainer** — per-finding explanations in English or Hindi.
+- **AI Tutor** — chat panel on the Findings page that answers questions about a
+  specific finding or general security topics.
+
+### 13. Self-Audit & Continuous Learning
+
+- **Self-Audit Agent** — PhantomScan evaluates its own posture by category;
+  results on the **Self-Audit** page (`/self-audit`), alerts via
+  `SELF_AUDIT_WEBHOOK`.
+- **Continuous Learning** — the **Scan Quality** page aggregates module accuracy
+  and learning recommendations; insights can be applied/dismissed by admins
+  (`/api/learning/*`).
+
+### 14. Attack Intelligence
+
+The **Attack Intelligence** page (admin) builds a full dossier for a target —
+recon, entry points, detected technologies, exposed assets, vulnerabilities,
+exploitation roadmap and AI analysis (`/api/admin/intelligence/`).
+
+### 15. CVE Intelligence
+
+The **CVE** page correlates detected technologies with known CVEs from the NVD
+API, showing relevant vulnerability intelligence next to each asset.
+
+### 16. Workspace Pages
+
+| Page | What it does |
+| :--- | :--- |
+| **Dashboard** (`/dashboard`) | Security overview: metrics, recent findings, status |
+| **Defend Scan** (`/scan`) | Configure & launch scans with real-time telemetry |
+| **Findings** (`/findings`) | Triage findings with AI Tutor panel |
+| **Assets** (`/assets`) | Monitored targets, per-asset findings & tech stack |
+| **CVE** (`/cve`) | Technology → CVE correlation |
+| **Remediation** (`/remediation`) | Prioritize and verify fixes |
+| **Agents** (`/agents`) | Scanner agent summary and statuses |
+| **History** (`/history`) | Past scans |
+| **Audit Logs** (`/audit-logs`) | Append-only audit records |
+| **Self-Audit** (`/self-audit`) | PhantomScan's own posture evaluation |
+| **Notifications** (`/notifications`) | Events from backend activity |
+| **System Health** (`/system-health`) | Service + AI/OpenRouter integration health |
+| **Settings** (`/settings`) | Read-only runtime configuration reference |
+| **Scan Quality** (`/quality`) | Module accuracy + learning recommendations |
+| **GitHub** (`/github`) | GitHub OAuth/App integration |
+| **CI/CD** (`/ci-cd`) | Workflow templates, SARIF, compliance, PR bot |
+| **Profile** (`/profile`) | Account and session info |
+| **Report** (`/report/{scan_id}`) | Full scan report (executive summary, AI analysis, remediation, Hindi, print/PDF) |
+| **Authorized Testing** (`/authorized-testing`) | 7-step guided pentest flow (PRO tier) |
+| **DoS Testing** (`/private/dos`) | Simulated DoS stress testing (PRO tier) |
+
 ---
 
 ## 📂 API Endpoints
@@ -393,12 +531,14 @@ button.
 | `POST` | `/api/scan/{scan_id}/stop` | Stop a running scan |
 | `GET` | `/api/scan/{scan_id}/artifacts` | Get scan artifacts |
 | `GET` | `/api/scan/history` | Get scan history |
+| `POST` | `/api/scan/{scan_id}/pr-description` | Generate a PR description from selected findings (FixerAgent) |
 
 ### Findings
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/findings` | List all findings |
 | `POST` | `/api/findings/{id}/verify` | Verify finding fix |
+| `POST` | `/api/findings/{id}/apply-patch` | Apply a patch in a sandbox, optionally verify after |
 | `PATCH` | `/api/findings/{id}/remediation` | Update remediation status |
 | `PATCH` | `/api/findings/{id}/risk` | Update risk status |
 
@@ -407,9 +547,11 @@ button.
 | :--- | :--- | :--- |
 | `POST` | `/api/active/map` | Generate attack surface map |
 | `POST` | `/api/active/score` | Calculate attack surface score |
+| `POST` | `/api/active/complexity` | Compute live Target Complexity Index for a target |
 | `POST` | `/api/active/run` | Start authorized test run |
 | `GET` | `/api/active/jobs/{jobId}` | Get job status |
 | `GET` | `/api/active/jobs/{jobId}/results` | Get job results |
+| `GET` | `/api/active/jobs/{jobId}/evidence` | Get request/response evidence for a job or finding |
 | `GET` | `/api/active/jobs/{jobId}/events` | Get job event stream |
 | `GET` | `/api/execution/status` | Get execution lifecycle status |
 
@@ -427,6 +569,37 @@ button.
 | `GET` | `/api/admin/dos/status/{job_id}` | Get DoS job status |
 | `GET` | `/api/admin/dos/history` | Get DoS job history |
 
+### PhantomBank Lab & Brutal Sim Targets
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/lab/status` | Lab status: name, default state, scenario states, scenario list |
+| `POST` | `/api/lab/scenario` | Switch lab scenario state(s) (`VULNERABLE`/`PATCHED`) |
+| `POST` | `/api/lab/reset` | Reset lab to `VULNERABLE` |
+| `GET` | `/api/lab/manifest` | Lab endpoint manifest (built from request base URL) |
+| `GET` | `/lab/phantombank` | PhantomBank vulnerable lab home dashboard (HTML) |
+| `GET` | `/lab/phantombank/manifest` | Lab manifest rooted at the PhantomBank path |
+| `GET`/`POST` | `/lab/phantombank/login` | Login page + POST (demo user, rate-limit headers) |
+| `GET`/`POST` | `/lab/phantombank/search` | Search page (XSS vs escaped output per scenario) |
+| `POST` | `/lab/phantombank/api/profile` | Update profile (input-validation scenario) |
+| `GET` | `/lab/phantombank/api/accounts` | Fake account data (IDOR/error-leak scenario) |
+| `GET` | `/lab/phantombank/api/admin/users` | Fake admin user list (access-control scenario) |
+| `GET`/`POST` | `/lab/phantombank/transfer` | Transfer page + API (business-logic + CSRF scenarios) |
+| `GET`/`POST` | `/lab/phantombank/upload` | Upload statement page + upload simulation (path-handling) |
+| `GET` | `/lab/phantombank/download` | Download demo statement (path traversal scenario) |
+| `GET`/`POST` | `/lab/phantombank/graphql` | GraphQL endpoint (introspection enable/disable scenario) |
+| `GET` | `/lab/phantombank/redirect` | Redirect endpoint (open-redirect scenario) |
+| `GET` | `/lab/phantombank/api/session` | Session/JWT config (alg-none vs secure cookie scenario) |
+| `GET` | `/lab/phantombank/api/debug` | Debug endpoint leaking fake API keys (sensitive exposure) |
+| `POST` | `/api/lab/brutal/exec` | Simulated RCE / command injection target |
+| `POST` | `/api/lab/brutal/sqli` | Simulated UNION-based SQL injection target |
+| `POST` | `/api/lab/brutal/lfi` | Simulated LFI / log-poisoning target |
+| `POST` | `/api/lab/brutal/ssrf` | Simulated SSRF target (internal probing) |
+| `GET` | `/api/lab/brutal/network` | Simulated internal network map for lateral movement |
+| `POST` | `/api/lab/brutal/ssh-login` | Simulated SSH login against an internal host |
+| `POST` | `/api/lab/brutal/persist` | Simulated persistence installation |
+| `POST` | `/api/lab/brutal/upload-shell` | Simulated webshell deployment via file upload |
+| `POST` | `/api/lab/brutal/xss-steal` | Simulated session theft via persistent XSS |
+
 ### Brutal Mode (Black Ops, Admin Only — gated)
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
@@ -435,41 +608,118 @@ button.
 | `POST` | `/api/brutal/sessions` | Establish a session against an in-scope target (requires `ownership_ack: true`) |
 | `GET` | `/api/brutal/sessions` | List sessions |
 | `GET` | `/api/brutal/sessions/{id}` | Session detail (timeline + loot) |
-| `POST` | `/api/brutal/sessions/{id}/exploit` | Run an exploitation flow (`category`: sqli, rce, lfi, ssrf, xss, file_upload, injection) |
+| `POST` | `/api/brutal/sessions/{id}/exploit` | Run an exploitation flow (`category`: sqli, rce, command_injection, lfi, ssrf, file_upload, xss) |
 | `POST` | `/api/brutal/sessions/{id}/shell` | Open an interactive shell session |
+| `GET` | `/api/brutal/shell/{shell_id}` | Get shell session info |
 | `POST` | `/api/brutal/shell/{shell_id}/exec` | Run a command in the shell (filtered + budgeted + audited) |
 | `GET` | `/api/brutal/shell/{shell_id}/payloads` | Reverse shell / bind shell one-liners |
 | `DELETE` | `/api/brutal/shell/{shell_id}` | Close a shell |
 | `POST` | `/api/brutal/sessions/{id}/post-exploit` | Enumeration + privilege-escalation checks (lab-simulated) |
 | `POST` | `/api/brutal/sessions/{id}/lateral` | SSH key harvest + internal network map + pivot (lab-simulated) |
 | `POST` | `/api/brutal/sessions/{id}/persist` | Install persistence (lab-simulated templates only) |
-| `POST` | `/api/brutal/sessions/{id}/exfil` | Pack loot into a ZIP archive (SHA256 + MANIFEST) |
-| `GET` | `/api/brutal/exfil/{file_id}` | Download the loot archive (admin only, traversal-safe) |
+| `POST` | `/api/brutal/sessions/{id}/exfil` | Pack loot into a ZIP, then encrypt it with AES-256-GCM (`.enc`) |
+| `GET` | `/api/brutal/exfil/{file_id}` | Download the loot archive (admin only, traversal-safe, decrypted on download) |
 | `POST` | `/api/brutal/sessions/{id}/payload` | AI payload generation (OpenRouter, offline fallback) |
 | `GET` | `/api/brutal/ops` | `brutal_ops` audit trail |
 | `WS` | `/ws/brutal/shell/{shell_id}?token=...` | Interactive WebSocket shell console (admin token required) |
+
+### Auth
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register a new user, returns tokens |
+| `POST` | `/api/auth/login` | Email/password login, returns tokens |
+| `POST` | `/api/auth/refresh` | Exchange refresh token for a fresh access token (with rotation) |
+| `POST` | `/api/auth/change-password` | Change the authenticated user's password |
+| `GET` | `/api/auth/me` | Get the current user's profile |
+| `POST` | `/api/auth/supabase` | Exchange a Supabase token (Google/GitHub OAuth) for a session |
+| `POST` | `/api/auth/admin/create` | Admin creates a new admin user |
+
+### AI Analysis & Tutor
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/ai/scan/{scan_id}/analysis` | Get/cached-generate AI security analyst analysis for a scan |
+| `POST` | `/api/ai/scan/{scan_id}/ask` | Ask PhantomScan a question about a scan's findings |
+| `GET` | `/api/ai/findings/{finding_id}/explain` | Explain a finding in en/hi via AI analyst |
+| `POST` | `/api/ai/tutor/chat` | Chat with the AI tutor about a finding or general security question |
+
+### GitHub Integration
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/github/connect` | Initiate GitHub OAuth flow (returns authorize URL + state) |
+| `GET` | `/api/github/callback` | GitHub OAuth callback (exchanges code, redirects to frontend) |
+| `GET` | `/api/github/status` | GitHub connection status |
+| `GET` | `/api/github/repos` | List the user's GitHub repositories |
+| `GET` | `/api/github/installations` | List the user's GitHub App installations |
+| `POST` | `/api/github/webhook` | GitHub webhook endpoint (PR events trigger auto scans) |
+| `DELETE` | `/api/github/disconnect` | Disconnect the user's GitHub account |
+
+### CI/CD Integration
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/ci/scan/{scan_id}/sarif` | Export scan findings as SARIF 2.1.0 (optional download) |
+| `POST` | `/api/ci/workflow` | Generate a GitHub Actions workflow template |
+| `GET` | `/api/ci/workflow/template` | Ready-to-use PhantomScan GitHub Actions workflow YAML |
+| `POST` | `/api/ci/reports/compliance` | Generate a compliance report for a scan |
+| `GET` | `/api/ci/reports/{report_id}/download` | Download a generated compliance report |
+| `GET` | `/api/ci/scan/{scan_id}/pr-comment` | Preview the PR comment for a scan |
+| `POST` | `/api/ci/scan/{scan_id}/pr-comment` | Persist a PR comment record (posted by the bot) |
+| `GET` | `/api/ci/scan/{scan_id}/pr-comments` | List PR comments for a scan |
+
+### Multi-Source Scanning
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/multi-source/scan` | Start a coordinated multi-source security scan |
+| `GET` | `/api/multi-source/history` | List the user's multi-source scan history |
+| `GET` | `/api/multi-source/{scan_id}` | Multi-source scan status/progress + per-source results |
+| `GET` | `/api/multi-source/{scan_id}/correlations` | Cross-source correlated finding groups + summary |
+| `POST` | `/api/multi-source/{scan_id}/stop` | Stop a running multi-source scan |
+
+### Continuous Learning & Self-Audit
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/learning/insights` | List continuous-learning insights (admin) |
+| `POST` | `/api/learning/insights/{insight_id}/apply` | Apply a learning insight to settings (admin) |
+| `POST` | `/api/learning/insights/{insight_id}/dismiss` | Dismiss a learning insight (admin) |
+| `GET` | `/api/learning/quality` | Scan-quality summary (admin) |
+| `GET` | `/api/self-audit/status` | Status of the latest Self Audit Agent run for the user |
+
+### Intelligence (OSINT, Admin Only)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/admin/intelligence/` | Aggregated OSINT/threat intelligence for a target (admin) |
+
+### Metrics
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/metrics` | Prometheus metrics (when `PROMETHEUS_METRICS_ENABLED=1`) |
+
+### WebSockets
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `WS` | `/ws/status` | Global status heartbeat stream (auth via query token/header) |
+| `WS` | `/ws/scan/{scan_id}` | Live scan event stream (snapshot + events until terminal status) |
+| `WS` | `/ws/brutal/shell/{shell_id}` | Interactive Brutal Mode shell console (admin JWT only) |
+| `WS` | `/lab/phantombank/ws/prices` | Lab stock-price WebSocket (websocket-exposure scenario) |
 
 ### System & Admin
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Health check |
-| `GET` | `/api/lab/status` | Lab status |
-| `GET` | `/api/lab/manifest` | Lab manifest |
-| `POST` | `/api/lab/scenario` | Set lab scenario |
-| `POST` | `/api/lab/reset` | Reset lab |
 | `GET` | `/api/admin/scope/list` | List private scope targets |
 | `POST` | `/api/admin/scope/add` | Add target to private scope |
 | `DELETE` | `/api/admin/scope/remove` | Remove target from scope |
 | `GET` | `/api/admin/scope/role` | Get user role |
 | `GET` | `/api/agents/status` | Get agent statuses |
 | `GET` | `/api/logs` | Get audit logs |
-| `POST` | `/api/auth/login` | Login |
+| `POST` | `/api/logs/alert` | Receive a self-audit alert and record it as an audit log |
+| `GET` | `/api/logs/{scan_id}` | Get audit logs for an owned scan |
 | `GET` | `/api/authorization/status` | Check target authorization |
 
 ### Authorization System
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/authorization/challenge` | Create authorization challenge |
+| `GET` | `/api/authorization/{id}` | Get an authorization record |
 | `POST` | `/api/authorization/{id}/verify` | Verify authorization |
 | `POST` | `/api/authorization/{id}/revoke` | Revoke authorization |
 
@@ -533,9 +783,9 @@ at `http://localhost:8000/lab/phantombank` — the safe target for every demo.
 
 | Endpoint | Effect |
 | :--- | :--- |
-| `GET /api/lab/scenario?name=patched` | Patch most vulnerabilities (CSP, HSTS, secure cookies, parameterized SQL) |
-| `GET /api/lab/scenario?name=vulnerable` | Restore the vulnerable state |
-| `POST /api/lab/reset` | Reset the lab |
+| `POST /api/lab/scenario` with `{"state": "PATCHED"}` | Patch most vulnerabilities (CSP, HSTS, secure cookies, parameterized SQL) |
+| `POST /api/lab/scenario` with `{"state": "VULNERABLE"}` | Restore the vulnerable state |
+| `POST /api/lab/reset` | Reset the lab to `VULNERABLE` |
 
 **Demo flow**: scan the lab (vulnerable) → findings appear → toggle scenario to
 `patched` → rescan the same target → 0 findings → shows remediation in action.
@@ -563,8 +813,8 @@ at `http://localhost:8000/lab/phantombank` — the safe target for every demo.
 | 2:30 | **Findings** | After ~60–90s the scan completes; show the findings list with severity badges, then open the **Report** page (severity breakdown, CVSS, remediation checklist, AI analysis). |
 | 3:30 | **Attack Intelligence** | Sidebar → **Attack Intelligence** → enter `localhost/lab/phantombank` → **Analyze**. Full dossier: DNS, ports, technologies, headers, exposed assets, entry points, risk score. |
 | 4:00 | **Code Analysis** | Sidebar → **Code Analysis** → paste `https://github.com/expressjs/express` → **Scan Repository**. Show SAST findings (secrets, vulnerable deps). |
-| 4:30 | **Brutal Mode (optional wow)** | Sidebar → **Brutal Mode** → pick the lab target → tick ownership → **Establish Session** → **SQLi** auto-exploit (DB dump in Loot), **Open Shell** → `whoami`, `netstat`, and a blocked `rm -rf /` command — then **Exfiltrate** → **Download** the loot ZIP. Show the `brutal_ops` audit trail. |
-| 5:00 | **Remediation proof** | `GET /api/lab/scenario?name=patched` → **Rescan** the lab → report shows **0 findings** (or dramatically fewer). |
+| 4:30 | **Brutal Mode (optional wow)** | Sidebar → **Brutal Mode** → pick the lab target → tick ownership → **Establish Session** → **SQLi** auto-exploit (DB dump in Loot), **Open Shell** → `whoami`, `netstat`, and a blocked `rm -rf /` command — then **Exfiltrate** → **Download** the loot archive. Show the `brutal_ops` audit trail. |
+| 5:00 | **Remediation proof** | `POST /api/lab/scenario` with `{"state": "PATCHED"}` → **Rescan** the lab → report shows **0 findings** (or dramatically fewer). |
 | 5:15 | **Close** | "Everything is logged in an append-only audit trail; WebSocket events stream every action." |
 
 **Backup plan**: if the live demo fails, play the recorded video (see below).
@@ -578,7 +828,7 @@ Record a 3-minute screen capture (OBS Studio or Windows Game Bar) of:
 1. Supabase login (GitHub OAuth) → avatar in header
 2. Defend Scan on `http://localhost:8000/lab/phantombank` (VULNERABLE) → findings appear
 3. Report page with severity breakdown + remediation checklist
-4. Toggle lab to `patched` → rescan → 0 findings
+4. Toggle lab to `PATCHED` (`POST /api/lab/scenario`) → rescan → 0 findings
 5. Attack Intelligence dossier for the lab
 6. Code Analysis on a public repo
 7. Brutal Mode: establish session → SQLi exploit (loot) → shell `whoami` + blocked destructive command → exfil download
@@ -595,7 +845,7 @@ once with the video playing so the timing matches.
 cd backend
 python -m pytest tests/test_fix_verification.py -v
 python -m pytest tests/test_learning_engine.py -q
-python -m pytest tests/test_brutal_mode.py -q   # Brutal Mode gate + shell + exfil safety (expect 20 passing)
+python -m pytest tests/test_brutal_mode.py -q   # Brutal Mode gate + shell + exfil safety (expect 22 passing)
 
 # Frontend
 cd frontend
