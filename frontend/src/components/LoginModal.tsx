@@ -45,61 +45,61 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--surface-primary)] rounded-2xl p-8 max-w-md w-full border border-[var(--border-light)] shadow-[var(--shadow-float)]">
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--brand)]">
-              <ShieldCheck className="h-5 w-5 text-white" />
+    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[2.5px] flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--surface-primary)] rounded-[var(--radius-panel)] p-6 max-w-sm w-full border border-[var(--border-light)] shadow-[var(--shadow-float)]">
+        <div className="text-center mb-5">
+          <div className="flex justify-center mb-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] bg-[var(--brand-soft)]">
+              <ShieldCheck className="h-5 w-5 text-[var(--brand)]" />
             </div>
           </div>
-          <h2 className="text-xl font-bold text-[var(--text-strong)]">
+          <h2 className="text-base font-bold text-[var(--text-strong)]">
             Sign In to PhantomScan
           </h2>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Enter your credentials to access your security workspace</p>
+          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Enter your credentials to access your security workspace</p>
         </div>
 
         {supabaseConfigured && (
           <>
-            <div className="space-y-2.5 mb-5">
+            <div className="space-y-2 mb-4">
               <button
                 type="button"
                 onClick={() => void handleSso('google')}
                 disabled={ssoProvider !== null}
-                className="w-full flex items-center justify-center gap-2 border border-[var(--border-light)] rounded-lg px-4 py-2 text-xs font-medium text-[var(--text-strong)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 border border-[var(--border-light)] rounded-[var(--radius-control)] px-4 py-1.5 text-xs font-semibold text-[var(--text-strong)] hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-50 active:scale-[0.98] active:translate-y-[0.5px]"
               >
-                {ssoProvider === 'google' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                {ssoProvider === 'google' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 text-[var(--brand)]" />}
                 Continue with Google
               </button>
               <button
                 type="button"
                 onClick={() => void handleSso('github')}
                 disabled={ssoProvider !== null}
-                className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-950 rounded-lg px-4 py-2 text-xs font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-slate-900 rounded-[var(--radius-control)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors disabled:opacity-50 active:scale-[0.98] active:translate-y-[0.5px]"
               >
-                {ssoProvider === 'github' ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitBranch className="h-4 w-4" />}
+                {ssoProvider === 'github' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitBranch className="h-3.5 w-3.5" />}
                 Continue with GitHub
               </button>
             </div>
 
-            <div className="flex items-center gap-3 mb-5">
+            <div className="flex items-center gap-2.5 mb-4">
               <div className="flex-1 border-t border-[var(--border-light)]" />
-              <span className="text-[11px] text-[var(--text-muted)]">or with email</span>
+              <span className="text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wider">or with email</span>
               <div className="flex-1 border-t border-[var(--border-light)]" />
             </div>
           </>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-medium text-[var(--text-strong)] mb-1.5">Email Address</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)] mb-1">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+              <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)]" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs border border-[var(--border-light)] rounded-lg bg-[var(--surface-secondary)] text-[var(--text-strong)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-[var(--border-default)] rounded-[var(--radius-control)] bg-white text-[var(--text-strong)] placeholder-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/8 focus:border-[var(--brand)] transition-all"
                 placeholder="you@example.com"
                 required
                 autoComplete="email"
@@ -107,14 +107,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-[var(--text-strong)] mb-1.5">Password</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-strong)] mb-1">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
+              <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--text-muted)]" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs border border-[var(--border-light)] rounded-lg bg-[var(--surface-secondary)] text-[var(--text-strong)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-[var(--border-default)] rounded-[var(--radius-control)] bg-white text-[var(--text-strong)] placeholder-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/8 focus:border-[var(--brand)] transition-all"
                 placeholder="Enter password"
                 required
                 autoComplete="current-password"
@@ -122,22 +122,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
           {error && (
-            <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 text-center">
+            <div className="p-2 rounded-[var(--radius-control)] bg-[var(--danger-soft)] border border-[var(--danger-border)] text-[10px] font-semibold text-[var(--danger)] text-center">
               {error}
             </div>
           )}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-white font-semibold py-1.75 px-4 rounded-[var(--radius-control)] text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 active:scale-[0.98] active:translate-y-[0.5px]"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
         <button
           onClick={onClose}
-          className="mt-3 text-xs text-[var(--text-muted)] hover:text-[var(--text-strong)] w-full text-center py-1"
+          className="mt-2.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-strong)] w-full text-center py-1 transition-colors"
         >
           Cancel
         </button>
