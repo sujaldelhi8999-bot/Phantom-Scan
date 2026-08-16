@@ -12,6 +12,8 @@ import random
 import time
 from urllib.parse import quote
 
+from app.config import get_settings
+
 USER_AGENTS: list[str] = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
@@ -27,7 +29,11 @@ USER_AGENTS: list[str] = [
 
 
 class EvasionStrategy:
-    """Per-operation evasion knobs."""
+    """Per-operation evasion knobs.
+
+    ``obfuscate`` and ``slow_scan`` default to the BRUTAL_EVASION_* env
+    toggles (OFF by default so canned lab keyword-matching still works).
+    """
 
     def __init__(
         self,
@@ -35,12 +41,15 @@ class EvasionStrategy:
         rotate_user_agent: bool = True,
         jitter_min: float = 0.3,
         jitter_max: float = 2.5,
-        obfuscate: bool = True,
+        obfuscate: bool | None = None,
+        slow_scan: bool | None = None,
     ) -> None:
+        settings = get_settings()
         self.rotate_user_agent = rotate_user_agent
         self.jitter_min = jitter_min
         self.jitter_max = jitter_max
-        self.obfuscate = obfuscate
+        self.obfuscate = settings.brutal_evasion_obfuscate if obfuscate is None else obfuscate
+        self.slow_scan = settings.brutal_evasion_slow_scan if slow_scan is None else slow_scan
 
     def headers(self) -> dict[str, str]:
         headers = {
@@ -54,7 +63,12 @@ class EvasionStrategy:
         return headers
 
     async def jitter_delay(self) -> None:
-        """Sleep a randomized delay to keep request cadence human-like."""
+        """Sleep a randomized delay to keep request cadence human-like.
+
+        No-op unless the BRUTAL_EVASION_SLOW_SCAN toggle is on.
+        """
+        if not self.slow_scan:
+            return
         await asyncio.sleep(random.uniform(self.jitter_min, self.jitter_max))
 
     def obfuscate_payload(self, payload: str, mode: str | None = None) -> str:

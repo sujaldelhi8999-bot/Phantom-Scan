@@ -258,6 +258,9 @@ async def run_command(shell: ShellSession, command: str) -> dict[str, Any]:
     try:
         from app.services.evasion import EvasionStrategy
         evasion = EvasionStrategy()
+        if evasion.obfuscate:
+            command = evasion.obfuscate_payload(command)
+        await evasion.jitter_delay()
         async with httpx.AsyncClient(headers=evasion.headers(), timeout=timeout) as client:
             response = await client.post(
                 f"{base}/api/lab/brutal/exec",
