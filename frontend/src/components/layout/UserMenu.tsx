@@ -38,46 +38,46 @@ export default function UserMenu() {
     <div className="relative ml-2" ref={containerRef}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-[var(--border-light)] bg-white dark:bg-gray-800 py-1.5 px-3 text-xs shadow-sm hover:bg-[var(--surface-hover)] transition-all"
+        className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--border-light)] bg-white py-1 px-2.5 text-xs shadow-sm hover:bg-[var(--surface-hover)] transition-all active:scale-[0.98]"
         aria-label="User menu"
         aria-expanded={open}
       >
         {/* Avatar (first letter) */}
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)] to-indigo-600 text-[11px] font-bold text-white">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)] to-blue-500 text-[10px] font-bold text-white uppercase">
           {initial}
         </span>
 
         {/* Role / Plan Badge inside pill */}
         {user.role === 'admin' ? (
-          <span className="flex items-center gap-1 rounded-full bg-purple-100 dark:bg-purple-900/50 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
-            👑 Admin
+          <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold bg-purple-50 border border-purple-200 text-purple-700">
+            Admin
           </span>
         ) : user.subscriptionTier === 'PRO' ? (
-          <span className="flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+          <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold bg-amber-50 border border-amber-200 text-amber-700">
             ⚡ Pro
           </span>
         ) : (
-          <span className="flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-[10px] font-semibold text-gray-600 dark:text-gray-300">
+          <span className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-slate-50 border border-slate-200 text-slate-600">
             Free
           </span>
         )}
 
-        <span className="font-semibold text-gray-800 dark:text-gray-200 max-w-[150px] truncate sm:inline">
+        <span className="font-semibold text-[var(--text-default)] max-w-[130px] truncate sm:inline">
           {emailDisplay}
         </span>
-        <ChevronDown className={cx('h-3.5 w-3.5 text-gray-400 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cx('h-3.5 w-3.5 text-[var(--text-subtle)] transition-transform', open && 'rotate-180')} />
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-11 z-50 w-60 overflow-hidden rounded-2xl border border-[var(--border-light)] bg-white dark:bg-gray-900 p-2 shadow-xl animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="border-b border-gray-100 dark:border-gray-800 px-3 py-2.5 mb-1">
+        <div className="absolute right-0 top-10 z-50 w-56 overflow-hidden rounded-[var(--radius-panel)] border border-[var(--border-light)] bg-white p-1.5 shadow-[var(--shadow-float)] animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="border-b border-[var(--border-light)] px-2.5 py-2 mb-1">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)] to-indigo-600 text-sm font-bold text-white">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--brand)] to-blue-500 text-xs font-bold text-white uppercase">
                 {initial}
               </span>
               <div className="min-w-0">
-                <div className="truncate text-xs font-bold text-gray-900 dark:text-white">{displayName}</div>
-                <div className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{emailDisplay}</div>
+                <div className="truncate text-xs font-bold text-[var(--text-strong)]">{displayName}</div>
+                <div className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">{emailDisplay}</div>
               </div>
             </div>
           </div>
@@ -86,18 +86,18 @@ export default function UserMenu() {
             <Link
               to="/dashboard"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex w-full items-center gap-2 rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-default)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-strong)] transition-colors"
             >
-              <LayoutDashboard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <LayoutDashboard className="h-3.5 w-3.5 text-[var(--brand)]" />
               Dashboard
             </Link>
 
             <Link
               to="/profile"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex w-full items-center gap-2 rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-default)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-strong)] transition-colors"
             >
-              <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              <Settings className="h-3.5 w-3.5 text-[var(--text-muted)]" />
               Profile Settings
             </Link>
 
@@ -107,9 +107,9 @@ export default function UserMenu() {
                 setOpen(false);
                 void logoutUser();
               }}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+              className="flex w-full items-center gap-2 rounded-[var(--radius-control)] px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
               Sign Out
             </button>
           </div>
