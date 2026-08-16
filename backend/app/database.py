@@ -1853,6 +1853,25 @@ async def list_findings(scan_id: int | None = None, user_id: str | None = None) 
     return rows
 
 
+async def get_findings_by_target(host: str, limit: int = 50) -> list[dict[str, Any]]:
+    """Latest findings whose target host matches the given host (case-insensitive)."""
+    from urllib.parse import urlparse
+
+    def host_of(raw: Any) -> str:
+        value = str(raw or "").strip().lower()
+        if not value:
+            return ""
+        if "://" in value:
+            parsed = urlparse(value)
+            return (parsed.hostname or "").lower()
+        return value.split(":")[0]
+
+    rows = await list_findings()
+    target = host.strip().lower()
+    matched = [row for row in rows if host_of(row.get("target")) == target]
+    return matched[-limit:]
+
+
 async def add_audit_log(
     scan_id: int,
     agent_name: str,

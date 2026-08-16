@@ -191,6 +191,56 @@ class ExploitationEngineTests(IsolatedAsyncioTestCase):
         self.assertIn("xss", SUPPORTED_CATEGORIES)
 
 
+class RealTargetExploitationTests(IsolatedAsyncioTestCase):
+    """Private-scope targets must use the findings-driven real engine, gated on EXPLOITATION_ENABLED."""
+
+    REAL_TARGET = "http://192.168.1.50/"
+
+    async def asyncSetUp(self) -> None:
+        await initialize_database()
+        set_brutal_mode(True)
+        self.old_enabled = Settings.exploitation_enabled
+        self.addCleanup(self._restore)
+        self.session = make_session(target_url=self.REAL_TARGET)
+
+    def _restore(self) -> None:
+        Settings.exploitation_enabled = self.old_enabled
+
+    async def test_real_target_gated_off_by_default(self) -> None:
+        Settings.exploitation_enabled = False
+        engine = ExploitationEngine(self.session)
+        result = await engine.exploit("sqli")
+        self.assertFalse(result["success"])
+        self.assertIn("EXPLOITATION_ENABLED", result["error"])
+
+    async def test_real_sqli_uses_session_findings_and_captures_loot(self) -> None:
+        Settings.exploitation_enabled = True
+        self.session.findings = [
+            {
+                "category": "sql_injection",
+                "severity": "CRITICAL",
+                "endpoint": "http://192.168.1.50/login.php",
+            }
+        ]
+
+        class FakeResponse:
+            status_code = 200
+            text = "sqlite_version admin users password"
+
+        with patch("app.agents.exploitation_engine.httpx.AsyncClient") as mock_client:
+            mock_client.return_value.get = AsyncMock(return_value=FakeResponse())
+            mock_client.return_value.aclose = AsyncMock()
+            engine = ExploitationEngine(self.session)
+            result = await engine.exploit("sqli")
+
+        self.assertTrue(result["success"])
+        self.assertTrue(result.get("real"))
+        self.assertEqual(len(self.session.loot), 1)
+        self.assertEqual(self.session.loot[0]["kind"], "database")
+        actions = [event["action"] for event in self.session.timeline]
+        self.assertIn("exploited", actions)
+
+
 class ExfiltrationTests(IsolatedAsyncioTestCase):
     """Loot packing must be atomic, checksummed and traversal-safe."""
 

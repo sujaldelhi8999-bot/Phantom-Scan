@@ -37,6 +37,7 @@ class BrutalSession:
     sim_intel: dict = field(default_factory=dict)
     sim_findings: list[dict] = field(default_factory=list)
     findings: list[dict] = field(default_factory=list)
+    scan_id: int | None = None
 
     def add_event(self, action: str, status: str, detail: str, payload: str | None = None) -> None:
         self.timeline.append(

@@ -177,6 +177,17 @@ async def create_session(request: SessionCreateRequest, user: dict = Depends(get
             f"({counts.get('CRITICAL', 0)} Critical, {counts.get('HIGH', 0)} High, {counts.get('MEDIUM', 0)} Medium)",
             output=f"tech_stack={intel.get('tech_stack')} ip={intel.get('ip')}",
         )
+    else:
+        from app.database import get_findings_by_target
+
+        findings = await get_findings_by_target(hostname)
+        if findings:
+            session.findings = findings
+            await session.log_op(
+                "findings_loaded",
+                "success",
+                f"Loaded {len(findings)} scanner findings for {hostname} into session",
+            )
     await session.log_op(
         "session_established",
         "success",
