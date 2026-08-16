@@ -129,6 +129,10 @@ async def lifespan(application: FastAPI):
     system_scan_id = await get_or_create_system_scan()
     await add_audit_log(system_scan_id, "System", "backend_started", "PhantomScan backend started")
 
+    from app.brutal_sessions import BrutalSessionManager
+    restored = await BrutalSessionManager.restore()
+    logger.info("Restored %d persisted Brutal sessions", restored)
+
     from app.database import get_connection as _recovery_conn
     try:
         async with _recovery_conn() as _conn:

@@ -161,6 +161,7 @@ async def create_session(request: SessionCreateRequest, user: dict = Depends(get
         await gate.deny(user, request.target_url, exc)
         raise _deny(exc) from exc
     session = BrutalSessionManager.create(request.target_url, user["id"], simulation=request.simulation)
+    await session.save_new()
     if request.simulation:
         intel = await SimulationIntel(request.target_url).gather_intel()
         findings = SimulationFinder(intel).generate_findings()

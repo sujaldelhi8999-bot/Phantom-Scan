@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -800,7 +801,9 @@ async def initialize_database() -> None:
             await connection.executescript(SCHEMA_SQL)
             await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
             await connection.commit()
-            return
+            # Fall through to the migration block below (guarded by
+            # _table_exists/_column_exists, so idempotent) so fresh databases
+            # also get the migration-only tables (brutal_ops, sast_findings, ...).
 
         if not await _column_exists(connection, "findings", "confidence"):
             await _migrate_legacy_schema(connection)
@@ -839,6 +842,7 @@ async def initialize_database() -> None:
         await _migrate_findings_correlation_columns(connection)
         await _migrate_compliance_report_columns(connection)
         await _migrate_brutal_ops_table(connection)
+        await _migrate_brutal_sessions_table(connection)
         await connection.execute(f"PRAGMA user_version = {LATEST_SCHEMA_VERSION}")
         await connection.commit()
 
@@ -1316,6 +1320,29 @@ async def _migrate_brutal_ops_table(connection: aiosqlite.Connection) -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_brutal_ops_session ON brutal_ops (session_id);
             CREATE INDEX IF NOT EXISTS idx_brutal_ops_created ON brutal_ops (created_at);
+            """
+        )
+
+
+async def _migrate_brutal_sessions_table(connection: aiosqlite.Connection) -> None:
+    if not await _table_exists(connection, "brutal_sessions"):
+        await connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS brutal_sessions (
+                session_id TEXT PRIMARY KEY,
+                target_url TEXT NOT NULL,
+                actor TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'established',
+                simulation INTEGER NOT NULL DEFAULT 0,
+                findings TEXT,
+                sim_intel TEXT,
+                sim_findings TEXT,
+                timeline TEXT,
+                loot TEXT,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_brutal_sessions_created ON brutal_sessions (created_at);
             """
         )
 
@@ -2784,6 +2811,98 @@ async def list_brutal_ops(session_id: str | None = None, limit: int = 200) -> li
                 "SELECT * FROM brutal_ops ORDER BY id DESC LIMIT ?", (limit,)
             )
         return [dict(row) for row in await cursor.fetchall()]
+
+
+async def create_brutal_session_row(
+    session_id: str,
+    target_url: str,
+    actor: str,
+    created_at: float,
+    *,
+    status: str = "established",
+    simulation: bool = False,
+    findings: list[dict] | None = None,
+    sim_intel: dict | None = None,
+    sim_findings: list[dict] | None = None,
+    timeline: list[dict] | None = None,
+    loot: list[dict] | None = None,
+) -> None:
+    async with get_connection() as connection:
+        await connection.execute(
+            """
+            INSERT INTO brutal_sessions (
+                session_id, target_url, actor, created_at, status, simulation,
+                findings, sim_intel, sim_findings, timeline, loot
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                target_url[:2048],
+                actor[:200],
+                created_at,
+                status[:50],
+                1 if simulation else 0,
+                json.dumps(findings or []),
+                json.dumps(sim_intel or {}),
+                json.dumps(sim_findings or []),
+                json.dumps(timeline or []),
+                json.dumps(loot or []),
+            ),
+        )
+        await connection.commit()
+
+
+async def save_brutal_session_row(
+    session_id: str,
+    *,
+    status: str | None = None,
+    timeline: list[dict] | None = None,
+    loot: list[dict] | None = None,
+    findings: list[dict] | None = None,
+    sim_intel: dict | None = None,
+    sim_findings: list[dict] | None = None,
+    target_url: str | None = None,
+    actor: str | None = None,
+    created_at: float | None = None,
+    simulation: bool | None = None,
+) -> None:
+    """Upsert a session snapshot so any mutation persists the row (on insert or conflict)."""
+    fields = {
+        "status": status[:50] if status is not None else None,
+        "timeline": json.dumps(timeline) if timeline is not None else None,
+        "loot": json.dumps(loot) if loot is not None else None,
+        "findings": json.dumps(findings) if findings is not None else None,
+        "sim_intel": json.dumps(sim_intel) if sim_intel is not None else None,
+        "sim_findings": json.dumps(sim_findings) if sim_findings is not None else None,
+        "target_url": target_url[:2048] if target_url is not None else None,
+        "actor": actor[:200] if actor is not None else None,
+        "created_at": created_at if created_at is not None else None,
+        "simulation": (1 if simulation else 0) if simulation is not None else None,
+    }
+    cols = ["session_id"] + [c for c, v in fields.items() if v is not None]
+    values = [session_id] + [v for v in fields.values() if v is not None]
+    conflict = ", ".join(f"{c} = excluded.{c}" for c in cols if c != "session_id")
+    async with get_connection() as connection:
+        await connection.execute(
+            f"""
+            INSERT INTO brutal_sessions ({', '.join(cols)})
+            VALUES ({', '.join('?' for _ in cols)})
+            ON CONFLICT(session_id) DO UPDATE SET {conflict}
+            """,
+            values,
+        )
+        await connection.commit()
+
+
+async def load_brutal_sessions() -> list[dict[str, Any]]:
+    async with get_connection() as connection:
+        cursor = await connection.execute("SELECT * FROM brutal_sessions ORDER BY created_at ASC")
+        rows = [dict(row) for row in await cursor.fetchall()]
+    for row in rows:
+        for key in ("findings", "sim_intel", "sim_findings", "timeline", "loot"):
+            raw = row.get(key)
+            row[key] = json.loads(raw) if raw else ({} if key == "sim_intel" else [])
+    return rows
 
 
 async def get_job_events(job_id: str, after_sequence: int = 0) -> list[dict[str, Any]]:
