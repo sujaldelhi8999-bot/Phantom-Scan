@@ -14,6 +14,8 @@ import time
 import uuid
 from typing import Any
 
+from app.config import get_settings
+
 PASSWD_FILE = (
     "root:x:0:0:root:/root:/bin/bash\n"
     "daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin\n"
@@ -26,14 +28,22 @@ PASSWD_FILE = (
 class SimulationShell:
     """Interactive simulated terminal for one engagement target."""
 
-    def __init__(self, target_info: dict[str, Any], seed: int | None = None) -> None:
+    def __init__(
+        self,
+        target_info: dict[str, Any],
+        session_id: str,
+        seed: int | None = None,
+    ) -> None:
         self.target_info = target_info
+        self.session_id = session_id
+        self.target_url = str(target_info.get("target_url") or "")
         self.hostname = str(target_info.get("hostname") or "target")
         self.user = "www-data"
         self.rng = random.Random(seed)
         self.current_dir = "/"
         self.command_count = 0
-        self.remaining_budget = 100
+        self.budget = get_settings().brutal_max_commands_per_shell
+        self.remaining_budget = self.budget
         self.closed = False
         self._env: dict[str, str] = {
             "DB_HOST": "localhost",
@@ -126,8 +136,8 @@ class SimulationShell:
         self.remaining_budget = max(0, self.remaining_budget - 1)
         if self.closed:
             return {"output": "shell session is closed", "exit_code": -1, "duration_ms": 0}
-        if self.command_count > 200:
-            return {"output": "command budget exhausted", "exit_code": -1, "duration_ms": 0}
+        if self.command_count >= self.budget:
+            return {"output": f"command budget exhausted ({self.budget})", "exit_code": -1, "duration_ms": 0}
 
         handler = self._dispatch(command)
         if handler is None:
@@ -324,9 +334,9 @@ class SimulationShellRegistry:
     _shells: dict[str, SimulationShell] = {}
 
     @classmethod
-    def create(cls, target_info: dict[str, Any]) -> str:
+    def create(cls, session_id: str, target_info: dict[str, Any]) -> str:
         shell_id = uuid.uuid4().hex[:12]
-        cls._shells[shell_id] = SimulationShell(target_info)
+        cls._shells[shell_id] = SimulationShell(target_info, session_id=session_id)
         return shell_id
 
     @classmethod

@@ -225,7 +225,7 @@ async def open_shell(
     session = await _gate_session(user, session_id, ack=False)
     os_hint = request.os_hint if request is not None else "auto"
     if session.simulation:
-        shell_id = SimulationShellRegistry.create(session.sim_intel)
+        shell_id = SimulationShellRegistry.create(session.session_id, session.sim_intel)
         shell = SimulationShellRegistry.get(shell_id)
         await session.log_op(
             "shell_opened",
@@ -261,11 +261,11 @@ async def open_shell(
 async def shell_info(shell_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     sim_shell = SimulationShellRegistry.get(shell_id)
     if sim_shell:
-        await _gate_session(user, sim_shell.current_dir, ack=False)  # dummy gate call for audit
+        await _gate_session(user, sim_shell.session_id, ack=False)
         return {
             "shell_id": shell_id,
-            "session_id": "simulated",
-            "target_url": "",
+            "session_id": sim_shell.session_id,
+            "target_url": sim_shell.target_url,
             "os_hint": "linux",
             "created_at": time.time(),
             "closed": sim_shell.closed,
@@ -285,7 +285,7 @@ async def shell_info(shell_id: str, user: dict = Depends(get_current_user)) -> d
 async def shell_exec(shell_id: str, request: ExecRequest, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     sim_shell = SimulationShellRegistry.get(shell_id)
     if sim_shell:
-        await _gate_session(user, "simulated", ack=False)
+        await _gate_session(user, sim_shell.session_id, ack=False)
         return await sim_shell.execute(request.command)
     shell = _shell_or_404(shell_id)
     await _gate_session(user, shell.session_id, ack=False)
@@ -296,7 +296,7 @@ async def shell_exec(shell_id: str, request: ExecRequest, user: dict = Depends(g
 async def close_shell(shell_id: str, user: dict = Depends(get_current_user)) -> dict[str, str]:
     sim_shell = SimulationShellRegistry.get(shell_id)
     if sim_shell:
-        await _gate_session(user, "simulated", ack=False)
+        await _gate_session(user, sim_shell.session_id, ack=False)
         sim_shell.closed = True
         SimulationShellRegistry.remove(shell_id)
         return {"status": "closed"}
@@ -310,7 +310,7 @@ async def close_shell(shell_id: str, user: dict = Depends(get_current_user)) -> 
 async def shell_payloads(shell_id: str, user: dict = Depends(get_current_user)) -> dict[str, Any]:
     sim_shell = SimulationShellRegistry.get(shell_id)
     if sim_shell:
-        await _gate_session(user, "simulated", ack=False)
+        await _gate_session(user, sim_shell.session_id, ack=False)
         return {
             "reverse_shell": PayloadFactory.reverse_shell_payloads(),
             "bind_shell": PayloadFactory.bind_shell_payloads(),
@@ -490,6 +490,11 @@ async def brutal_shell_ws(websocket: WebSocket, shell_id: str) -> None:
     # Simulation shell?
     sim_shell = SimulationShellRegistry.get(shell_id)
     if sim_shell:
+        try:
+            await gate.authorize(user, sim_shell.target_url or sim_shell.hostname, False, require_ack=False)
+        except BrutalGateError:
+            await websocket.close(code=1008)
+            return
         await websocket.accept()
         await websocket.send_text("__ready__")
         try:

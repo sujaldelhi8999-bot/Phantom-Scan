@@ -125,6 +125,12 @@ class Settings:
     brutal_exfil_dir = os.getenv("BRUTAL_EXFIL_DIR", str(BASE_DIR / "brutal_exfil"))
     brutal_max_commands_per_shell = env_int("BRUTAL_MAX_COMMANDS_PER_SHELL", 100)
     brutal_command_timeout = env_float("BRUTAL_COMMAND_TIMEOUT", 12.0)
+    # Loot archive password. When empty, the key is derived from SECRET_KEY +
+    # session_id so the server can always decrypt its own archives.
+    brutal_exfil_password = os.getenv("BRUTAL_EXFIL_PASSWORD", "")
+    # Evasion toggles — OFF by default so canned lab keyword-matching still works.
+    brutal_evasion_obfuscate = env_bool("BRUTAL_EVASION_OBFUSCATE", False)
+    brutal_evasion_slow_scan = env_bool("BRUTAL_EVASION_SLOW_SCAN", False)
 
     def validate_required(self, mode: str = "defend") -> list[str]:
         """Validate required settings for a given scan mode. Returns list of missing keys."""
