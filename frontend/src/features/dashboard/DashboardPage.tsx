@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
       {/* Security Posture Band - large structured panel */}
       <Panel>
-        <div className="p-5">
+        <div className="p-3.5">
           {executionActive && executionStatus ? (
             <div className="flex items-center gap-4">
               <span className="flex h-3 w-3">
@@ -122,16 +122,16 @@ export default function DashboardPage() {
       </Panel>
 
       {/* Three-column metric strip */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Panel>
-          <div className="p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--brand-soft)]">
-                <Shield className="h-4 w-4 text-[var(--brand)]" />
+          <div className="p-3">
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded bg-[var(--brand-soft)]">
+                <Shield className="h-3.5 w-3.5 text-[var(--brand)]" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-[var(--text-muted)]">Security Score</div>
-                <div className="text-xl font-bold text-[var(--text-strong)]">{latestScan ? score : '--'}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Security Score</div>
+                <div className="text-lg font-bold font-mono tracking-tight text-[var(--text-strong)]">{latestScan ? score : '--'}</div>
               </div>
             </div>
             <div className="h-1.5 rounded-full bg-[var(--surface-tertiary)] overflow-hidden">
@@ -151,21 +151,21 @@ export default function DashboardPage() {
         </Panel>
 
         <Panel>
-          <div className="p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--danger-soft)]">
-                <AlertTriangle className="h-4 w-4 text-[var(--danger)]" />
+          <div className="p-3">
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded bg-[var(--danger-soft)]">
+                <AlertTriangle className="h-3.5 w-3.5 text-[var(--danger)]" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-[var(--text-muted)]">Open Issues</div>
-                <div className="text-xl font-bold text-[var(--text-strong)]">{totalIssues}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Open Issues</div>
+                <div className="text-lg font-bold font-mono tracking-tight text-[var(--text-strong)]">{totalIssues}</div>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2.5">
               {(['CRITICAL', 'HIGH', 'MEDIUM'] as const).map((sev) => (
                 <div key={sev} className="flex-1">
                   <SeverityBadge severity={sev} compact />
-                  <div className="text-sm font-semibold text-[var(--text-strong)] mt-1">{counts[sev]}</div>
+                  <div className="text-xs font-bold font-mono text-[var(--text-strong)] mt-1">{counts[sev]}</div>
                 </div>
               ))}
             </div>
@@ -173,34 +173,34 @@ export default function DashboardPage() {
         </Panel>
 
         <Panel>
-          <div className="p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--success-soft)]">
-                <Activity className="h-4 w-4 text-[var(--success)]" />
+          <div className="p-3">
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded bg-[var(--success-soft)]">
+                <Activity className="h-3.5 w-3.5 text-[var(--success)]" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-[var(--text-muted)]">Latest Scan</div>
-                <div className="text-sm font-semibold text-[var(--text-strong)]">{latestScan ? targetName(latestScan.target_url) : 'No scans'}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Latest Scan</div>
+                <div className="text-xs font-semibold text-[var(--text-strong)] truncate max-w-[140px]">{latestScan ? targetName(latestScan.target_url) : 'No scans'}</div>
               </div>
             </div>
             {latestScan ? (
-              <div className="flex gap-4 text-[11px] text-[var(--text-muted)]">
-                <span>{formatDateTime(latestScan.created_at)}</span>
+              <div className="flex gap-3 text-[10px] text-[var(--text-muted)] font-medium">
+                <span className="font-mono">{formatDateTime(latestScan.created_at)}</span>
                 <span className="capitalize">{latestScan.mode}</span>
                 <StatusBadge status={latestScan.status} />
               </div>
             ) : null}
-            <div className="mt-2 flex gap-2 text-[11px] text-[var(--text-muted)]">
-              <span>{assets.length} assets monitored</span>
+            <div className="mt-2 flex gap-2 text-[10px] text-[var(--text-muted)] font-medium">
+              <span><span className="font-mono">{assets.length}</span> assets</span>
               <span className="text-[var(--border-light)]">|</span>
-              <span>{findings.length} total findings</span>
+              <span><span className="font-mono">{findings.length}</span> findings</span>
             </div>
           </div>
         </Panel>
       </div>
 
       {/* Main content area - asymmetric layout */}
-      <div className="grid gap-4 lg:grid-cols-7">
+      <div className="grid gap-3 lg:grid-cols-7">
         {/* Left column - Recent Findings */}
         <div className="lg:col-span-4">
           <Panel>
@@ -209,19 +209,19 @@ export default function DashboardPage() {
               description="Latest detections across monitored assets"
               action={<Link to="/findings"><Button variant="ghost" className="text-xs">View All</Button></Link>}
             />
-            <div className="px-5 py-3">
+            <div className="px-3 py-1.5 bg-white">
               {findings.length ? (
                 <div className="divide-y divide-[var(--border-light)]">
                   {findings.slice(-7).reverse().map((finding) => (
                     <Link
                       key={finding.id}
                       to="/findings"
-                      className="flex items-center gap-3 py-2.5 text-xs transition-colors hover:bg-[var(--surface-hover)] -mx-2 px-2 rounded-lg"
+                      className="flex items-center gap-2.5 py-1.5 text-xs transition-colors hover:bg-[var(--surface-hover)] -mx-1 px-1 rounded-[var(--radius-control)]"
                     >
                       <SeverityBadge severity={finding.severity} compact />
-                      <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-strong)]">{finding.title}</span>
-                      <span className="shrink-0 text-[var(--text-muted)] hidden sm:inline">{finding.category}</span>
-                      <span className="shrink-0 text-[var(--text-subtle)]">{relativeTime(finding.timestamp)}</span>
+                      <span className="min-w-0 flex-1 truncate font-semibold text-[var(--text-strong)]">{finding.title}</span>
+                      <span className="shrink-0 text-[10px] text-[var(--text-muted)] hidden sm:inline">{finding.category}</span>
+                      <span className="shrink-0 text-[10px] font-mono text-[var(--text-subtle)]">{relativeTime(finding.timestamp)}</span>
                     </Link>
                   ))}
                 </div>
@@ -240,7 +240,7 @@ export default function DashboardPage() {
               description={`${summary.active} active, ${summary.waiting} idle`}
               action={<Link to="/agents"><Button variant="ghost" className="text-xs">View All</Button></Link>}
             />
-            <div className="p-4">
+            <div className="p-3">
               {executionStatus?.agents?.length ? (
                 <div className="space-y-2">
                   {executionStatus.agents.slice(0, 4).map((agent) => (
@@ -263,7 +263,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom row - activity timeline + system health */}
-      <div className="grid gap-4 lg:grid-cols-7">
+      <div className="grid gap-3 lg:grid-cols-7">
         <div className="lg:col-span-4">
           <Panel>
             <SectionHeader
@@ -271,7 +271,7 @@ export default function DashboardPage() {
               description="Audit events from security operations"
               action={<Link to="/audit-logs"><Button variant="ghost" className="text-xs">View All</Button></Link>}
             />
-            <div className="p-4">
+            <div className="p-3">
               <ActivityTimeline events={timeline} />
             </div>
           </Panel>
@@ -284,7 +284,7 @@ export default function DashboardPage() {
               description={health?.status === 'ok' ? 'All systems operational' : 'Issues detected'}
               action={<Link to="/system-health"><Button variant="ghost" className="text-xs">Details</Button></Link>}
             />
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[var(--text-muted)]">Database</span>
                 <StatusBadge status={health?.database === 'available' ? 'Healthy' : 'Unavailable'} />
