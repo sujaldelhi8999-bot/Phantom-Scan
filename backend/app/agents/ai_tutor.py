@@ -70,6 +70,20 @@ class AITutorAgent(Agent):
                 scan_id=self.scan_id, max_tokens=2000
             )
 
+            if not result or not result.strip():
+                self.status = "complete"
+                await self.log_action("completed", f"Answered question for finding {finding_id}")
+                return {
+                    "finding_id": finding_id,
+                    "question": question,
+                    "answer": "AI answer unavailable — the LLM returned no response. Configure OPENROUTER_API_KEY in backend/.env and restart, then try again.",
+                    "explanation": "",
+                    "code_examples": [],
+                    "references": [],
+                    "follow_up_questions": [],
+                    "confidence": 0.0,
+                }
+
             # Parse the response for structured output
             parsed = self._parse_tutor_response(result)
 
