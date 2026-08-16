@@ -16,7 +16,6 @@ import {
   Skull,
   Terminal,
   Unlock,
-  Wand2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -149,9 +148,6 @@ export default function BrutalMode() {
   const [shell, setShell] = useState<ShellInfo | null>(null);
   const [shellOpen, setShellOpen] = useState(false);
   const [payloads, setPayloads] = useState<{ reverse_shell: Array<{ os: string; label: string; payload: string }> } | null>(null);
-  const [vulnType, setVulnType] = useState('reverse_shell');
-  const [aiOs, setAiOs] = useState('linux');
-  const [aiResult, setAiResult] = useState<{ payload: string; explanation: string } | null>(null);
   const [exfilResult, setExfilResult] = useState<{ file_id: string; filename: string; size_bytes: number; sha256: string } | null>(null);
   const [banner, setBanner] = useState('');
   const [opsLog, setOpsLog] = useState<Array<{ id: number; action: string; status: string; detail: string; created_at: string }>>([]);
@@ -268,22 +264,6 @@ export default function BrutalMode() {
       await loadOps();
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Failed to open shell'));
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const generatePayload = async () => {
-    if (!session) return;
-    setBusy('payload');
-    try {
-      const response = await apiClient.post<{ payload: string; explanation: string }>(
-        `/api/brutal/sessions/${session.session_id}/payload`,
-        { vuln_type: vulnType, os: aiOs },
-      );
-      setAiResult(response.data);
-    } catch (err) {
-      toast.error(apiErrorMessage(err, 'Failed to generate payload'));
     } finally {
       setBusy('');
     }
@@ -582,36 +562,6 @@ export default function BrutalMode() {
                       </div>
                     </>
                   )}
-
-                  <h3 className="pb-2 pt-5 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">AI Payload Generator</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Select value={vulnType} onChange={(e) => setVulnType(e.target.value)} className="flex-1 min-w-[140px]">
-                      {[...new Set(Object.keys(status.supported_categories).concat('reverse_shell', 'webshell', 'lfi'))].map((key) => (
-                        <option key={key} value={key}>
-                          {key}
-                        </option>
-                      ))}
-                    </Select>
-                    <Select value={aiOs} onChange={(e) => setAiOs(e.target.value)} className="w-32">
-                      {['linux', 'windows', 'php', 'jsp', 'sqlite', 'mysql'].map((os) => (
-                        <option key={os} value={os}>
-                          {os}
-                        </option>
-                      ))}
-                    </Select>
-                    <Button variant="secondary" onClick={generatePayload} disabled={busy === 'payload'}>
-                      <Wand2 className="h-3.5 w-3.5" /> Generate
-                    </Button>
-                  </div>
-                  {aiResult ? (
-                    <div className="mt-2 rounded-xl bg-[var(--surface-tertiary)] p-3">
-                      <pre className="overflow-x-auto font-mono text-[11px] text-[var(--text-default)]">{aiResult.payload}</pre>
-                      {aiResult.explanation ? <p className="mt-2 text-[11px] text-[var(--text-subtle)]">{aiResult.explanation}</p> : null}
-                      <Button variant="ghost" className="mt-2 !px-2 !py-1 text-[10px]" onClick={() => copyText(aiResult.payload, 'Payload copied')}>
-                        <Copy className="h-3 w-3" /> Copy
-                      </Button>
-                    </div>
-                  ) : null}
                 </div>
               </Panel>
 

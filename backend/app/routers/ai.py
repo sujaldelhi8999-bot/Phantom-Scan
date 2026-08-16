@@ -1,9 +1,11 @@
+import json
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.auth_middleware import get_current_user
+from app.config import get_settings
 from app.database import (
     add_audit_log,
     get_audit_logs,
@@ -17,6 +19,7 @@ from app.database import (
 from app.agents.ai_tutor import create_ai_tutor_agent
 from app.models import AITutorRequest, AITutorResponse
 from app.services.ai_analyst import AskPhantomScanResponder, create_ai_security_analyst
+from app.services.openrouter_client import call_openrouter
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -81,7 +84,9 @@ async def ask_phantomscan(
     analysis = await build_scan_analysis(scan_id, user["id"], refresh=False)
     artifacts = await get_scan_artifacts(scan_id)
     findings = await get_findings(scan_id)
-    answer = AskPhantomScanResponder().answer(payload.question, analysis, findings, artifacts)
+    answer = await _ask_openrouter(scan_id, payload.question, analysis, findings)
+    if not answer:
+        answer = AskPhantomScanResponder().answer(payload.question, analysis, findings, artifacts)["answer"]
     await add_audit_log(
         scan_id,
         "AI Security Analyst Agent",
@@ -89,7 +94,39 @@ async def ask_phantomscan(
         f"Answered Ask PhantomScan question: {payload.question[:200]}",
         user_id=user["id"],
     )
-    return {"scan_id": scan_id, "question": payload.question, **answer, "can_start_active_test": False}
+    return {"scan_id": scan_id, "question": payload.question, "answer": answer, "citations": [], "grounded": bool(analysis), "can_start_active_test": False}
+
+
+async def _ask_openrouter(
+    scan_id: int, question: str, analysis: dict[str, Any], findings: list[dict[str, Any]]
+) -> str:
+    if not get_settings().openrouter_api_key:
+        return ""
+    evidence = {
+        "target_url": analysis.get("target_url"),
+        "security_summary": analysis.get("security_summary"),
+        "priorities": [
+            {"title": p.get("title"), "endpoint": p.get("endpoint"), "severity": p.get("severity"), "recommended_action": p.get("recommended_action")}
+            for p in analysis.get("priorities", [])
+        ][:10],
+        "root_causes": [
+            {"category": rc.get("category"), "findings": [f.get("title") for f in rc.get("findings", [])]}
+            for rc in analysis.get("root_causes", [])
+        ],
+        "remediation_plan": analysis.get("remediation_plan"),
+        "findings": [
+            {"title": f.get("title"), "severity": f.get("severity"), "endpoint": f.get("endpoint"), "recommendation": f.get("recommendation") or f.get("fix")}
+            for f in findings
+        ][:15],
+    }
+    system_prompt = (
+        "You are PhantomScan's remediation advisor. Based ONLY on the provided scan evidence, "
+        "answer the user's question directly and concretely: state exactly what to update/fix, "
+        "ordered by priority, citing endpoints, files, or config keys where available. "
+        "Do not invent findings that are not in the evidence. Keep it under 300 words."
+    )
+    prompt = f"SCAN EVIDENCE:\n{json.dumps(evidence, default=str, ensure_ascii=False)}\n\nQUESTION: {question}"
+    return await call_openrouter(prompt, system_prompt=system_prompt, max_tokens=600, scan_id=scan_id)
 
 
 @router.get("/findings/{finding_id}/explain")

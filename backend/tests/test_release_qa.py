@@ -212,7 +212,8 @@ class DatabaseFindingAiAndAuthorizationTests(TestCase):
                     assert artifacts is not None
                     assert artifacts["ai_analyst_output"] is not None
 
-            asyncio.run(run_test())
+            with patch("app.routers.ai.call_openrouter", return_value="") as _:
+                    asyncio.run(run_test())
 
     def test_authorization_challenge_success_failure_and_revoke_are_backend_authoritative(self) -> None:
         with TestClient(app, base_url="http://localhost") as client:

@@ -37,8 +37,8 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { usePhantomData } from '../../hooks/usePhantomData';
 import { apiErrorMessage, askPhantomScan } from '../../services/api';
-import { deriveAssets, deriveNotifications, deriveTechnologies, latestCompletedScan, relativeTime, targetName } from '../../utils/derived';
-import { Button, cx, Drawer, EmptyState, StatusBadge } from '../ui/Primitives';
+import { deriveAssets, deriveNotifications, deriveTechnologies, relativeTime, targetName } from '../../utils/derived';
+import { Button, cx, Drawer, EmptyState, Select, StatusBadge } from '../ui/Primitives';
 import { useAuth } from '../../context/AuthContext';
 import LoginModal from '../LoginModal';
 
@@ -534,9 +534,11 @@ function NotificationDrawer({ open, onClose }: { open: boolean; onClose: () => v
 
 function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { scans, artifactsByScanId } = usePhantomData();
-  const latestScan = latestCompletedScan(scans);
-  const prompts = latestScan ? artifactsByScanId[latestScan.id]?.ai_analyst_output?.suggested_prompts ?? [] : [];
-  const [question, setQuestion] = useState('What should I fix first?');
+  const completedScans = useMemo(() => scans.filter((scan) => scan.status === 'complete'), [scans]);
+  const [scanId, setScanId] = useState<number>(completedScans[0]?.id ?? 0);
+  const selectedScan = completedScans.find((scan) => scan.id === scanId) ?? completedScans[0];
+  const prompts = selectedScan ? artifactsByScanId[selectedScan.id]?.ai_analyst_output?.suggested_prompts ?? [] : [];
+  const [question, setQuestion] = useState('What should I update to fix these findings?');
   const [answer, setAnswer] = useState<string | null>(null);
   const [citations, setCitations] = useState<Array<{ label?: string; title?: string; endpoint?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
@@ -544,11 +546,11 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
 
   const submit = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!latestScan || !question.trim()) return;
+    if (!selectedScan || !question.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await askPhantomScan(latestScan.id, question.trim());
+      const response = await askPhantomScan(selectedScan.id, question.trim());
       setAnswer(response.answer);
       setCitations(response.citations.map((c) => ({ label: c.label, title: c.title, endpoint: c.endpoint })));
     } catch (err) {
@@ -558,10 +560,20 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Drawer title="Ask PhantomScan" open={open} onClose={onClose}>
-      {latestScan ? (
+      {selectedScan ? (
         <div className="space-y-4">
           <div className="rounded-xl bg-[var(--surface-secondary)] p-3.5 text-xs text-[var(--text-muted)]">
-            Answers grounded in scan {latestScan.id} for {targetName(latestScan.target_url)}.
+            Answers grounded in scan {selectedScan.id} for {targetName(selectedScan.target_url)}.
+          </div>
+          <div>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">Scan</div>
+            <Select value={selectedScan.id} onChange={(value) => { setScanId(Number(value)); setAnswer(null); setCitations([]); }}>
+              {completedScans.map((scan) => (
+                <option key={scan.id} value={scan.id}>
+                  #{scan.id} — {targetName(scan.target_url)}
+                </option>
+              ))}
+            </Select>
           </div>
           <form onSubmit={submit} className="space-y-2">
             <textarea
