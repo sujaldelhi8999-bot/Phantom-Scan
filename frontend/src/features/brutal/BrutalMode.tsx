@@ -62,7 +62,16 @@ interface BrutalSession {
   created_at: number;
   status: string;
   simulation?: boolean;
-  sim_findings?: any[];
+  sim_intel?: {
+    hostname?: string;
+    target_url?: string;
+    ip?: string;
+    tech_stack?: string[];
+    dns?: Record<string, unknown>;
+    http?: Record<string, unknown>;
+    ports?: Array<{ port: number; service: string; state: string }>;
+    endpoints?: Array<{ path: string; status: string; interest: boolean }>;
+  };
   timeline: TimelineEvent[];
   loot_count: number;
   loot: LootItem[];
@@ -418,8 +427,9 @@ export default function BrutalMode() {
                 className="mt-0.5 accent-amber-600"
               />
               <span className="text-xs text-[var(--text-muted)]">
-                <span className="font-semibold text-amber-500">Simulation Mode.</span> Run against any website in Private Scope — no real exploitation.
-                Generates realistic findings, a simulated shell, and fake loot based on the target's tech stack.
+                <span className="font-semibold text-amber-500">Simulation Mode.</span> Passive reconnaissance only — real DNS
+                resolution and a single HTTP request (like a browser) against any website in Private Scope. No exploitation,
+                shells, or loot; the session just reports the target's real intel.
               </span>
             </label>
 
@@ -451,18 +461,26 @@ export default function BrutalMode() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="primary" onClick={openShell} disabled={busy === 'shell'}>
-                    <Terminal className="h-3.5 w-3.5" /> Open Shell
-                  </Button>
-                  <Button variant="secondary" onClick={() => runAction('lateral', `/api/brutal/sessions/${session.session_id}/lateral`)} disabled={busy === 'lateral'}>
-                    <MoveRight className="h-3.5 w-3.5" /> Lateral Movement
-                  </Button>
-                  <Button variant="secondary" onClick={() => runAction('persist', `/api/brutal/sessions/${session.session_id}/persist`, { kind: 'cron' })} disabled={busy === 'persist'}>
-                    <Flame className="h-3.5 w-3.5" /> Persistence
-                  </Button>
-                  <Button variant="secondary" onClick={() => runAction('exfil', `/api/brutal/sessions/${session.session_id}/exfil`)} disabled={busy === 'exfil'}>
-                    <Archive className="h-3.5 w-3.5" /> Exfiltrate
-                  </Button>
+                  {!session.simulation ? (
+                    <>
+                      <Button variant="primary" onClick={openShell} disabled={busy === 'shell'}>
+                        <Terminal className="h-3.5 w-3.5" /> Open Shell
+                      </Button>
+                      <Button variant="secondary" onClick={() => runAction('lateral', `/api/brutal/sessions/${session.session_id}/lateral`)} disabled={busy === 'lateral'}>
+                        <MoveRight className="h-3.5 w-3.5" /> Lateral Movement
+                      </Button>
+                      <Button variant="secondary" onClick={() => runAction('persist', `/api/brutal/sessions/${session.session_id}/persist`, { kind: 'cron' })} disabled={busy === 'persist'}>
+                        <Flame className="h-3.5 w-3.5" /> Persistence
+                      </Button>
+                      <Button variant="secondary" onClick={() => runAction('exfil', `/api/brutal/sessions/${session.session_id}/exfil`)} disabled={busy === 'exfil'}>
+                        <Archive className="h-3.5 w-3.5" /> Exfiltrate
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="self-center text-[11px] text-[var(--text-subtle)]">
+                      Passive-intel session — exploitation, shells, and exfiltration are disabled.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -485,22 +503,85 @@ export default function BrutalMode() {
             <div className="space-y-5">
               <Panel>
                 <div className="p-4">
-                  <h3 className="pb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Auto-Exploitation</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {categories.map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => runAction('exploit', `/api/brutal/sessions/${session.session_id}/exploit`, { category: key })}
-                        disabled={busy === 'exploit'}
-                        className="flex items-center gap-2 rounded-xl border border-[var(--border-light)] px-3 py-2.5 text-left text-xs font-medium text-[var(--text-default)] transition-colors hover:border-red-500/50 hover:bg-red-950/10 disabled:opacity-40"
-                      >
-                        <Play className="h-3.5 w-3.5 text-red-500" />
-                        <span className="truncate">{label}</span>
-                        <ChevronRight className="ml-auto h-3.5 w-3.5 text-[var(--text-subtle)]" />
-                      </button>
-                    ))}
-                  </div>
+                  {session.simulation ? (
+                    <>
+                      <h3 className="pb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Target Intelligence</h3>
+                      <p className="pb-3 text-[11px] text-[var(--text-subtle)]">
+                        Real passive recon only — DNS resolution and a single HTTP request (exactly what a browser does). No
+                        exploitation was performed.
+                      </p>
+                      <div className="space-y-2 text-[11px]">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-[var(--text-subtle)]">Hostname</span>
+                          <span className="font-mono text-[var(--text-default)]">{session.sim_intel?.hostname ?? '—'}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-[var(--text-subtle)]">IP</span>
+                          <span className="font-mono text-[var(--text-default)]">{session.sim_intel?.ip ?? '—'}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-[var(--text-subtle)]">Tech stack</span>
+                          <span className="font-mono text-[var(--text-default)]">
+                            {(session.sim_intel?.tech_stack?.length ? session.sim_intel.tech_stack.join(', ') : '—')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-[var(--text-subtle)]">HTTP status</span>
+                          <span className="font-mono text-[var(--text-default)]">
+                            {String(session.sim_intel?.http?.status_code ?? '—')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-[var(--text-subtle)]">Server</span>
+                          <span className="font-mono text-[var(--text-default)]">{String(session.sim_intel?.http?.server ?? '—')}</span>
+                        </div>
+                      </div>
+                      {session.sim_intel?.ports?.length ? (
+                        <div className="mt-3">
+                          <h4 className="pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Detected ports</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {session.sim_intel.ports.map((p) => (
+                              <span key={p.port} className="rounded-md bg-[var(--surface-tertiary)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
+                                {p.port}/{p.service}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      {session.sim_intel?.endpoints?.length ? (
+                        <div className="mt-3">
+                          <h4 className="pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Probed endpoints</h4>
+                          <div className="space-y-1">
+                            {session.sim_intel.endpoints.map((e) => (
+                              <div key={e.path} className="flex justify-between gap-3 font-mono text-[10px] text-[var(--text-muted)]">
+                                <span>{e.path}</span>
+                                <span className={e.interest ? 'text-amber-500' : ''}>{e.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="pb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Auto-Exploitation</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {categories.map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => runAction('exploit', `/api/brutal/sessions/${session.session_id}/exploit`, { category: key })}
+                            disabled={busy === 'exploit'}
+                            className="flex items-center gap-2 rounded-xl border border-[var(--border-light)] px-3 py-2.5 text-left text-xs font-medium text-[var(--text-default)] transition-colors hover:border-red-500/50 hover:bg-red-950/10 disabled:opacity-40"
+                          >
+                            <Play className="h-3.5 w-3.5 text-red-500" />
+                            <span className="truncate">{label}</span>
+                            <ChevronRight className="ml-auto h-3.5 w-3.5 text-[var(--text-subtle)]" />
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
 
                   <h3 className="pb-2 pt-5 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">AI Payload Generator</h3>
                   <div className="flex flex-wrap gap-2">
@@ -563,21 +644,23 @@ export default function BrutalMode() {
               ) : null}
 
               {/* Post exploit */}
-              <Panel>
-                <div className="p-4">
-                  <h3 className="pb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Post-Exploitation</h3>
-                  <p className="pb-3 text-[11px] text-[var(--text-subtle)]">
-                    Requires an open shell. Enumerates users, network, processes and privilege-escalation surface.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    onClick={() => runAction('post', `/api/brutal/sessions/${session.session_id}/post-exploit`)}
-                    disabled={busy === 'post'}
-                  >
-                    <Terminal className="h-3.5 w-3.5" /> Run Enumeration + Privesc Checks
-                  </Button>
-                </div>
-              </Panel>
+              {!session.simulation ? (
+                <Panel>
+                  <div className="p-4">
+                    <h3 className="pb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Post-Exploitation</h3>
+                    <p className="pb-3 text-[11px] text-[var(--text-subtle)]">
+                      Requires an open shell. Enumerates users, network, processes and privilege-escalation surface.
+                    </p>
+                    <Button
+                      variant="secondary"
+                      onClick={() => runAction('post', `/api/brutal/sessions/${session.session_id}/post-exploit`)}
+                      disabled={busy === 'post'}
+                    >
+                      <Terminal className="h-3.5 w-3.5" /> Run Enumeration + Privesc Checks
+                    </Button>
+                  </div>
+                </Panel>
+              ) : null}
             </div>
 
             {/* Timeline + loot */}
