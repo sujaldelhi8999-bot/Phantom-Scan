@@ -63,7 +63,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <div className={cx('rounded-xl border border-[var(--border-light)] bg-[var(--surface-primary)] shadow-[var(--shadow-card)]', className)}>
+    <div className={cx('rounded-[var(--radius-panel)] border border-[var(--border-light)] bg-[var(--surface-primary)] shadow-[var(--shadow-card)] overflow-hidden', className)}>
       {children}
     </div>
   );
@@ -79,10 +79,10 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-[var(--border-light)]">
+    <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-[var(--border-light)] bg-[var(--surface-secondary)]/60">
       <div className="min-w-0">
-        <h3 className="text-xs font-semibold text-[var(--text-strong)]">{title}</h3>
-        {description ? <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{description}</p> : null}
+        <h3 className="text-[11px] font-semibold text-[var(--text-strong)] uppercase tracking-wider">{title}</h3>
+        {description ? <p className="mt-0.5 text-[10px] text-[var(--text-muted)] leading-tight">{description}</p> : null}
       </div>
       {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
     </div>
@@ -101,14 +101,15 @@ export function Button({
     <button
       {...props}
       className={cx(
-        'inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-control)] px-3.5 py-2 text-xs font-medium transition-all',
+        'inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-control)] px-3 py-1.5 text-xs font-medium transition-all duration-150',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]/50',
         'disabled:pointer-events-none disabled:opacity-40',
-        variant === 'primary' && 'bg-[var(--brand)] text-white shadow-sm hover:bg-[var(--brand-hover)] active:bg-[var(--brand-hover)]',
-        variant === 'secondary' && 'border border-[var(--border-default)] bg-white text-[var(--text-default)] hover:bg-[var(--surface-hover)] hover:border-[var(--border-strong)] active:bg-[var(--surface-tertiary)]',
+        'active:scale-[0.98] active:translate-y-[0.5px]',
+        variant === 'primary' && 'bg-[var(--brand)] text-white shadow-[0_1px_2px_rgba(37,99,235,0.2)] hover:bg-[var(--brand-hover)]',
+        variant === 'secondary' && 'border border-[var(--border-default)] bg-white text-[var(--text-default)] hover:bg-[var(--surface-hover)] hover:border-[var(--border-strong)]',
         variant === 'ghost' && 'text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]',
-        variant === 'danger' && 'border border-[var(--danger-soft)] text-[var(--danger)] hover:bg-[var(--danger-soft)]',
-        variant === 'amber' && 'border border-[var(--warning-soft)] text-[var(--warning)] hover:bg-[var(--warning-soft)]',
+        variant === 'danger' && 'border border-[var(--danger-border)] bg-[var(--danger-soft)] text-[var(--danger)] hover:bg-[var(--danger-soft)]/80',
+        variant === 'amber' && 'border border-[var(--warning-border)] bg-[var(--warning-soft)] text-[var(--warning)] hover:bg-[var(--warning-soft)]/80',
         className,
       )}
     >
@@ -125,9 +126,9 @@ export function Input({
     <input
       {...props}
       className={cx(
-        'h-9 w-full rounded-[var(--radius-control)] border border-[var(--border-default)] bg-white px-3 text-xs text-[var(--text-default)] outline-none transition-colors',
+        'h-8 w-full rounded-[var(--radius-control)] border border-[var(--border-default)] bg-white px-2.5 text-xs text-[var(--text-default)] outline-none transition-colors duration-150',
         'placeholder:text-[var(--text-subtle)]',
-        'hover:border-[var(--border-strong)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/12',
+        'hover:border-[var(--border-strong)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/8',
         className,
       )}
     />
@@ -142,7 +143,7 @@ export function Select({
     <select
       {...props}
       className={cx(
-        'h-9 rounded-[var(--radius-control)] border border-[var(--border-default)] bg-white px-2.5 text-xs text-[var(--text-default)] outline-none transition-colors hover:border-[var(--border-strong)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/12',
+        'h-8 rounded-[var(--radius-control)] border border-[var(--border-default)] bg-white px-2 text-xs text-[var(--text-default)] outline-none transition-colors duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/8',
         className,
       )}
     />
@@ -160,7 +161,7 @@ const severityConfig: Record<Severity, { bg: string; text: string; dot: string; 
 export function SeverityBadge({ severity, compact }: { severity: Severity; compact?: boolean }) {
   const cfg = severityConfig[severity];
   return (
-    <span className={cx('inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 font-semibold', cfg.bg, cfg.text, compact ? 'text-[9px]' : 'text-[10px]')}>
+    <span className={cx('inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold text-[10px]', cfg.bg, cfg.text)}>
       <span className={cx('h-1.5 w-1.5 rounded-full shrink-0', cfg.dot)} />
       {compact ? cfg.label : severity}
     </span>
@@ -187,7 +188,7 @@ const statusStyle = (status: string) => {
 
 export function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={cx('inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium', statusStyle(status))}>
+    <span className={cx('inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider', statusStyle(status))}>
       {status.replace(/_/g, ' ')}
     </span>
   );
@@ -203,7 +204,7 @@ export function ModeBadge({ mode }: { mode: 'defend' | 'pentest' | 'multi_agent'
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold',
+        'inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
         label.className,
       )}
     >
@@ -224,10 +225,10 @@ export function MetricCard({
   accent?: boolean;
 }) {
   return (
-    <div className={cx('rounded-xl border bg-[var(--surface-primary)] px-4 py-3 shadow-[var(--shadow-card)]', accent ? 'border-l-[3px] border-l-[var(--warning)] border-[var(--border-light)]' : 'border-[var(--border-light)]')}>
-      <div className="text-[11px] font-medium text-[var(--text-muted)]">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-[var(--text-strong)]">{value}</div>
-      {detail ? <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">{detail}</div> : null}
+    <div className={cx('rounded-[var(--radius-panel)] border bg-[var(--surface-primary)] px-3.5 py-2.5 shadow-[var(--shadow-card)]', accent ? 'border-l-[3px] border-l-[var(--warning)] border-[var(--border-light)]' : 'border-[var(--border-light)]')}>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{label}</div>
+      <div className="mt-1 text-lg font-bold font-mono tracking-tight text-[var(--text-strong)]">{value}</div>
+      {detail ? <div className="mt-0.5 text-[10px] text-[var(--text-muted)] leading-tight">{detail}</div> : null}
     </div>
   );
 }
@@ -266,38 +267,38 @@ export function AgentCard({ agent, onClick }: { agent: AgentStateDetail; onClick
     <div
       onClick={onClick}
       className={cx(
-        'rounded-xl border px-3.5 py-3 transition-all',
-        agent.applicability === 'RUNNING' ? 'border-[var(--brand)]/30 bg-[var(--brand-soft)]/30' :
+        'rounded-[var(--radius-panel)] border px-3 py-2 transition-all duration-150',
+        agent.applicability === 'RUNNING' ? 'border-[var(--brand)]/35 bg-[var(--brand-soft)]/40' :
         isNa ? 'border-[var(--border-light)] opacity-55' :
-        agent.applicability === 'FAILED' ? 'border-[var(--danger-soft)] bg-[var(--danger-soft)]/30' :
-        'border-[var(--border-light)] hover:border-[var(--border-default)] hover:shadow-[var(--shadow-card)]',
-        onClick && 'cursor-pointer',
+        agent.applicability === 'FAILED' ? 'border-[var(--danger-border)] bg-[var(--danger-soft)]/20' :
+        'border-[var(--border-light)] hover:border-[var(--border-default)]',
+        onClick && 'cursor-pointer active:scale-[0.99] active:translate-y-[0.5px]',
       )}
     >
-      <div className="flex items-center gap-2.5">
-        <span className={cx('h-2 w-2 rounded-full shrink-0', c.split(' ').find(s => s.startsWith('text-') && s.includes('['))?.replace('text-', 'bg-') || 'bg-gray-300')} />
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-[var(--text-strong)]">{agent.name}</span>
+      <div className="flex items-center gap-2">
+        <span className={cx('h-1.5 w-1.5 rounded-full shrink-0', c.split(' ').find(s => s.startsWith('text-') && s.includes('['))?.replace('text-', 'bg-') || 'bg-slate-300')} />
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--text-strong)]">{agent.name}</span>
         <AgentStatePill state={agent.applicability} />
       </div>
       {!isNa ? (
-        <div className="mt-2 space-y-1.5">
-          <div className="text-[11px] text-[var(--text-muted)]">{agent.responsibility}</div>
-          {agent.detail ? <div className="text-[11px] text-[var(--text-default)]">{agent.detail}</div> : null}
+        <div className="mt-1.5 space-y-1">
+          <div className="text-[10px] text-[var(--text-muted)] leading-tight">{agent.responsibility}</div>
+          {agent.detail ? <div className="text-[10px] text-[var(--text-default)] leading-tight">{agent.detail}</div> : null}
           {agent.current_module ? (
-            <div className="text-[11px] text-[var(--text-default)]">
+            <div className="text-[10px] text-[var(--text-default)]">
               <span className="text-[var(--text-muted)]">Module:</span>{' '}
-              <span className="font-medium text-[var(--brand)]">{agent.current_module.replace(/_/g, ' ')}</span>
+              <span className="font-semibold text-[var(--brand)]">{agent.current_module.replace(/_/g, ' ')}</span>
             </div>
           ) : null}
           {showProgress && agent.progress > 0 ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 mt-1">
               <ProgressBar value={agent.progress} className="flex-1" />
-              <span className="text-[10px] text-[var(--text-muted)]">{agent.progress}%</span>
+              <span className="text-[9px] font-mono text-[var(--text-muted)]">{agent.progress}%</span>
             </div>
           ) : null}
         </div>
       ) : (
-        <div className="mt-1.5 text-[11px] text-[var(--text-muted)]">{agent.detail || 'Not applicable'}</div>
+        <div className="mt-1 text-[10px] text-[var(--text-muted)]">{agent.detail || 'Not applicable'}</div>
       )}
     </div>
   );
@@ -389,13 +390,13 @@ export function EmptyState({
 }) {
   return (
     <div className={cx(
-      'flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-default)] text-center',
-      compact ? 'px-5 py-6' : 'px-8 py-10',
+      'flex flex-col items-center justify-center rounded-[var(--radius-panel)] border border-dashed border-[var(--border-default)] bg-[var(--surface-secondary)]/20 text-center',
+      compact ? 'px-4 py-5' : 'px-6 py-8',
     )}>
-      {icon || <ShieldCheck className="mb-3 h-6 w-6 text-[var(--text-subtle)]" />}
-      <h3 className={cx('font-semibold text-[var(--text-strong)]', compact ? 'text-xs' : 'text-sm')}>{title}</h3>
-      <p className={cx('mt-1 max-w-md text-[var(--text-muted)]', compact ? 'text-[11px]' : 'text-xs')}>{description}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
+      {icon || <ShieldCheck className="mb-2 h-5 w-5 text-[var(--text-subtle)]" />}
+      <h3 className="text-xs font-semibold text-[var(--text-strong)]">{title}</h3>
+      <p className="mt-1 max-w-sm text-[10px] text-[var(--text-muted)] leading-normal">{description}</p>
+      {action ? <div className="mt-3">{action}</div> : null}
     </div>
   );
 }
@@ -412,19 +413,19 @@ export function ErrorState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--danger-soft)] bg-[var(--danger-soft)]/30 p-4">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--danger)]" />
+    <div className="rounded-[var(--radius-panel)] border border-[var(--danger-border)] bg-[var(--danger-soft)]/30 p-3">
+      <div className="flex items-start gap-2.5">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--danger)]" />
         <div className="min-w-0 flex-1">
           <h3 className="text-xs font-semibold text-[var(--danger)]">{title}</h3>
-          <p className={cx("mt-0.5 text-xs", detail ? 'text-[var(--text-default)]' : 'opacity-70')}>{description}</p>
+          <p className="mt-0.5 text-xs text-[var(--text-default)]">{description}</p>
           {detail ? (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs text-[var(--text-muted)]">Details</summary>
-              <pre className="mt-2 whitespace-pre-wrap rounded bg-[var(--surface-tertiary)] p-3 font-mono text-[10px] text-[var(--text-muted)]">{detail}</pre>
+            <details className="mt-1.5">
+              <summary className="cursor-pointer text-[10px] text-[var(--text-muted)] font-semibold hover:text-[var(--text-default)] select-none">Details</summary>
+              <pre className="mt-1.5 whitespace-pre-wrap rounded bg-[var(--surface-tertiary)] p-2 font-mono text-[9px] text-[var(--text-muted)] leading-tight border border-[var(--border-light)]">{detail}</pre>
             </details>
           ) : null}
-          {action ? <div className="mt-3">{action}</div> : null}
+          {action ? <div className="mt-2.5">{action}</div> : null}
         </div>
       </div>
     </div>
@@ -468,7 +469,7 @@ export function Drawer({
       {open ? (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-[2px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -479,23 +480,23 @@ export function Drawer({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            initial={{ x: 420, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 420, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed right-0 top-0 z-50 h-full w-full max-w-lg overflow-y-auto border-l border-[var(--border-light)] bg-[var(--surface-primary)] shadow-[var(--shadow-drawer)]"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+            className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto border-l border-[var(--border-light)] bg-[var(--surface-primary)] shadow-[var(--shadow-drawer)]"
           >
-            <div className="flex items-center justify-between border-b border-[var(--border-light)] px-5 py-3.5">
-              <h2 className="text-sm font-semibold text-[var(--text-strong)]">{title}</h2>
+            <div className="flex items-center justify-between border-b border-[var(--border-light)] px-4 py-2.5 bg-[var(--surface-secondary)]/50">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-strong)]">{title}</h2>
               <button
                 onClick={onClose}
-                className="rounded-md p-1.5 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
+                className="rounded-[var(--radius-control)] p-1 text-[var(--text-subtle)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-default)]"
                 aria-label="Close drawer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="p-5">{children}</div>
+            <div className="p-4">{children}</div>
           </motion.aside>
         </>
       ) : null}
