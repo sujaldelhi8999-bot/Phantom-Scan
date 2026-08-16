@@ -19,7 +19,7 @@ from app.database import (
 from app.agents.ai_tutor import create_ai_tutor_agent
 from app.models import AITutorRequest, AITutorResponse
 from app.services.ai_analyst import AskPhantomScanResponder, create_ai_security_analyst
-from app.services.openrouter_client import call_openrouter
+from app.services.openrouter_client import ai_usage_logger, call_openrouter
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -85,16 +85,49 @@ async def ask_phantomscan(
     artifacts = await get_scan_artifacts(scan_id)
     findings = await get_findings(scan_id)
     answer = await _ask_openrouter(scan_id, payload.question, analysis, findings)
-    if not answer:
-        answer = AskPhantomScanResponder().answer(payload.question, analysis, findings, artifacts)["answer"]
+    ai_note: str | None = None
+    citations: list[Any] = []
+    if answer:
+        pass
+    else:
+        if not get_settings().openrouter_api_key:
+            ai_note = "OpenRouter is not configured. Set OPENROUTER_API_KEY in backend/.env."
+        else:
+            ai_note = _openrouter_failure_note()
+        deterministic = AskPhantomScanResponder().answer(payload.question, analysis, findings, artifacts)
+        answer = deterministic["answer"]
+        citations = deterministic.get("citations", [])
     await add_audit_log(
         scan_id,
         "AI Security Analyst Agent",
         "question_answered",
-        f"Answered Ask PhantomScan question: {payload.question[:200]}",
+        f"Answered Ask PhantomScan question: {payload.question[:200]}" + (f" (AI unavailable: {ai_note})" if ai_note else ""),
         user_id=user["id"],
     )
-    return {"scan_id": scan_id, "question": payload.question, "answer": answer, "citations": [], "grounded": bool(analysis), "can_start_active_test": False}
+    return {"scan_id": scan_id, "question": payload.question, "answer": answer, "citations": citations, "grounded": bool(analysis), "can_start_active_test": False, "ai_note": ai_note}
+
+
+def _openrouter_failure_note() -> str | None:
+    # ponytail: reads the global logger's last entry; fine for the local single-user
+    # ask flow, revisit if concurrent ask throughput ever matters.
+    logs = ai_usage_logger.get_logs()
+    if not logs:
+        return None
+    last = logs[-1]
+    status = last.get("response_status", "")
+    error = (last.get("error") or "").strip()
+    if status.startswith("error_"):
+        code = status[len("error_"):]
+        if code == "429":
+            return "OpenRouter rate limit hit (free daily requests used up). Add credits or wait for the daily reset."
+        if code == "401":
+            return "OpenRouter rejected the API key (401). Check OPENROUTER_API_KEY."
+        return f"OpenRouter request failed (HTTP {code}). {error}".strip()
+    if status == "failed":
+        return f"OpenRouter request failed after retries. {error}".strip()
+    if status == "success":
+        return "OpenRouter returned an empty response."
+    return None
 
 
 async def _ask_openrouter(

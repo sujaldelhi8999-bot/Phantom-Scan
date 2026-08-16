@@ -215,6 +215,7 @@ export interface AskPhantomScanResponse {
   citations: AICitation[];
   grounded: boolean;
   can_start_active_test: boolean;
+  ai_note?: string | null;
 }
 
 export interface FindingAIExplanation {

@@ -546,11 +546,13 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const [citations, setCitations] = useState<Array<{ label?: string; title?: string; endpoint?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setLoading(false);
       setError(null);
+      setAiNote(null);
     }
   }, [open]);
 
@@ -562,6 +564,7 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
     try {
       const response = await askPhantomScan(selectedScan.id, question.trim());
       setAnswer(response.answer);
+      setAiNote(response.ai_note ?? null);
       setCitations(response.citations.map((c) => ({ label: c.label, title: c.title, endpoint: c.endpoint })));
     } catch (err) {
       setError(apiErrorMessage(err, 'Ask PhantomScan could not answer from current evidence.'));
@@ -577,7 +580,7 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
           </div>
           <div>
             <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)]">Scan</div>
-            <Select value={selectedScan.id} onChange={(e) => { setScanId(Number(e.target.value)); setAnswer(null); setCitations([]); }}>
+            <Select value={selectedScan.id} onChange={(e) => { setScanId(Number(e.target.value)); setAnswer(null); setCitations([]); setAiNote(null); }}>
               {completedScans.map((scan) => (
                 <option key={scan.id} value={scan.id}>
                   #{scan.id} — {targetName(scan.target_url)}
@@ -613,6 +616,12 @@ function AskPhantomScanDrawer({ open, onClose }: { open: boolean; onClose: () =>
             </div>
           ) : null}
           {error ? <ErrorState title="Error" description={error} /> : null}
+          {aiNote ? (
+            <div className="rounded-xl border border-[var(--warning-soft)] bg-[var(--warning-soft)]/40 p-3.5 text-xs text-[var(--warning)]">
+              <div className="mb-1 font-semibold">AI unavailable</div>
+              <div>{aiNote}</div>
+            </div>
+          ) : null}
           {answer ? (
             <div className="rounded-xl bg-[var(--surface-secondary)] p-3.5 text-xs leading-relaxed text-[var(--text-default)]">{answer}</div>
           ) : null}
