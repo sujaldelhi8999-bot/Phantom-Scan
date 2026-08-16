@@ -7,17 +7,19 @@ and an explicit ownership acknowledgment. All actions are persisted to the
 """
 
 import logging
+import os
 import time
 from typing import Any
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth_middleware import get_current_user
 from app.agents.ai_payload import AIPayloadGenerator
-from app.agents.exfil import ExfiltrationAgent, resolve_archive
+from app.agents.exfil import ExfiltrationAgent, decrypt_to_temp, resolve_archive
 from app.agents.brutal_exploit import ExploitationEngine, SUPPORTED_CATEGORIES
 from app.agents.lateral_movement import LateralMovementAgent
 from app.agents.post_exploit import PostExploitationAgent, install_persistence
@@ -427,6 +429,16 @@ async def download_exfil(file_id: str, user: dict = Depends(get_current_user)) -
     path = resolve_archive(file_id)
     if path is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archive not found")
+    if path.suffix.lower() == ".enc":
+        tmp = decrypt_to_temp(file_id)
+        if tmp is None:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to decrypt archive")
+        return FileResponse(
+            tmp,
+            media_type="application/zip",
+            filename=f"{path.stem}.zip",
+            background=BackgroundTask(os.unlink, tmp),
+        )
     return FileResponse(path, media_type="application/zip", filename=path.name)
 
 

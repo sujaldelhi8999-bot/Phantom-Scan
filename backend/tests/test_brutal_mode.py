@@ -11,6 +11,7 @@ Run:  python -m pytest tests/test_brutal_mode.py -v
 """
 
 import asyncio
+import io
 import os
 import tempfile
 import zipfile
@@ -23,7 +24,7 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{_db_path}")
 
 from app.agents.ai_payload import AIPayloadGenerator  # noqa: E402
 from app.agents.brutal_exploit import ExploitationEngine, SUPPORTED_CATEGORIES  # noqa: E402
-from app.agents.exfil import ExfiltrationAgent, resolve_archive  # noqa: E402
+from app.agents.exfil import ExfiltrationAgent, decrypt_archive, resolve_archive  # noqa: E402
 from app.brutal_gate import BrutalGate, BrutalGateError, is_lab_target  # noqa: E402
 from app.brutal_sessions import BrutalSession, BrutalSessionManager  # noqa: E402
 from app.config import Settings, get_settings  # noqa: E402
@@ -207,23 +208,28 @@ class ExfiltrationTests(IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await agent.pack()
 
-    async def test_pack_creates_zip_with_manifest(self) -> None:
+    async def test_pack_creates_encrypted_zip_with_manifest(self) -> None:
         result = await self.agent.pack()
-        self.assertTrue(result["filename"].endswith(".zip"))
+        self.assertTrue(result["filename"].endswith(".enc"))
+        self.assertTrue(result["encrypted"])
         path = resolve_archive(result["file_id"])
         self.assertIsNotNone(path)
-        with zipfile.ZipFile(path) as archive:
+        self.assertTrue(path.read_bytes().startswith(b"PHSC"))
+        with zipfile.ZipFile(io.BytesIO(decrypt_archive(path.read_bytes(), self.session.session_id))) as archive:
             names = archive.namelist()
             self.assertIn("MANIFEST.txt", names)
             self.assertIn("users_dump.json", names)
             manifest = archive.read("MANIFEST.txt").decode("utf-8")
             self.assertIn("sqli", manifest)
+        with self.assertRaises(ValueError):
+            decrypt_archive(path.read_bytes(), "wrong-session-id")
         self.assertEqual(result["loot_count"], 2)
 
     async def test_resolve_guards_against_traversal(self) -> None:
         self.assertIsNone(resolve_archive("../outside.zip"))
         self.assertIsNone(resolve_archive("..\\..\\windows\\system32"))
         self.assertIsNone(resolve_archive("not_a_zip.txt"))
+        self.assertIsNone(resolve_archive("malware.exe"))
 
 
 class AIPayloadFallbackTests(IsolatedAsyncioTestCase):
