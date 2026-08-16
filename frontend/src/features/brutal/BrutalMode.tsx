@@ -505,7 +505,7 @@ export default function BrutalMode() {
                   <h3 className="pb-2 pt-5 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">AI Payload Generator</h3>
                   <div className="flex flex-wrap gap-2">
                     <Select value={vulnType} onChange={(e) => setVulnType(e.target.value)} className="flex-1 min-w-[140px]">
-                      {Object.keys(status.supported_categories).concat('reverse_shell', 'webshell', 'lfi').map((key) => (
+                      {[...new Set(Object.keys(status.supported_categories).concat('reverse_shell', 'webshell', 'lfi'))].map((key) => (
                         <option key={key} value={key}>
                           {key}
                         </option>
