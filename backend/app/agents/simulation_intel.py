@@ -1,9 +1,8 @@
-"""Phase 1 — Target intelligence gathering for simulation mode.
+"""Passive target intelligence for simulation mode.
 
 Performs only passive, legal reconnaissance against an authorized target:
 DNS resolution and a single HTTP request (exactly what a browser does).
-The results feed the finding generator, shell personality and loot so the
-simulated engagement looks target-specific.
+The result is the entire output of simulation mode — real intel only.
 """
 
 import logging
