@@ -131,6 +131,9 @@ phantomscan/
 | `BRUTAL_EXFIL_DIR` | `backend/brutal_exfil` | Directory where exfiltration loot archives are stored |
 | `BRUTAL_MAX_COMMANDS_PER_SHELL` | `100` | Per-shell interactive command budget |
 | `BRUTAL_COMMAND_TIMEOUT` | `12.0` | Per-command timeout (seconds) in the interactive shell |
+| `BRUTAL_EXFIL_PASSWORD` | _none_ | Loot archive password; when empty the key is derived from `SECRET_KEY` + `session_id` |
+| `BRUTAL_EVASION_OBFUSCATE` | `0` | Payload obfuscation for exploit/shell traffic. **Off by default** (canned lab keyword-matching relies on it). |
+| `BRUTAL_EVASION_SLOW_SCAN` | `0` | Randomized request jitter/slow-scan cadence. **Off by default.** |
 | `EXPLOITATION_ENABLED` | `0` | Global kill-switch for the scan exploitation engine (SQLi, XSS, path traversal, command injection). **Off by default.** A scan only exploits when this is on **and** the user ticks "Enable Exploitation" on the Authorized Testing page. |
 | `AI_EXPLOITATION_ENABLED` | `0` | Global kill-switch for AI-driven PoC generation (OpenRouter). Falls back to deterministic templates when `OPENROUTER_API_KEY` is not set. |
 | `EXPLOIT_ATTEMPT_TIMEOUT` | `30.0` | Per-finding timeout (seconds) for each exploitation attempt |
@@ -292,20 +295,27 @@ A fully gated offensive-security module that walks the complete kill chain
 against authorized targets (PhantomBank Lab or Private Scope hosts):
 
 - **Auto-Exploitation** — one-click flows for SQLi, RCE, command injection,
-  LFI, SSRF, file upload and XSS, mapped from detected findings, with an
-  evasion layer (rotating user agents, request jitter, payload obfuscation)
-  and a slow-scan mode.
+  LFI, SSRF, file upload and XSS. Against the lab these are canned flows;
+  against Private Scope targets they are **findings-driven** through the real
+  exploitation engine and require `EXPLOITATION_ENABLED=true` (otherwise they
+  are refused with an explicit error).
 - **Interactive Shells** — REST or WebSocket consoles with reverse/bind shell
-  one-liners. Commands are filtered (destructive operations are blocked),
-  budgeted per shell, and every single command is written to the `brutal_ops`
-  audit table.
+  one-liners. Commands are filtered (destructive operations are blocked and
+  audited), budgeted per shell, and every single command is written to the
+  `brutal_ops` audit table.
 - **Post-Exploitation** — system enumeration and privilege-escalation checks.
 - **Lateral Movement** — SSH key harvesting, internal network mapping and
   pivoting (lab-simulated only; never touches real hosts).
 - **Persistence** — lab-simulated cron/registry templates.
 - **Exfiltration** — loot (DB dumps, configs, keys, command output) packed
-  into a checksummed ZIP archive with a manifest; admin-only, traversal-safe
-  download.
+  into a ZIP with a manifest, then encrypted with **AES-256-GCM** before it
+  touches disk (`.enc`). Downloading decrypts to a temp file that is removed
+  right after the response; admin-only, traversal-safe resolution. The key is
+  `BRUTAL_EXFIL_PASSWORD`, or derived from `SECRET_KEY + session_id` when
+  unset.
+- **Evasion** — rotating user agents, request jitter and payload obfuscation,
+  controlled by the `BRUTAL_EVASION_OBFUSCATE` / `BRUTAL_EVASION_SLOW_SCAN`
+  toggles (both **off by default** so canned lab keyword-matching works).
 - **AI Payloads** — LLM-generated target-specific payloads with a
   deterministic offline fallback and per-engagement caching.
 
@@ -313,8 +323,10 @@ against authorized targets (PhantomBank Lab or Private Scope hosts):
 kill switch (off by default) → admin role → target must be the lab or in
 Private Scope → explicit ownership acknowledgment on mutating calls. Denials
 and approvals are written to the audit log, and every operation lands in the
-`brutal_ops` table. The lab simulation never touches real files, processes or
-network hosts.
+`brutal_ops` table. Sessions are persisted to `brutal_sessions` and restored
+at startup, so an engagement (timeline + loot + findings) survives a backend
+restart. The lab simulation never touches real files, processes or network
+hosts.
 
 ### 7. Exploitation Engine (Scan-Integrated)
 

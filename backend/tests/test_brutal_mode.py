@@ -114,7 +114,6 @@ class ShellSafetyTests(IsolatedAsyncioTestCase):
         self.shell.session_id = self.session.session_id
         self.shell.target_url = self.session.target_url
         self.shell.actor = self.session.actor
-        self.shell.remaining_budget.return_value = 50
 
     def test_dangerous_pattern_filter(self) -> None:
         for command in ["rm -rf /", "shutdown /s /t 0", "mkfs.ext4 /dev/sda1", "dd if=/dev/zero of=/dev/sda", ":(){ :|:& };:"]:
@@ -139,7 +138,7 @@ class ShellSafetyTests(IsolatedAsyncioTestCase):
         self.assertIn("empty", result["error"])
 
     async def test_budget_exhaustion(self) -> None:
-        self.shell.remaining_budget.return_value = 0
+        self.shell.command_count = get_settings().brutal_max_commands_per_shell
         result = await run_command(self.shell, "whoami")
         self.assertIn("budget", result["error"])
 
@@ -287,8 +286,13 @@ class AIPayloadFallbackTests(IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self) -> None:
         await initialize_database()
-        os.environ.pop("OPENROUTER_API_KEY", None)
+        self.old_key = Settings.openrouter_api_key
+        Settings.openrouter_api_key = ""
+        self.addCleanup(self._restore)
         self.session = make_session()
+
+    def _restore(self) -> None:
+        Settings.openrouter_api_key = self.old_key
 
     async def test_offline_fallback_reverse_shell(self) -> None:
         generator = AIPayloadGenerator(self.session)
